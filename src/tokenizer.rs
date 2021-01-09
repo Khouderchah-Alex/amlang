@@ -3,17 +3,23 @@
 use std::collections::VecDeque;
 use std::io::BufRead;
 
+use super::ast;
+
 #[derive(Debug)]
 pub enum Token {
     LeftParen,
     RightParen,
-    Symbol(String),
-    Integer(i64),
-    Float(f64),
+    Atom(ast::Atom),
     Comment(String),
 }
 
-pub type Tokens = VecDeque<Token>;
+#[derive(Debug)]
+pub struct TokenInfo {
+    pub token: Token,
+    pub line: usize,
+}
+
+pub type Tokens = VecDeque<TokenInfo>;
 
 #[derive(Debug)]
 pub struct TokenError {
@@ -22,7 +28,8 @@ pub struct TokenError {
 
 pub fn tokenize<T: BufRead>(source: T) -> Result<Tokens, TokenError> {
     let mut result = VecDeque::new();
-    for line_result in source.lines() {
+    let mut iter = source.lines().enumerate();
+    while let Some((i, line_result)) = iter.next() {
         if let Err(_err) = line_result {
             return Err(TokenError{current_tokens: result});
         }
@@ -30,33 +37,37 @@ pub fn tokenize<T: BufRead>(source: T) -> Result<Tokens, TokenError> {
         let line = line_result.unwrap()
             .replace("(", " ( ")
             .replace(")",  " ) ");
-        if let Some(i) = line.find(';') {
-            line_to_tokens(&line[..i], &mut result);
-            result.push_back(Token::Comment(line[i+1..].to_string()));
+
+        if let Some(j) = line.find(';') {
+            line_to_tokens(&line[..j], i, &mut result);
+            result.push_back(TokenInfo{
+                token: Token::Comment(line[j+1..].to_string()),
+                line: i
+            });
         } else {
-            line_to_tokens(line, &mut result);
+            line_to_tokens(line, i, &mut result);
         }
     }
 
     Ok(result)
 }
 
-fn line_to_tokens<S: AsRef<str>>(line: S, result: &mut Tokens) {
+fn line_to_tokens<S: AsRef<str>>(line: S, linum: usize, result: &mut Tokens) {
     for ptoken in line.as_ref().split_whitespace() {
         let mut token = match ptoken {
             "(" => Token::LeftParen,
             ")" => Token::RightParen,
-            _ => Token::Symbol(ptoken.to_string()),
+            _ => Token::Atom(ast::Atom::Symbol(ptoken.to_string())),
         };
 
         // Some additional post-processing for numbers.
-        if let Token::Symbol(ref s) = token {
+        if let Token::Atom(ast::Atom::Symbol(ref s)) = token {
             if let Ok(i) = s.parse::<i64>() {
-                token = Token::Integer(i);
+                token = Token::Atom(ast::Atom::Integer(i));
             } else if let Ok(f) = s.parse::<f64>() {
-                token = Token::Float(f);
+                token = Token::Atom(ast::Atom::Float(f));
             }
         }
-        result.push_back(token);
+        result.push_back(TokenInfo{token, line: linum});
     }
 }
