@@ -42,7 +42,7 @@ pub fn tokenize<T: BufRead>(source: T) -> Result<Tokens, TokenError> {
             line_to_tokens(&line[..j], i, &mut result);
             result.push_back(TokenInfo {
                 token: Token::Comment(line[j + 1..].to_string()),
-                line: i,
+                line: i + 1,
             });
         } else {
             line_to_tokens(line, i, &mut result);
@@ -68,6 +68,9 @@ fn line_to_tokens<S: AsRef<str>>(line: S, linum: usize, result: &mut Tokens) {
                 token = Token::Atom(sexp::Atom::Float(f));
             }
         }
-        result.push_back(TokenInfo { token, line: linum });
+        result.push_back(TokenInfo {
+            token,
+            line: linum + 1,
+        });
     }
 }
