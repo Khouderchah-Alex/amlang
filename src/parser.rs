@@ -1,8 +1,8 @@
 //! Module for parsing Amlang tokens into an AST.
 
-use super::cons_list::ConsList;
-use super::sexp::{Cons, Value};
-use super::tokenizer::{self, Token};
+use crate::cons_list::ConsList;
+use crate::sexp::{Cons, Value};
+use crate::tokenizer::{self, Token};
 
 use self::ParseErrorReason::*;
 

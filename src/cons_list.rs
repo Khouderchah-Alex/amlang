@@ -1,6 +1,6 @@
 //! Module for representing lists as S-exps.
 
-use super::sexp::{Cons, Value};
+use crate::sexp::{Cons, Value};
 
 #[derive(Debug)]
 pub struct ConsList {

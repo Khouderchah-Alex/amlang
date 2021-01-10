@@ -3,7 +3,7 @@
 use std::collections::VecDeque;
 use std::io::BufRead;
 
-use super::sexp;
+use crate::sexp;
 
 #[derive(Debug)]
 pub enum Token {
