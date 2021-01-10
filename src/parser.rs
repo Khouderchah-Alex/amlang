@@ -19,28 +19,32 @@ pub enum ParseErrorReason {
 #[derive(Debug)]
 pub struct ParseError {
     reason: ParseErrorReason,
-    token: Option<tokenizer::TokenInfo>,
+    token: tokenizer::TokenInfo,
 }
 
 pub fn parse(tokens: tokenizer::Tokens) -> Result<Cons, ParseError> {
-    let mut stack = Vec::<ConsList>::new();
-    stack.push(ConsList::new());
+    let mut stack = Vec::<(ConsList, tokenizer::TokenInfo)>::new();
+    stack.push((ConsList::new(),
+                tokenizer::TokenInfo {
+                    token: tokenizer::Token::Comment("ROOT".to_string()),
+                    line: 0,
+                }));
 
     for token in tokens {
         match token.token {
             Token::LeftParen => {
                 if stack.len() >= MAX_LIST_DEPTH {
-                    return Err(ParseError{ reason: DepthOverflow, token: Some(token) });
+                    return Err(ParseError{ reason: DepthOverflow, token });
                 }
-                stack.push(ConsList::new());
+                stack.push((ConsList::new(), token));
             }
             Token::RightParen => {
                 if stack.len() <= 1 {
-                    return Err(ParseError{ reason: UnmatchedClose, token: Some(token) });
+                    return Err(ParseError{ reason: UnmatchedClose, token });
                 }
-                let end = stack.pop().unwrap();
+                let (end, _) = stack.pop().unwrap();
                 match &mut stack.last_mut() {
-                    Some(last) => {
+                    Some((last, _)) => {
                         unsafe {
                             last.append(Value::Cons(*end.release()));
                         }
@@ -52,7 +56,7 @@ pub fn parse(tokens: tokenizer::Tokens) -> Result<Cons, ParseError> {
             }
             Token::Atom(atom) => {
                 match &mut stack.last_mut() {
-                    Some(last) => {
+                    Some((last, _)) => {
                         unsafe {
                             last.append(Value::Atom(atom));
                         }
@@ -67,8 +71,9 @@ pub fn parse(tokens: tokenizer::Tokens) -> Result<Cons, ParseError> {
     }
 
     if stack.len() > 1 {
-        return Err(ParseError{ reason: UnmatchedOpen, token: None })
+        return Err(
+            ParseError{ reason: UnmatchedOpen, token: stack.pop().unwrap().1 })
     }
 
-    Ok(*stack.pop().unwrap().release())
+    Ok(*stack.pop().unwrap().0.release())
 }
