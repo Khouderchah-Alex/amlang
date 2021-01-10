@@ -31,18 +31,18 @@ pub fn tokenize<T: BufRead>(source: T) -> Result<Tokens, TokenError> {
     let mut iter = source.lines().enumerate();
     while let Some((i, line_result)) = iter.next() {
         if let Err(_err) = line_result {
-            return Err(TokenError{current_tokens: result});
+            return Err(TokenError {
+                current_tokens: result,
+            });
         }
 
-        let line = line_result.unwrap()
-            .replace("(", " ( ")
-            .replace(")",  " ) ");
+        let line = line_result.unwrap().replace("(", " ( ").replace(")", " ) ");
 
         if let Some(j) = line.find(';') {
             line_to_tokens(&line[..j], i, &mut result);
-            result.push_back(TokenInfo{
-                token: Token::Comment(line[j+1..].to_string()),
-                line: i
+            result.push_back(TokenInfo {
+                token: Token::Comment(line[j + 1..].to_string()),
+                line: i,
             });
         } else {
             line_to_tokens(line, i, &mut result);
@@ -68,6 +68,6 @@ fn line_to_tokens<S: AsRef<str>>(line: S, linum: usize, result: &mut Tokens) {
                 token = Token::Atom(sexp::Atom::Float(f));
             }
         }
-        result.push_back(TokenInfo{token, line: linum});
+        result.push_back(TokenInfo { token, line: linum });
     }
 }

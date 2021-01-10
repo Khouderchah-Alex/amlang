@@ -1,6 +1,5 @@
-
 use std::fs::File;
-use std::io::{BufReader,self};
+use std::io::{self, BufReader};
 
 mod cons_list;
 mod parser;

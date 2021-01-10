@@ -21,13 +21,10 @@ pub struct Cons {
     pub cdr: Option<Box<Value>>,
 }
 
-
 impl fmt::Display for Value {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Value::Atom(atom) => {
-                write!(f, "{}", atom)
-            }
+            Value::Atom(atom) => write!(f, "{}", atom),
             Value::Cons(cons) => {
                 if f.alternate() {
                     write!(f, "{:#}", cons)
@@ -42,15 +39,9 @@ impl fmt::Display for Value {
 impl fmt::Display for Atom {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Atom::Integer(i) => {
-                write!(f, "{}", i)
-            }
-            Atom::Float(ff) => {
-                write!(f, "{}f", ff)
-            }
-            Atom::Symbol(s) => {
-                write!(f, "{:}", s)
-            }
+            Atom::Integer(i) => write!(f, "{}", i),
+            Atom::Float(ff) => write!(f, "{}f", ff),
+            Atom::Symbol(s) => write!(f, "{:}", s),
         }
     }
 }
@@ -95,8 +86,10 @@ impl Cons {
             match &curr.car {
                 Some(val) => {
                     write!(f, "{:#}", val)?;
-                },
-                None => { write!(f, "NIL")?; },
+                }
+                None => {
+                    write!(f, "NIL")?;
+                }
             }
 
             match &curr.cdr {
@@ -106,8 +99,10 @@ impl Cons {
                         pos += 1;
                     }
                     write!(f, " ")?;
-                },
-                None => { break; },
+                }
+                None => {
+                    break;
+                }
             };
         }
         write!(f, ")")
