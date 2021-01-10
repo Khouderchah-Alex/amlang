@@ -3,13 +3,13 @@
 use std::collections::VecDeque;
 use std::io::BufRead;
 
-use super::ast;
+use super::sexp;
 
 #[derive(Debug)]
 pub enum Token {
     LeftParen,
     RightParen,
-    Atom(ast::Atom),
+    Atom(sexp::Atom),
     Comment(String),
 }
 
@@ -57,15 +57,15 @@ fn line_to_tokens<S: AsRef<str>>(line: S, linum: usize, result: &mut Tokens) {
         let mut token = match ptoken {
             "(" => Token::LeftParen,
             ")" => Token::RightParen,
-            _ => Token::Atom(ast::Atom::Symbol(ptoken.to_string())),
+            _ => Token::Atom(sexp::Atom::Symbol(ptoken.to_string())),
         };
 
         // Some additional post-processing for numbers.
-        if let Token::Atom(ast::Atom::Symbol(ref s)) = token {
+        if let Token::Atom(sexp::Atom::Symbol(ref s)) = token {
             if let Ok(i) = s.parse::<i64>() {
-                token = Token::Atom(ast::Atom::Integer(i));
+                token = Token::Atom(sexp::Atom::Integer(i));
             } else if let Ok(f) = s.parse::<f64>() {
-                token = Token::Atom(ast::Atom::Float(f));
+                token = Token::Atom(sexp::Atom::Float(f));
             }
         }
         result.push_back(TokenInfo{token, line: linum});
