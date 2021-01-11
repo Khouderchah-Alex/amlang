@@ -21,53 +21,6 @@ pub struct Cons {
     cdr: Option<Box<Value>>,
 }
 
-impl fmt::Display for Value {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Value::Atom(atom) => write!(f, "{}", atom),
-            Value::Cons(cons) => {
-                if f.alternate() {
-                    write!(f, "{:#}", cons)
-                } else {
-                    write!(f, "{}", cons)
-                }
-            }
-        }
-    }
-}
-
-impl fmt::Display for Atom {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Atom::Integer(i) => write!(f, "{}", i),
-            Atom::Float(ff) => write!(f, "{}f", ff),
-            Atom::Symbol(s) => write!(f, "{:}", s),
-        }
-    }
-}
-
-impl fmt::Display for Cons {
-    /// Note: this does not check for loops and doesn't have a max depth.
-    /// Use the alternate formatting for untrusted S-exps.
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // Alternate print this with the list shorthand.
-        if f.alternate() {
-            return self.list_fmt(f);
-        }
-
-        let a = match self.car() {
-            Some(val) => val.to_string(),
-            None => "NIL".to_string(),
-        };
-        let b = match self.cdr() {
-            Some(val) => val.to_string(),
-            None => "NIL".to_string(),
-        };
-
-        write!(f, "({} . {})", a, b)
-    }
-}
-
 impl Cons {
     pub fn cons(car: Option<Value>, cdr: Option<Value>) -> Cons {
         Cons {
@@ -143,5 +96,52 @@ impl<'a> Iterator for SexpIter<'a> {
         }
 
         None
+    }
+}
+
+impl fmt::Display for Value {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Value::Atom(atom) => write!(f, "{}", atom),
+            Value::Cons(cons) => {
+                if f.alternate() {
+                    write!(f, "{:#}", cons)
+                } else {
+                    write!(f, "{}", cons)
+                }
+            }
+        }
+    }
+}
+
+impl fmt::Display for Atom {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Atom::Integer(i) => write!(f, "{}", i),
+            Atom::Float(ff) => write!(f, "{}f", ff),
+            Atom::Symbol(s) => write!(f, "{:}", s),
+        }
+    }
+}
+
+impl fmt::Display for Cons {
+    /// Note: this does not check for loops and doesn't have a max depth.
+    /// Use the alternate formatting for untrusted S-exps.
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // Alternate print this with the list shorthand.
+        if f.alternate() {
+            return self.list_fmt(f);
+        }
+
+        let a = match self.car() {
+            Some(val) => val.to_string(),
+            None => "NIL".to_string(),
+        };
+        let b = match self.cdr() {
+            Some(val) => val.to_string(),
+            None => "NIL".to_string(),
+        };
+
+        write!(f, "({} . {})", a, b)
     }
 }
