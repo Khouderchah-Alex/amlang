@@ -17,8 +17,8 @@ pub enum Atom {
 
 #[derive(Debug, Default)]
 pub struct Cons {
-    pub car: Option<Box<Value>>,
-    pub cdr: Option<Box<Value>>,
+    car: Option<Box<Value>>,
+    cdr: Option<Box<Value>>,
 }
 
 impl fmt::Display for Value {
@@ -55,11 +55,11 @@ impl fmt::Display for Cons {
             return self.list_fmt(f);
         }
 
-        let a = match &self.car {
+        let a = match self.car() {
             Some(val) => val.to_string(),
             None => "NIL".to_string(),
         };
-        let b = match &self.cdr {
+        let b = match self.cdr() {
             Some(val) => val.to_string(),
             None => "NIL".to_string(),
         };
@@ -69,6 +69,31 @@ impl fmt::Display for Cons {
 }
 
 impl Cons {
+    pub fn cons(car: Option<Value>, cdr: Option<Value>) -> Cons {
+        Cons {
+            car: car.map(Box::new),
+            cdr: cdr.map(Box::new),
+        }
+    }
+
+    pub fn car(&self) -> Option<&Value> {
+        match &self.car {
+            Some(val) => Some(val.as_ref()),
+            None => None,
+        }
+    }
+
+    pub fn cdr(&self) -> Option<&Value> {
+        match &self.cdr {
+            Some(val) => Some(val.as_ref()),
+            None => None,
+        }
+    }
+
+    pub fn set_cdr(&mut self, new: Option<Box<Value>>) {
+        self.cdr = new;
+    }
+
     fn list_fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // Any list longer than this will simply be suffixed with "..." after these
         // many elements.
