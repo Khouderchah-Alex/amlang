@@ -49,6 +49,10 @@ impl Cons {
         }
     }
 
+    pub fn consume(self) -> (Option<Box<Value>>, Option<Box<Value>>) {
+        (self.car, self.cdr)
+    }
+
     pub fn set_cdr(&mut self, new: Option<Box<Value>>) {
         self.cdr = new;
     }
@@ -96,6 +100,40 @@ impl<'a> Iterator for SexpIter<'a> {
         }
 
         None
+    }
+}
+
+pub struct SexpIntoIter {
+    current: Option<Cons>,
+}
+
+impl Iterator for SexpIntoIter {
+    type Item = Box<Value>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.current.is_none() {
+            return None;
+        }
+
+        let (car, cdr) = self.current.take().unwrap().consume();
+        if let Some(next) = cdr {
+            if let Value::Cons(c) = *next {
+                self.current = Some(c);
+            }
+        }
+
+        car
+    }
+}
+
+impl IntoIterator for Cons {
+    type Item = Box<Value>;
+    type IntoIter = SexpIntoIter;
+
+    fn into_iter(self) -> Self::IntoIter {
+        SexpIntoIter {
+            current: Some(self),
+        }
     }
 }
 
