@@ -76,6 +76,12 @@ impl Cons {
         }
     }
 
+    pub fn iter(&self) -> SexpIter {
+        SexpIter {
+            current: Some(&self),
+        }
+    }
+
     pub fn car(&self) -> Option<&Value> {
         match &self.car {
             Some(val) => Some(val.as_ref()),
@@ -100,36 +106,42 @@ impl Cons {
         const MAX_DISPLAY_LENGTH: usize = 64;
 
         let mut pos: usize = 0;
-        let mut curr: &Cons = &self;
         write!(f, "(")?;
-        loop {
+        for val in self.iter() {
             if pos >= MAX_DISPLAY_LENGTH {
                 write!(f, "...")?;
                 break;
             }
 
-            match &curr.car {
-                Some(val) => {
-                    write!(f, "{:#}", val)?;
-                }
-                None => {
-                    write!(f, "NIL")?;
-                }
+            if pos > 0 {
+                write!(f, " ")?;
             }
+            write!(f, "{:#}", val)?;
 
-            match &curr.cdr {
-                Some(val) => {
-                    if let Value::Cons(next) = &*val.as_ref() {
-                        curr = &next;
-                        pos += 1;
-                    }
-                    write!(f, " ")?;
-                }
-                None => {
-                    break;
-                }
-            };
+            pos += 1;
         }
         write!(f, ")")
+    }
+}
+
+pub struct SexpIter<'a> {
+    current: Option<&'a Cons>,
+}
+
+impl<'a> Iterator for SexpIter<'a> {
+    type Item = &'a Value;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some(cons) = self.current {
+            if let Some(Value::Cons(next)) = cons.cdr() {
+                self.current = Some(next);
+            } else {
+                self.current = None;
+            }
+
+            return cons.car();
+        }
+
+        None
     }
 }
