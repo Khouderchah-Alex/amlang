@@ -21,6 +21,15 @@ pub struct Cons {
     cdr: Option<Box<Value>>,
 }
 
+impl Value {
+    pub fn cons(&self) -> &Cons {
+        if let Value::Cons(c) = self {
+            return c;
+        }
+        panic!("Expected {:?} to be Cons", self);
+    }
+}
+
 impl Cons {
     pub fn cons(car: Option<Value>, cdr: Option<Value>) -> Cons {
         Cons {
