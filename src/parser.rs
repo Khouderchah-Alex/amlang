@@ -1,7 +1,7 @@
 //! Module for parsing Amlang tokens into an AST.
 
 use crate::cons_list::ConsList;
-use crate::sexp::{Cons, Value};
+use crate::sexp::Value;
 use crate::tokenizer::{self, Token};
 
 use self::ParseErrorReason::*;
@@ -21,7 +21,7 @@ pub struct ParseError {
     token: tokenizer::TokenInfo,
 }
 
-pub fn parse(tokens: tokenizer::Tokens) -> Result<Cons, ParseError> {
+pub fn parse(tokens: tokenizer::Tokens) -> Result<Vec<Box<Value>>, ParseError> {
     let mut stack = Vec::<(ConsList, tokenizer::TokenInfo)>::new();
     stack.push((
         ConsList::new(),
@@ -78,5 +78,6 @@ pub fn parse(tokens: tokenizer::Tokens) -> Result<Cons, ParseError> {
         });
     }
 
-    Ok(*stack.pop().unwrap().0.release())
+    let root = stack.pop().unwrap().0.release();
+    Ok(root.into_iter().collect::<Vec<_>>())
 }

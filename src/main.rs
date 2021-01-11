@@ -9,8 +9,10 @@ mod tokenizer;
 fn main() -> io::Result<()> {
     let f = File::open("test.aml")?;
     let result = tokenizer::tokenize(BufReader::new(f)).unwrap();
-    let cons = parser::parse(result).unwrap();
-    println!("{:#}", cons);
+    let sexps = parser::parse(result).unwrap();
+    for sexp in sexps {
+        println!("{:#}", sexp);
+    }
 
     Ok(())
 }
