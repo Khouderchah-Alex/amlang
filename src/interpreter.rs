@@ -1,5 +1,8 @@
 use crate::builtin;
-use crate::function::{EvalErr, Func, Ret};
+use crate::function::{
+    EvalErr::{self, *},
+    Func, Ret,
+};
 use crate::sexp::{Atom, Value};
 
 pub fn eval(form: &Value) -> Ret {
@@ -7,22 +10,23 @@ pub fn eval(form: &Value) -> Ret {
         Value::Atom(atom) => {
             if let Atom::Symbol(symbol) = atom {
                 let value = builtin::BUILTINS.lookup(symbol);
-                if value.is_none() {
-                    return Err(EvalErr::UnboundSymbol(symbol.clone()));
-                }
-                return Ok(Value::Atom(Atom::BuiltIn(value.unwrap())));
+                return match value {
+                    Some(builtin) => Ok(Value::Atom(Atom::BuiltIn(builtin))),
+                    None => Err(UnboundSymbol(symbol.clone())),
+                };
             }
             return Ok(Value::Atom(atom.clone()));
         }
-        Value::Cons(cons) => {
-            if cons.car().is_none() {
-                return Err(EvalErr::InvalidSexp(Value::Cons(cons.clone())));
-            }
 
-            let first = eval(cons.car().unwrap())?;
-            let args = evlis(cons.cdr())?;
-            if let Value::Atom(Atom::BuiltIn(f)) = first {
-                return f.call(&args);
+        Value::Cons(cons) => {
+            let first = match cons.car() {
+                Some(car) => eval(car)?,
+                None => return Err(InvalidSexp(Value::Cons(cons.clone()))),
+            };
+
+            if let Value::Atom(Atom::BuiltIn(builtin)) = first {
+                let args = evlis(cons.cdr())?;
+                return builtin.call(&args);
             }
             panic!(
                 "TODO we need to handle more cases here;
@@ -39,16 +43,16 @@ fn evlis(args: Option<&Value>) -> Result<Vec<Value>, EvalErr> {
     }
 
     match args.unwrap() {
+        Value::Atom(atom) => {
+            return Err(InvalidSexp(Value::Atom(atom.clone())));
+        }
+
         Value::Cons(cons) => {
             for arg in cons {
                 let val = eval(&arg)?;
                 res.push(val);
             }
         }
-        Value::Atom(atom) => {
-            return Err(EvalErr::InvalidSexp(Value::Atom(atom.clone())));
-        }
     }
-
     Ok(res)
 }
