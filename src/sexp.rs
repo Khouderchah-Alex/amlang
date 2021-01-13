@@ -119,6 +119,15 @@ pub struct SexpIntoIter {
     current: Option<Cons>,
 }
 
+impl<'a> IntoIterator for &'a Cons {
+    type Item = &'a Value;
+    type IntoIter = SexpIter<'a>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
+    }
+}
+
 impl Iterator for SexpIntoIter {
     type Item = Box<Value>;
 

@@ -16,7 +16,7 @@ fn main() -> io::Result<()> {
     let sexps = parser::parse(result).unwrap();
 
     // Basic REPL over forms.
-    for sexp in sexps {
+    for sexp in &sexps {
         println!("> {:#}", sexp);
         let result = interpreter::eval(sexp);
         match result {
