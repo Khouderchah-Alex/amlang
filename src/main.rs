@@ -2,6 +2,7 @@ use std::fs::File;
 use std::io::{self, BufReader};
 
 mod cons_list;
+mod environment;
 mod parser;
 mod sexp;
 mod tokenizer;
