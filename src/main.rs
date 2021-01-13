@@ -1,8 +1,10 @@
 use std::fs::File;
 use std::io::{self, BufReader};
 
+mod builtin;
 mod cons_list;
 mod environment;
+mod function;
 mod parser;
 mod sexp;
 mod tokenizer;
