@@ -1,5 +1,6 @@
 //! Basic blocks for procedural representation.
 
+use std::borrow::Cow;
 use std::fmt;
 
 use self::EvalErr::*;
@@ -15,9 +16,15 @@ pub trait Func {
 
 #[derive(Debug)]
 pub enum EvalErr {
-    InvalidArgument,
+    InvalidArgument {
+        given: Value,
+        expected: Cow<'static, str>,
+    },
     InvalidSexp(Value),
-    MissingArguments { given: usize, expected: usize },
+    MissingArguments {
+        given: usize,
+        expected: usize,
+    },
     UnboundSymbol(String),
 }
 
@@ -25,7 +32,11 @@ impl fmt::Display for EvalErr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "[Error] ")?;
         let res = match self {
-            InvalidArgument => write!(f, "Invalid argument"),
+            InvalidArgument { given, expected } => write!(
+                f,
+                "Invalid argument: given {}, expected {}",
+                given, expected
+            ),
             InvalidSexp(val) => write!(f, "Invalid S-exp for evaluation: {:#}", val),
             MissingArguments { given, expected } => write!(
                 f,

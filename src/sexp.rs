@@ -4,13 +4,13 @@ use std::fmt;
 
 use crate::function::BuiltIn;
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum Value {
     Atom(Atom),
     Cons(Cons),
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum Atom {
     Integer(i64),
     Float(f64),
@@ -18,7 +18,7 @@ pub enum Atom {
     BuiltIn(&'static BuiltIn),
 }
 
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct Cons {
     car: Option<Box<Value>>,
     cdr: Option<Box<Value>>,

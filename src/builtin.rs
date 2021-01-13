@@ -2,6 +2,7 @@
 
 use lazy_static::lazy_static;
 
+use std::borrow::Cow;
 use std::collections::HashMap;
 use std::fmt;
 
@@ -60,7 +61,10 @@ fn add(args: Args) -> Ret {
         if let Value::Atom(Atom::Integer(i)) = arg {
             curr += i;
         } else {
-            return Err(EvalErr::InvalidArgument);
+            return Err(EvalErr::InvalidArgument {
+                given: (*arg).clone(),
+                expected: Cow::Borrowed("an integer"),
+            });
         }
     }
 
@@ -86,7 +90,10 @@ fn sub(args: Args) -> Ret {
                 curr -= i;
             }
         } else {
-            return Err(EvalErr::InvalidArgument);
+            return Err(EvalErr::InvalidArgument {
+                given: (*arg).clone(),
+                expected: Cow::Borrowed("an integer"),
+            });
         }
     }
 
@@ -99,7 +106,10 @@ fn mul(args: Args) -> Ret {
         if let Value::Atom(Atom::Integer(i)) = arg {
             curr *= i;
         } else {
-            return Err(EvalErr::InvalidArgument);
+            return Err(EvalErr::InvalidArgument {
+                given: (*arg).clone(),
+                expected: Cow::Borrowed("an integer"),
+            });
         }
     }
 
