@@ -67,7 +67,9 @@ pub fn parse(tokens: tokenizer::Tokens) -> Result<Vec<Box<Value>>, ParseError> {
                     panic!();
                 }
             },
-            _ => {}
+            _ => {
+                // Ignore other tokens.
+            }
         }
     }
 

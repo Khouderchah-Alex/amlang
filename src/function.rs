@@ -16,6 +16,7 @@ pub trait Func {
 #[derive(Debug)]
 pub enum EvalErr {
     InvalidArgument,
+    InvalidSexp(Value),
     MissingArguments { given: usize, expected: usize },
     UnboundSymbol(String),
 }
@@ -25,6 +26,7 @@ impl fmt::Display for EvalErr {
         write!(f, "[Error] ")?;
         let res = match self {
             InvalidArgument => write!(f, "Invalid argument"),
+            InvalidSexp(val) => write!(f, "Invalid S-exp for evaluation: {:#}", val),
             MissingArguments { given, expected } => write!(
                 f,
                 "Missing arguments; given {}, expected {}",
