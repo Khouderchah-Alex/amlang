@@ -10,7 +10,7 @@ pub enum Value {
     Cons(Cons),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Atom {
     Integer(i64),
     Float(f64),

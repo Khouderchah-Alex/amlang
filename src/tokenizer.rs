@@ -5,7 +5,7 @@ use std::io::BufRead;
 
 use crate::sexp;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Token {
     LeftParen,
     RightParen,

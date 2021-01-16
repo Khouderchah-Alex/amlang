@@ -43,6 +43,12 @@ impl Func for BuiltIn {
     }
 }
 
+impl PartialEq for BuiltIn {
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name
+    }
+}
+
 impl fmt::Debug for BuiltIn {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "[BUILTIN_{} @ {:p}]", self.name, &self.fun)
