@@ -74,3 +74,7 @@ fn line_to_tokens<S: AsRef<str>>(line: S, linum: usize, result: &mut Tokens) {
         });
     }
 }
+
+#[cfg(test)]
+#[path = "./tokenizer_test.rs"]
+mod tokenizer_test;
