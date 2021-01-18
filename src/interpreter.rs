@@ -1,9 +1,9 @@
 use crate::builtin;
 use crate::function::{
     EvalErr::{self, *},
-    Func, Ret,
+    ExpectedCount, Func, Ret,
 };
-use crate::sexp::{Atom, Value};
+use crate::sexp::{self, Atom, Value};
 
 pub fn eval(form: &Value) -> Ret {
     match form {
@@ -19,12 +19,21 @@ pub fn eval(form: &Value) -> Ret {
         }
 
         Value::Cons(cons) => {
-            let first = match cons.car() {
-                Some(car) => eval(car)?,
+            let car = match cons.car() {
+                Some(car) => car,
                 None => return Err(InvalidSexp(Value::Cons(cons.clone()))),
             };
 
-            if let Value::Atom(Atom::BuiltIn(builtin)) = first {
+            if let Value::Atom(Atom::Symbol(first)) = car {
+                match first.as_str() {
+                    "quote" => {
+                        return quote(cons.cdr());
+                    }
+                    _ => { /* Fallthrough */ }
+                }
+            }
+
+            if let Value::Atom(Atom::BuiltIn(builtin)) = eval(car)? {
                 let args = evlis(cons.cdr())?;
                 return builtin.call(&args);
             }
@@ -55,4 +64,35 @@ fn evlis(args: Option<&Value>) -> Result<Vec<Value>, EvalErr> {
         }
     }
     Ok(res)
+}
+
+fn quote(args: Option<&Value>) -> Ret {
+    if args.is_none() {
+        return Err(WrongArgumentCount {
+            given: 0,
+            expected: ExpectedCount::Exactly(1),
+        });
+    }
+
+    match args.unwrap() {
+        Value::Atom(atom) => {
+            return Err(InvalidSexp(Value::Atom(atom.clone())));
+        }
+
+        Value::Cons(cons) => {
+            let length = cons.iter().count();
+            if length != 1 {
+                return Err(WrongArgumentCount {
+                    given: length,
+                    expected: ExpectedCount::Exactly(1),
+                });
+            }
+
+            let ret = cons.car();
+            return match ret {
+                None => Ok(Value::Cons(sexp::Cons::default())),
+                Some(val) => Ok(val.clone()),
+            };
+        }
+    }
 }
