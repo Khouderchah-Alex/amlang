@@ -3,6 +3,7 @@
 use std::collections::VecDeque;
 use std::io::BufRead;
 
+use crate::number;
 use crate::sexp;
 
 #[derive(Debug, PartialEq)]
@@ -62,10 +63,8 @@ fn line_to_tokens<S: AsRef<str>>(line: S, linum: usize, result: &mut Tokens) {
 
         // Some additional post-processing for numbers.
         if let Token::Atom(sexp::Atom::Symbol(ref s)) = token {
-            if let Ok(i) = s.parse::<i64>() {
-                token = Token::Atom(sexp::Atom::Integer(i));
-            } else if let Ok(f) = s.parse::<f64>() {
-                token = Token::Atom(sexp::Atom::Float(f));
+            if let Ok(num) = s.parse::<number::Number>() {
+                token = Token::Atom(sexp::Atom::Number(num));
             }
         }
         result.push_back(TokenInfo {

@@ -8,6 +8,7 @@ use std::fmt;
 
 use crate::environment::Environment;
 use crate::function::{Args, EvalErr, Func, Ret};
+use crate::number::Number;
 use crate::sexp::{Atom, Value};
 
 macro_rules! builtins {
@@ -29,7 +30,8 @@ macro_rules! builtins {
 }
 
 lazy_static! {
-    pub static ref BUILTINS: Environment<BuiltIn> = builtins!["+": add, "-": sub, "*": mul];
+    pub static ref BUILTINS: Environment<BuiltIn> =
+        builtins!["+": add, "-": sub, "*": mul, "/": div];
 }
 
 pub struct BuiltIn {
@@ -62,19 +64,19 @@ impl fmt::Display for BuiltIn {
 }
 
 fn add(args: Args) -> Ret {
-    let mut curr: i64 = 0;
+    let mut curr = Number::default();
     for arg in args {
-        if let Value::Atom(Atom::Integer(i)) = arg {
-            curr += i;
+        if let Value::Atom(Atom::Number(num)) = arg {
+            curr += *num;
         } else {
             return Err(EvalErr::InvalidArgument {
                 given: (*arg).clone(),
-                expected: Cow::Borrowed("an integer"),
+                expected: Cow::Borrowed("a Number"),
             });
         }
     }
 
-    Ok(Value::Atom(Atom::Integer(curr)))
+    Ok(Value::Atom(Atom::Number(curr)))
 }
 
 fn sub(args: Args) -> Ret {
@@ -85,39 +87,68 @@ fn sub(args: Args) -> Ret {
         });
     }
 
-    let mut curr: i64 = 0;
+    let mut curr = Number::default();
     let mut first = true;
     for arg in args {
-        if let Value::Atom(Atom::Integer(i)) = arg {
+        if let Value::Atom(Atom::Number(num)) = arg {
             if first {
-                curr = *i;
+                curr = *num;
                 first = false;
             } else {
-                curr -= i;
+                curr -= *num;
             }
         } else {
             return Err(EvalErr::InvalidArgument {
                 given: (*arg).clone(),
-                expected: Cow::Borrowed("an integer"),
+                expected: Cow::Borrowed("a Number"),
             });
         }
     }
 
-    Ok(Value::Atom(Atom::Integer(curr)))
+    Ok(Value::Atom(Atom::Number(curr)))
 }
 
 fn mul(args: Args) -> Ret {
-    let mut curr: i64 = 1;
+    let mut curr = Number::Integer(1);
     for arg in args {
-        if let Value::Atom(Atom::Integer(i)) = arg {
-            curr *= i;
+        if let Value::Atom(Atom::Number(num)) = arg {
+            curr *= *num;
         } else {
             return Err(EvalErr::InvalidArgument {
                 given: (*arg).clone(),
-                expected: Cow::Borrowed("an integer"),
+                expected: Cow::Borrowed("a Number"),
             });
         }
     }
 
-    Ok(Value::Atom(Atom::Integer(curr)))
+    Ok(Value::Atom(Atom::Number(curr)))
+}
+
+fn div(args: Args) -> Ret {
+    if args.len() < 1 {
+        return Err(EvalErr::MissingArguments {
+            given: 0,
+            expected: 1,
+        });
+    }
+
+    let mut curr = Number::default();
+    let mut first = true;
+    for arg in args {
+        if let Value::Atom(Atom::Number(num)) = arg {
+            if first {
+                curr = *num;
+                first = false;
+            } else {
+                curr /= *num;
+            }
+        } else {
+            return Err(EvalErr::InvalidArgument {
+                given: (*arg).clone(),
+                expected: Cow::Borrowed("a Number"),
+            });
+        }
+    }
+
+    Ok(Value::Atom(Atom::Number(curr)))
 }

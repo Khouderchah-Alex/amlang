@@ -3,6 +3,7 @@
 use std::fmt;
 
 use crate::function::BuiltIn;
+use crate::number::Number;
 
 #[derive(Clone, Debug)]
 pub enum Value {
@@ -12,8 +13,7 @@ pub enum Value {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Atom {
-    Integer(i64),
-    Float(f64),
+    Number(Number),
     Symbol(String),
     BuiltIn(&'static BuiltIn),
 }
@@ -176,8 +176,7 @@ impl fmt::Display for Value {
 impl fmt::Display for Atom {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Atom::Integer(i) => write!(f, "{}", i),
-            Atom::Float(ff) => write!(f, "{}f", ff),
+            Atom::Number(num) => write!(f, "{}", num),
             Atom::Symbol(s) => write!(f, "{}", s),
             Atom::BuiltIn(b) => write!(f, "{}", b),
         }

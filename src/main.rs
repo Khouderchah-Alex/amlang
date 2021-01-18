@@ -6,6 +6,7 @@ mod cons_list;
 mod environment;
 mod function;
 mod interpreter;
+mod number;
 mod parser;
 mod sexp;
 mod tokenizer;
