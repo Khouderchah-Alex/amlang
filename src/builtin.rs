@@ -7,7 +7,7 @@ use std::collections::HashMap;
 use std::fmt;
 
 use crate::environment::Environment;
-use crate::function::{Args, EvalErr, Func, Ret};
+use crate::function::{Args, EvalErr, ExpectedCount, Func, Ret};
 use crate::number::Number;
 use crate::sexp::{Atom, Value};
 
@@ -81,9 +81,9 @@ fn add(args: Args) -> Ret {
 
 fn sub(args: Args) -> Ret {
     if args.len() < 1 {
-        return Err(EvalErr::MissingArguments {
+        return Err(EvalErr::WrongArgumentCount {
             given: 0,
-            expected: 1,
+            expected: ExpectedCount::AtLeast(1),
         });
     }
 
@@ -126,9 +126,9 @@ fn mul(args: Args) -> Ret {
 
 fn div(args: Args) -> Ret {
     if args.len() < 1 {
-        return Err(EvalErr::MissingArguments {
+        return Err(EvalErr::WrongArgumentCount {
             given: 0,
-            expected: 1,
+            expected: ExpectedCount::AtLeast(1),
         });
     }
 

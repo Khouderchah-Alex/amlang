@@ -4,6 +4,7 @@ use std::borrow::Cow;
 use std::fmt;
 
 use self::EvalErr::*;
+use self::ExpectedCount::*;
 pub use crate::builtin::BuiltIn;
 use crate::sexp::Value;
 
@@ -21,11 +22,17 @@ pub enum EvalErr {
         expected: Cow<'static, str>,
     },
     InvalidSexp(Value),
-    MissingArguments {
+    WrongArgumentCount {
         given: usize,
-        expected: usize,
+        expected: ExpectedCount,
     },
     UnboundSymbol(String),
+}
+
+#[derive(Debug)]
+pub enum ExpectedCount {
+    Exactly(usize),
+    AtLeast(usize),
 }
 
 impl fmt::Display for EvalErr {
@@ -38,13 +45,22 @@ impl fmt::Display for EvalErr {
                 given, expected
             ),
             InvalidSexp(val) => write!(f, "Invalid S-exp for evaluation: {:#}", val),
-            MissingArguments { given, expected } => write!(
+            WrongArgumentCount { given, expected } => write!(
                 f,
-                "Missing arguments; given {}, expected {}",
+                "Wrong argument count; given {}, expected {}",
                 given, expected
             ),
             UnboundSymbol(symbol) => write!(f, "Unbound symbol: \"{}\"", symbol),
         };
         res
+    }
+}
+
+impl fmt::Display for ExpectedCount {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        return match self {
+            Exactly(exactly) => write!(f, "{}", exactly),
+            AtLeast(minimum) => write!(f, "at least {}", minimum),
+        };
     }
 }
