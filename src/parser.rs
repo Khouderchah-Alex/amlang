@@ -1,7 +1,7 @@
 //! Module for parsing Amlang tokens into an AST.
 
 use crate::cons_list::ConsList;
-use crate::sexp::Value;
+use crate::sexp::{Atom, Value};
 use crate::tokenizer::{Token, TokenInfo, Tokens};
 
 use self::ParseErrorReason::*;
@@ -11,6 +11,7 @@ const MAX_LIST_DEPTH: usize = 128;
 #[derive(Debug)]
 pub enum ParseErrorReason {
     DepthOverflow,
+    TrailingQuote,
     UnmatchedOpen,
     UnmatchedClose,
 }
@@ -78,6 +79,22 @@ fn parse_sexp(tokens: &mut Tokens, depth: usize) -> Result<Option<Box<Value>>, P
                         token,
                     });
                 }
+            }
+        }
+        Token::Quote => {
+            let sexp = parse_sexp(tokens, depth + 1)?;
+            if let Some(val) = sexp {
+                let mut list = ConsList::new();
+                unsafe {
+                    list.append(Box::new(Value::Atom(Atom::Symbol("quote".to_string()))));
+                    list.append(val);
+                }
+                return Ok(Some(list.release()));
+            } else {
+                return Err(ParseError {
+                    reason: TrailingQuote,
+                    token,
+                });
             }
         }
         Token::RightParen => {

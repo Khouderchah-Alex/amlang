@@ -10,6 +10,7 @@ use crate::sexp;
 pub enum Token {
     LeftParen,
     RightParen,
+    Quote,
     Atom(sexp::Atom),
     Comment(String),
 }
@@ -37,7 +38,11 @@ pub fn tokenize<T: BufRead>(source: T) -> Result<Tokens, TokenError> {
             });
         }
 
-        let line = line_result.unwrap().replace("(", " ( ").replace(")", " ) ");
+        let line = line_result
+            .unwrap()
+            .replace("(", " ( ")
+            .replace(")", " ) ")
+            .replace("'", " ' ");
 
         if let Some(j) = line.find(';') {
             line_to_tokens(&line[..j], i, &mut result);
@@ -58,6 +63,7 @@ fn line_to_tokens<S: AsRef<str>>(line: S, linum: usize, result: &mut Tokens) {
         let mut token = match ptoken {
             "(" => Token::LeftParen,
             ")" => Token::RightParen,
+            "'" => Token::Quote,
             _ => Token::Atom(sexp::Atom::Symbol(ptoken.to_string())),
         };
 
