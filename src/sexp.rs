@@ -34,11 +34,8 @@ impl Value {
 }
 
 impl Cons {
-    pub fn cons(car: Option<Value>, cdr: Option<Value>) -> Cons {
-        Cons {
-            car: car.map(Box::new),
-            cdr: cdr.map(Box::new),
-        }
+    pub fn cons(car: Option<Box<Value>>, cdr: Option<Box<Value>>) -> Cons {
+        Cons { car, cdr }
     }
 
     pub fn iter(&self) -> SexpIter {

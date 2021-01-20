@@ -2,7 +2,7 @@
 
 use crate::cons_list::ConsList;
 use crate::sexp::Value;
-use crate::tokenizer::{self, Token};
+use crate::tokenizer::{Token, TokenInfo, Tokens};
 
 use self::ParseErrorReason::*;
 
@@ -18,68 +18,79 @@ pub enum ParseErrorReason {
 #[derive(Debug)]
 pub struct ParseError {
     reason: ParseErrorReason,
-    token: tokenizer::TokenInfo,
+    token: TokenInfo,
 }
 
-pub fn parse(tokens: tokenizer::Tokens) -> Result<Vec<Box<Value>>, ParseError> {
-    let mut stack = Vec::<(ConsList, tokenizer::TokenInfo)>::new();
-    stack.push((
-        ConsList::new(),
-        tokenizer::TokenInfo {
-            token: tokenizer::Token::Comment("ROOT".to_string()),
-            line: 0,
-        },
-    ));
+pub fn parse(mut tokens: Tokens) -> Result<Vec<Box<Value>>, ParseError> {
+    let mut sexps = Vec::<Box<Value>>::new();
+    while let Some(sexp) = parse_sexp(&mut tokens, 0)? {
+        sexps.push(sexp);
+    }
 
-    for token in tokens {
-        match token.token {
-            Token::LeftParen => {
-                if stack.len() >= MAX_LIST_DEPTH {
-                    return Err(ParseError {
-                        reason: DepthOverflow,
-                        token,
-                    });
-                }
-                stack.push((ConsList::new(), token));
+    Ok(sexps)
+}
+
+/// Returns None when finished parsing, otherwise returns Some(sexp).
+fn parse_sexp(tokens: &mut Tokens, depth: usize) -> Result<Option<Box<Value>>, ParseError> {
+    // Let's just ignore comments for now.
+    let mut current = tokens.pop_front();
+    while let Some(TokenInfo {
+        token: Token::Comment(_),
+        ..
+    }) = current
+    {
+        current = tokens.pop_front();
+    }
+
+    if current.is_none() {
+        return Ok(None);
+    }
+
+    let token = current.unwrap();
+    match token.token {
+        Token::LeftParen => {
+            if depth >= MAX_LIST_DEPTH {
+                return Err(ParseError {
+                    reason: DepthOverflow,
+                    token,
+                });
             }
-            Token::RightParen => {
-                if stack.len() <= 1 {
-                    return Err(ParseError {
-                        reason: UnmatchedClose,
-                        token,
-                    });
+
+            let mut list = ConsList::new();
+            loop {
+                if let Some(TokenInfo {
+                    token: Token::RightParen,
+                    ..
+                }) = tokens.get(0)
+                {
+                    tokens.pop_front();
+                    return Ok(Some(list.release()));
                 }
-                let (end, _) = stack.pop().unwrap();
-                match &mut stack.last_mut() {
-                    Some((last, _)) => unsafe {
-                        last.append(Value::Cons(*end.release()));
-                    },
-                    None => {
-                        panic!();
+
+                let sexp = parse_sexp(tokens, depth + 1)?;
+                if let Some(val) = sexp {
+                    unsafe {
+                        list.append(val);
                     }
+                } else {
+                    return Err(ParseError {
+                        reason: UnmatchedOpen,
+                        token,
+                    });
                 }
-            }
-            Token::Atom(atom) => match &mut stack.last_mut() {
-                Some((last, _)) => unsafe {
-                    last.append(Value::Atom(atom));
-                },
-                None => {
-                    panic!();
-                }
-            },
-            _ => {
-                // Ignore other tokens.
             }
         }
+        Token::RightParen => {
+            return Err(ParseError {
+                reason: UnmatchedClose,
+                token,
+            });
+        }
+        Token::Atom(atom) => {
+            return Ok(Some(Box::new(Value::Atom(atom))));
+        }
+        Token::Comment(_) => {
+            unreachable!();
+        }
     }
-
-    if stack.len() > 1 {
-        return Err(ParseError {
-            reason: UnmatchedOpen,
-            token: stack.pop().unwrap().1,
-        });
-    }
-
-    let root = stack.pop().unwrap().0.release();
-    Ok(root.into_iter().collect::<Vec<_>>())
 }
