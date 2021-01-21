@@ -1,6 +1,7 @@
 use std::io::Cursor;
 
 use super::*;
+use crate::number::Number;
 use Token::*;
 
 fn nest(mut v: Vec<Token>) -> Vec<Token> {
@@ -30,7 +31,7 @@ fn ints() -> Result<(), TokenError> {
     let input = "(1 2 -4 33 128)";
     let mut expected: Vec<Token> = vec![1, 2, -4, 33, 128]
         .iter_mut()
-        .map(|elem| Atom(sexp::Atom::Integer(*elem)))
+        .map(|elem| Atom(sexp::Atom::Number(Number::Integer(*elem))))
         .collect();
     expected = nest(expected);
 
@@ -46,7 +47,7 @@ fn floats() -> Result<(), TokenError> {
     let input = "(1. 2.2 -4.5 33. 128.128)";
     let mut expected: Vec<Token> = vec![1., 2.2, -4.5, 33., 128.128]
         .iter_mut()
-        .map(|elem| Atom(sexp::Atom::Float(*elem)))
+        .map(|elem| Atom(sexp::Atom::Number(Number::Float(*elem))))
         .collect();
     expected = nest(expected);
 

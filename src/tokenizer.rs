@@ -38,28 +38,31 @@ pub fn tokenize<T: BufRead>(source: T) -> Result<Tokens, TokenError> {
             });
         }
 
-        let line = line_result
-            .unwrap()
-            .replace("(", " ( ")
-            .replace(")", " ) ")
-            .replace("'", " ' ");
-
-        if let Some(j) = line.find(';') {
-            line_to_tokens(&line[..j], i, &mut result);
-            result.push_back(TokenInfo {
-                token: Token::Comment(line[j + 1..].to_string()),
-                line: i + 1,
-            });
-        } else {
-            line_to_tokens(line, i, &mut result);
-        }
+        let line = line_result.unwrap();
+        tokenize_line(&line, i, &mut result);
     }
 
     Ok(result)
 }
 
-fn line_to_tokens<S: AsRef<str>>(line: S, linum: usize, result: &mut Tokens) {
-    for ptoken in line.as_ref().split_whitespace() {
+fn tokenize_line<S: AsRef<str>>(line: S, linum: usize, result: &mut Tokens) {
+    let mut sexp_slice = line.as_ref();
+
+    let mut comment: Option<TokenInfo> = None;
+    if let Some(j) = sexp_slice.find(';') {
+        comment = Some(TokenInfo {
+            token: Token::Comment(sexp_slice[j + 1..].to_string()),
+            line: linum,
+        });
+        sexp_slice = &sexp_slice[..j];
+    }
+
+    let expanded = sexp_slice
+        .replace("(", " ( ")
+        .replace(")", " ) ")
+        .replace("'", " ' ");
+
+    for ptoken in expanded.split_whitespace() {
         let mut token = match ptoken {
             "(" => Token::LeftParen,
             ")" => Token::RightParen,
@@ -77,6 +80,10 @@ fn line_to_tokens<S: AsRef<str>>(line: S, linum: usize, result: &mut Tokens) {
             token,
             line: linum + 1,
         });
+    }
+
+    if let Some(comment) = comment {
+        result.push_back(comment);
     }
 }
 
