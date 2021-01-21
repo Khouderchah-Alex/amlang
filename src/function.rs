@@ -37,7 +37,7 @@ pub enum ExpectedCount {
 
 impl fmt::Display for EvalErr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "[Error] ")?;
+        write!(f, "[Eval Error] ")?;
         let res = match self {
             InvalidArgument { given, expected } => write!(
                 f,

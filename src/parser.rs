@@ -1,5 +1,6 @@
 //! Module for parsing Amlang tokens into an AST.
 
+use std::fmt;
 use std::iter::Peekable;
 
 use crate::cons_list::ConsList;
@@ -115,5 +116,11 @@ pub fn parse_sexp<I: Iterator<Item = TokenInfo>>(
         Token::Comment(_) => {
             unreachable!();
         }
+    }
+}
+
+impl fmt::Display for ParseError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "[Parse Error] {:?}: {}", self.reason, self.token)
     }
 }

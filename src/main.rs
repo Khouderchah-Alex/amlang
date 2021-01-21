@@ -22,7 +22,7 @@ fn usage(args: &Vec<String>) {
 fn main() -> Result<(), String> {
     let args: Vec<String> = env::args().collect();
     return match args.len() {
-        1 => Ok(interactive_repl()),
+        1 => interactive_repl(),
         2 => file_repl(&args[1]),
         n => {
             usage(&args);
@@ -31,18 +31,28 @@ fn main() -> Result<(), String> {
     };
 }
 
-fn interactive_repl() {
+fn interactive_repl() -> Result<(), String> {
     let stream = token::interactive_stream::InteractiveStream::new();
     let mut peekable = stream.peekable();
 
-    while let Some(sexp) = parser::parse_sexp(&mut peekable, 0).unwrap() {
+    loop {
+        let sexp = match parser::parse_sexp(&mut peekable, 0) {
+            Ok(Some(parsed)) => parsed,
+            Ok(None) => return Ok(()),
+            Err(err) => {
+                println!(" {}", err);
+                println!("");
+                continue;
+            }
+        };
+
         let result = interpreter::eval(&sexp);
         match result {
             Ok(val) => {
                 println!("-> {:#}", val);
             }
             Err(err) => {
-                println!("-> {}", err);
+                println!(" {}", err);
             }
         }
         println!();
@@ -54,7 +64,10 @@ fn file_repl(path: &str) -> Result<(), String> {
         Ok(f) => f,
         Err(err) => return Err(format!("{}", err)),
     };
-    let sexps = parser::parse(stream).unwrap();
+    let sexps = match parser::parse(stream) {
+        Ok(parsed) => parsed,
+        Err(err) => return Err(format!(" {}", err)),
+    };
 
     for sexp in &sexps {
         println!("> {:#}", sexp);
@@ -64,7 +77,7 @@ fn file_repl(path: &str) -> Result<(), String> {
                 println!("-> {:#}", val);
             }
             Err(err) => {
-                println!("-> {}", err);
+                println!(" {}", err);
             }
         }
         println!();
