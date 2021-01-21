@@ -1,51 +1,14 @@
 //! Module for breaking Amlang text into tokens.
 
 use std::collections::VecDeque;
-use std::io::BufRead;
 
+use super::token::{Token, TokenInfo};
 use crate::number;
 use crate::sexp;
 
-#[derive(Debug, PartialEq)]
-pub enum Token {
-    LeftParen,
-    RightParen,
-    Quote,
-    Atom(sexp::Atom),
-    Comment(String),
-}
+pub type TokenStore = VecDeque<TokenInfo>;
 
-#[derive(Debug)]
-pub struct TokenInfo {
-    pub token: Token,
-    pub line: usize,
-}
-
-pub type Tokens = VecDeque<TokenInfo>;
-
-#[derive(Debug)]
-pub struct TokenError {
-    current_tokens: Tokens,
-}
-
-pub fn tokenize<T: BufRead>(source: T) -> Result<Tokens, TokenError> {
-    let mut result = VecDeque::new();
-    let mut iter = source.lines().enumerate();
-    while let Some((i, line_result)) = iter.next() {
-        if let Err(_err) = line_result {
-            return Err(TokenError {
-                current_tokens: result,
-            });
-        }
-
-        let line = line_result.unwrap();
-        tokenize_line(&line, i, &mut result);
-    }
-
-    Ok(result)
-}
-
-fn tokenize_line<S: AsRef<str>>(line: S, linum: usize, result: &mut Tokens) {
+pub fn tokenize_line<S: AsRef<str>>(line: S, linum: usize, result: &mut TokenStore) {
     let mut sexp_slice = line.as_ref();
 
     let mut comment: Option<TokenInfo> = None;
@@ -88,5 +51,5 @@ fn tokenize_line<S: AsRef<str>>(line: S, linum: usize, result: &mut Tokens) {
 }
 
 #[cfg(test)]
-#[path = "./tokenizer_test.rs"]
-mod tokenizer_test;
+#[path = "./tokenize_test.rs"]
+mod tokenize_test;

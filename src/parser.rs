@@ -1,8 +1,10 @@
 //! Module for parsing Amlang tokens into an AST.
 
+use std::iter::Peekable;
+
 use crate::cons_list::ConsList;
 use crate::sexp::{Atom, Value};
-use crate::tokenizer::{Token, TokenInfo, Tokens};
+use crate::token::{Token, TokenInfo};
 
 use self::ParseErrorReason::*;
 
@@ -22,9 +24,10 @@ pub struct ParseError {
     token: TokenInfo,
 }
 
-pub fn parse(mut tokens: Tokens) -> Result<Vec<Box<Value>>, ParseError> {
+pub fn parse<I: Iterator<Item = TokenInfo>>(tokens: I) -> Result<Vec<Box<Value>>, ParseError> {
     let mut sexps = Vec::<Box<Value>>::new();
-    while let Some(sexp) = parse_sexp(&mut tokens, 0)? {
+    let mut peekable = tokens.peekable();
+    while let Some(sexp) = parse_sexp(&mut peekable, 0)? {
         sexps.push(sexp);
     }
 
@@ -32,15 +35,18 @@ pub fn parse(mut tokens: Tokens) -> Result<Vec<Box<Value>>, ParseError> {
 }
 
 /// Returns None when finished parsing, otherwise returns Some(sexp).
-fn parse_sexp(tokens: &mut Tokens, depth: usize) -> Result<Option<Box<Value>>, ParseError> {
+fn parse_sexp<I: Iterator<Item = TokenInfo>>(
+    tokens: &mut Peekable<I>,
+    depth: usize,
+) -> Result<Option<Box<Value>>, ParseError> {
     // Let's just ignore comments for now.
-    let mut current = tokens.pop_front();
+    let mut current = tokens.next();
     while let Some(TokenInfo {
         token: Token::Comment(_),
         ..
     }) = current
     {
-        current = tokens.pop_front();
+        current = tokens.next();
     }
 
     if current.is_none() {
@@ -62,9 +68,9 @@ fn parse_sexp(tokens: &mut Tokens, depth: usize) -> Result<Option<Box<Value>>, P
                 if let Some(TokenInfo {
                     token: Token::RightParen,
                     ..
-                }) = tokens.get(0)
+                }) = tokens.peek()
                 {
-                    tokens.pop_front();
+                    tokens.next();
                     return Ok(Some(list.release()));
                 }
 

@@ -1,7 +1,6 @@
-use std::io::Cursor;
-
 use super::*;
 use crate::number::Number;
+use crate::token::string_stream::StringStream;
 use Token::*;
 
 fn nest(mut v: Vec<Token>) -> Vec<Token> {
@@ -11,7 +10,7 @@ fn nest(mut v: Vec<Token>) -> Vec<Token> {
 }
 
 #[test]
-fn nested() -> Result<(), TokenError> {
+fn nested() {
     let input = "(testing (this (out)))";
     let mut expected = nest(vec![Atom(sexp::Atom::Symbol("out".to_string()))]);
     expected.insert(0, Atom(sexp::Atom::Symbol("this".to_string())));
@@ -19,15 +18,14 @@ fn nested() -> Result<(), TokenError> {
     expected.insert(0, Atom(sexp::Atom::Symbol("testing".to_string())));
     expected = nest(expected);
 
-    let tokens = tokenize(Cursor::new(input))?;
-    for (i, elem) in tokens.iter().enumerate() {
+    let tokens = StringStream::new(input);
+    for (i, elem) in tokens.enumerate() {
         assert_eq!(elem.token, expected[i]);
     }
-    Ok(())
 }
 
 #[test]
-fn ints() -> Result<(), TokenError> {
+fn ints() {
     let input = "(1 2 -4 33 128)";
     let mut expected: Vec<Token> = vec![1, 2, -4, 33, 128]
         .iter_mut()
@@ -35,15 +33,14 @@ fn ints() -> Result<(), TokenError> {
         .collect();
     expected = nest(expected);
 
-    let tokens = tokenize(Cursor::new(input))?;
-    for (i, elem) in tokens.iter().enumerate() {
+    let tokens = StringStream::new(input);
+    for (i, elem) in tokens.enumerate() {
         assert_eq!(elem.token, expected[i]);
     }
-    Ok(())
 }
 
 #[test]
-fn floats() -> Result<(), TokenError> {
+fn floats() {
     let input = "(1. 2.2 -4.5 33. 128.128)";
     let mut expected: Vec<Token> = vec![1., 2.2, -4.5, 33., 128.128]
         .iter_mut()
@@ -51,9 +48,8 @@ fn floats() -> Result<(), TokenError> {
         .collect();
     expected = nest(expected);
 
-    let tokens = tokenize(Cursor::new(input))?;
-    for (i, elem) in tokens.iter().enumerate() {
+    let tokens = StringStream::new(input);
+    for (i, elem) in tokens.enumerate() {
         assert_eq!(elem.token, expected[i]);
     }
-    Ok(())
 }

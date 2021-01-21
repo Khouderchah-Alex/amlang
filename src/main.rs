@@ -1,6 +1,4 @@
 use std::env;
-use std::fs::File;
-use std::io::BufReader;
 use std::path::Path;
 
 mod builtin;
@@ -11,7 +9,7 @@ mod interpreter;
 mod number;
 mod parser;
 mod sexp;
-mod tokenizer;
+mod token;
 
 fn usage(args: &Vec<String>) {
     println!(
@@ -28,12 +26,11 @@ fn main() -> Result<(), String> {
         return Err("Wrong argument count".to_string());
     }
 
-    let file = match File::open(&args[1]) {
+    let stream = match token::file_stream::FileStream::new(&args[1]) {
         Ok(f) => f,
         Err(err) => return Err(format!("{}", err)),
     };
-    let result = tokenizer::tokenize(BufReader::new(file)).unwrap();
-    let sexps = parser::parse(result).unwrap();
+    let sexps = parser::parse(stream).unwrap();
 
     // Basic REPL over forms.
     for sexp in &sexps {
