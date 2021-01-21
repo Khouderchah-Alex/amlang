@@ -35,7 +35,7 @@ pub fn parse<I: Iterator<Item = TokenInfo>>(tokens: I) -> Result<Vec<Box<Value>>
 }
 
 /// Returns None when finished parsing, otherwise returns Some(sexp).
-fn parse_sexp<I: Iterator<Item = TokenInfo>>(
+pub fn parse_sexp<I: Iterator<Item = TokenInfo>>(
     tokens: &mut Peekable<I>,
     depth: usize,
 ) -> Result<Option<Box<Value>>, ParseError> {

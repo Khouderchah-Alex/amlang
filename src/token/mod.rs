@@ -1,4 +1,5 @@
 pub mod file_stream;
+pub mod interactive_stream;
 pub mod token;
 
 pub use token::{Token, TokenInfo};
