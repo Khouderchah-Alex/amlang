@@ -27,11 +27,14 @@ macro_rules! builtins {
                 Environment::new(m)
         }
     };
+    [$($n:tt : $x:expr),+ ,] => {
+        builtins![$($n : $x),*]
+    };
 }
 
 lazy_static! {
     pub static ref BUILTINS: Environment<BuiltIn> =
-        builtins!["+": add, "-": sub, "*": mul, "/": div];
+        builtins!["+": add, "-": sub, "*": mul, "/": div,];
 }
 
 pub struct BuiltIn {
