@@ -77,9 +77,7 @@ pub fn parse_sexp<I: Iterator<Item = TokenInfo>>(
 
                 let sexp = parse_sexp(tokens, depth + 1)?;
                 if let Some(val) = sexp {
-                    unsafe {
-                        list.append(val);
-                    }
+                    list.append(val);
                 } else {
                     return Err(ParseError {
                         reason: UnmatchedOpen,
@@ -92,10 +90,8 @@ pub fn parse_sexp<I: Iterator<Item = TokenInfo>>(
             let sexp = parse_sexp(tokens, depth + 1)?;
             if let Some(val) = sexp {
                 let mut list = ConsList::new();
-                unsafe {
-                    list.append(Box::new(Value::Atom(Atom::Symbol("quote".to_string()))));
-                    list.append(val);
-                }
+                list.append(Box::new(Value::Atom(Atom::Symbol("quote".to_string()))));
+                list.append(val);
                 return Ok(Some(list.release()));
             } else {
                 return Err(ParseError {

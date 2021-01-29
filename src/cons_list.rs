@@ -20,7 +20,7 @@ impl ConsList {
         self.head
     }
 
-    pub unsafe fn append(&mut self, val: Box<Value>) {
+    pub fn append(&mut self, val: Box<Value>) {
         let mut tail = Box::new(Value::Cons(Cons::cons(Some(val), None)));
         let new_end;
         if let Value::Cons(c) = tail.as_mut() {
@@ -29,11 +29,13 @@ impl ConsList {
             panic!();
         }
 
-        if self.end.is_null() {
-            self.head = tail;
-        } else {
-            (*self.end).set_cdr(Some(tail));
+        unsafe {
+            if self.end.is_null() {
+                self.head = tail;
+            } else {
+                (*self.end).set_cdr(Some(tail));
+            }
+            self.end = new_end;
         }
-        self.end = new_end;
     }
 }
