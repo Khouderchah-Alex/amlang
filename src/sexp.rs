@@ -2,20 +2,12 @@
 
 use std::fmt;
 
-use crate::function::BuiltIn;
-use crate::number::Number;
+use crate::atom;
 
 #[derive(Clone, Debug)]
 pub enum Sexp {
-    Atom(Atom),
+    Atom(atom::Atom),
     Cons(Cons),
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub enum Atom {
-    Number(Number),
-    Symbol(String),
-    BuiltIn(&'static BuiltIn),
 }
 
 #[derive(Clone, Debug, Default)]
@@ -166,16 +158,6 @@ impl fmt::Display for Sexp {
                     write!(f, "{}", cons)
                 }
             }
-        }
-    }
-}
-
-impl fmt::Display for Atom {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Atom::Number(num) => write!(f, "{}", num),
-            Atom::Symbol(s) => write!(f, "{}", s),
-            Atom::BuiltIn(b) => write!(f, "{}", b),
         }
     }
 }

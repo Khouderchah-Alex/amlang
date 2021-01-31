@@ -1,9 +1,10 @@
+use crate::atom::Atom;
 use crate::builtin;
 use crate::function::{
     EvalErr::{self, *},
     ExpectedCount, Func, Ret,
 };
-use crate::sexp::{self, Atom, Sexp};
+use crate::sexp::{self, Sexp};
 
 pub fn eval(form: &Sexp) -> Ret {
     match form {

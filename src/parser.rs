@@ -3,8 +3,9 @@
 use std::fmt;
 use std::iter::Peekable;
 
+use crate::atom::Atom;
 use crate::cons_list::ConsList;
-use crate::sexp::{Atom, Sexp};
+use crate::sexp::Sexp;
 use crate::token::{Token, TokenInfo};
 
 use self::ParseErrorReason::*;

@@ -6,10 +6,11 @@ use std::borrow::Cow;
 use std::collections::HashMap;
 use std::fmt;
 
+use crate::atom::Atom;
 use crate::environment::Environment;
 use crate::function::{Args, EvalErr, ExpectedCount, Func, Ret};
 use crate::number::Number;
-use crate::sexp::{Atom, Sexp};
+use crate::sexp::Sexp;
 
 macro_rules! builtins {
     [$($n:tt : $x:expr),*] => {

@@ -1,6 +1,7 @@
 use std::env;
 use std::path::Path;
 
+mod atom;
 mod builtin;
 mod cons_list;
 mod environment;

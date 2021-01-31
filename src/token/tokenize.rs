@@ -3,8 +3,8 @@
 use std::collections::VecDeque;
 
 use super::token::{Token, TokenInfo};
+use crate::atom;
 use crate::number;
-use crate::sexp;
 
 pub type TokenStore = VecDeque<TokenInfo>;
 
@@ -30,13 +30,13 @@ pub fn tokenize_line<S: AsRef<str>>(line: S, linum: usize, result: &mut TokenSto
             "(" => Token::LeftParen,
             ")" => Token::RightParen,
             "'" => Token::Quote,
-            _ => Token::Atom(sexp::Atom::Symbol(ptoken.to_string())),
+            _ => Token::Atom(atom::Atom::Symbol(ptoken.to_string())),
         };
 
         // Some additional post-processing for numbers.
-        if let Token::Atom(sexp::Atom::Symbol(ref s)) = token {
+        if let Token::Atom(atom::Atom::Symbol(ref s)) = token {
             if let Ok(num) = s.parse::<number::Number>() {
-                token = Token::Atom(sexp::Atom::Number(num));
+                token = Token::Atom(atom::Atom::Number(num));
             }
         }
         result.push_back(TokenInfo {
