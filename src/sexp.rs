@@ -6,7 +6,7 @@ use crate::function::BuiltIn;
 use crate::number::Number;
 
 #[derive(Clone, Debug)]
-pub enum Value {
+pub enum Sexp {
     Atom(Atom),
     Cons(Cons),
 }
@@ -20,13 +20,13 @@ pub enum Atom {
 
 #[derive(Clone, Debug, Default)]
 pub struct Cons {
-    car: Option<Box<Value>>,
-    cdr: Option<Box<Value>>,
+    car: Option<Box<Sexp>>,
+    cdr: Option<Box<Sexp>>,
 }
 
-impl Value {
+impl Sexp {
     pub fn cons(&self) -> &Cons {
-        if let Value::Cons(c) = self {
+        if let Sexp::Cons(c) = self {
             return c;
         }
         panic!("Expected {:?} to be Cons", self);
@@ -34,7 +34,7 @@ impl Value {
 }
 
 impl Cons {
-    pub fn cons(car: Option<Box<Value>>, cdr: Option<Box<Value>>) -> Cons {
+    pub fn cons(car: Option<Box<Sexp>>, cdr: Option<Box<Sexp>>) -> Cons {
         Cons { car, cdr }
     }
 
@@ -44,25 +44,25 @@ impl Cons {
         }
     }
 
-    pub fn car(&self) -> Option<&Value> {
+    pub fn car(&self) -> Option<&Sexp> {
         match &self.car {
             Some(val) => Some(val.as_ref()),
             None => None,
         }
     }
 
-    pub fn cdr(&self) -> Option<&Value> {
+    pub fn cdr(&self) -> Option<&Sexp> {
         match &self.cdr {
             Some(val) => Some(val.as_ref()),
             None => None,
         }
     }
 
-    pub fn consume(self) -> (Option<Box<Value>>, Option<Box<Value>>) {
+    pub fn consume(self) -> (Option<Box<Sexp>>, Option<Box<Sexp>>) {
         (self.car, self.cdr)
     }
 
-    pub fn set_cdr(&mut self, new: Option<Box<Value>>) {
+    pub fn set_cdr(&mut self, new: Option<Box<Sexp>>) {
         self.cdr = new;
     }
 
@@ -95,11 +95,11 @@ pub struct SexpIter<'a> {
 }
 
 impl<'a> Iterator for SexpIter<'a> {
-    type Item = &'a Value;
+    type Item = &'a Sexp;
 
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(cons) = self.current {
-            if let Some(Value::Cons(next)) = cons.cdr() {
+            if let Some(Sexp::Cons(next)) = cons.cdr() {
                 self.current = Some(next);
             } else {
                 self.current = None;
@@ -117,7 +117,7 @@ pub struct SexpIntoIter {
 }
 
 impl<'a> IntoIterator for &'a Cons {
-    type Item = &'a Value;
+    type Item = &'a Sexp;
     type IntoIter = SexpIter<'a>;
 
     fn into_iter(self) -> Self::IntoIter {
@@ -126,7 +126,7 @@ impl<'a> IntoIterator for &'a Cons {
 }
 
 impl Iterator for SexpIntoIter {
-    type Item = Box<Value>;
+    type Item = Box<Sexp>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.current.is_none() {
@@ -135,7 +135,7 @@ impl Iterator for SexpIntoIter {
 
         let (car, cdr) = self.current.take().unwrap().consume();
         if let Some(next) = cdr {
-            if let Value::Cons(c) = *next {
+            if let Sexp::Cons(c) = *next {
                 self.current = Some(c);
             }
         }
@@ -145,7 +145,7 @@ impl Iterator for SexpIntoIter {
 }
 
 impl IntoIterator for Cons {
-    type Item = Box<Value>;
+    type Item = Box<Sexp>;
     type IntoIter = SexpIntoIter;
 
     fn into_iter(self) -> Self::IntoIter {
@@ -155,11 +155,11 @@ impl IntoIterator for Cons {
     }
 }
 
-impl fmt::Display for Value {
+impl fmt::Display for Sexp {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Value::Atom(atom) => write!(f, "{}", atom),
-            Value::Cons(cons) => {
+            Sexp::Atom(atom) => write!(f, "{}", atom),
+            Sexp::Cons(cons) => {
                 if f.alternate() {
                     write!(f, "{:#}", cons)
                 } else {

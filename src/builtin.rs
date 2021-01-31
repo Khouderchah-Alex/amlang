@@ -9,7 +9,7 @@ use std::fmt;
 use crate::environment::Environment;
 use crate::function::{Args, EvalErr, ExpectedCount, Func, Ret};
 use crate::number::Number;
-use crate::sexp::{Atom, Value};
+use crate::sexp::{Atom, Sexp};
 
 macro_rules! builtins {
     [$($n:tt : $x:expr),*] => {
@@ -69,7 +69,7 @@ impl fmt::Display for BuiltIn {
 fn add(args: Args) -> Ret {
     let mut curr = Number::default();
     for arg in args {
-        if let Value::Atom(Atom::Number(num)) = arg {
+        if let Sexp::Atom(Atom::Number(num)) = arg {
             curr += *num;
         } else {
             return Err(EvalErr::InvalidArgument {
@@ -79,7 +79,7 @@ fn add(args: Args) -> Ret {
         }
     }
 
-    Ok(Value::Atom(Atom::Number(curr)))
+    Ok(Sexp::Atom(Atom::Number(curr)))
 }
 
 fn sub(args: Args) -> Ret {
@@ -93,7 +93,7 @@ fn sub(args: Args) -> Ret {
     let mut curr = Number::default();
     let mut first = true;
     for arg in args {
-        if let Value::Atom(Atom::Number(num)) = arg {
+        if let Sexp::Atom(Atom::Number(num)) = arg {
             if first {
                 curr = *num;
                 first = false;
@@ -108,13 +108,13 @@ fn sub(args: Args) -> Ret {
         }
     }
 
-    Ok(Value::Atom(Atom::Number(curr)))
+    Ok(Sexp::Atom(Atom::Number(curr)))
 }
 
 fn mul(args: Args) -> Ret {
     let mut curr = Number::Integer(1);
     for arg in args {
-        if let Value::Atom(Atom::Number(num)) = arg {
+        if let Sexp::Atom(Atom::Number(num)) = arg {
             curr *= *num;
         } else {
             return Err(EvalErr::InvalidArgument {
@@ -124,7 +124,7 @@ fn mul(args: Args) -> Ret {
         }
     }
 
-    Ok(Value::Atom(Atom::Number(curr)))
+    Ok(Sexp::Atom(Atom::Number(curr)))
 }
 
 fn div(args: Args) -> Ret {
@@ -138,7 +138,7 @@ fn div(args: Args) -> Ret {
     let mut curr = Number::default();
     let mut first = true;
     for arg in args {
-        if let Value::Atom(Atom::Number(num)) = arg {
+        if let Sexp::Atom(Atom::Number(num)) = arg {
             if first {
                 curr = *num;
                 first = false;
@@ -153,5 +153,5 @@ fn div(args: Args) -> Ret {
         }
     }
 
-    Ok(Value::Atom(Atom::Number(curr)))
+    Ok(Sexp::Atom(Atom::Number(curr)))
 }

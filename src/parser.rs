@@ -4,7 +4,7 @@ use std::fmt;
 use std::iter::Peekable;
 
 use crate::cons_list::ConsList;
-use crate::sexp::{Atom, Value};
+use crate::sexp::{Atom, Sexp};
 use crate::token::{Token, TokenInfo};
 
 use self::ParseErrorReason::*;
@@ -25,8 +25,8 @@ pub struct ParseError {
     token: TokenInfo,
 }
 
-pub fn parse<I: Iterator<Item = TokenInfo>>(tokens: I) -> Result<Vec<Box<Value>>, ParseError> {
-    let mut sexps = Vec::<Box<Value>>::new();
+pub fn parse<I: Iterator<Item = TokenInfo>>(tokens: I) -> Result<Vec<Box<Sexp>>, ParseError> {
+    let mut sexps = Vec::<Box<Sexp>>::new();
     let mut peekable = tokens.peekable();
     while let Some(sexp) = parse_sexp(&mut peekable, 0)? {
         sexps.push(sexp);
@@ -39,7 +39,7 @@ pub fn parse<I: Iterator<Item = TokenInfo>>(tokens: I) -> Result<Vec<Box<Value>>
 pub fn parse_sexp<I: Iterator<Item = TokenInfo>>(
     tokens: &mut Peekable<I>,
     depth: usize,
-) -> Result<Option<Box<Value>>, ParseError> {
+) -> Result<Option<Box<Sexp>>, ParseError> {
     // Let's just ignore comments for now.
     let mut current = tokens.next();
     while let Some(TokenInfo {
@@ -90,7 +90,7 @@ pub fn parse_sexp<I: Iterator<Item = TokenInfo>>(
             let sexp = parse_sexp(tokens, depth + 1)?;
             if let Some(val) = sexp {
                 let mut list = ConsList::new();
-                list.append(Box::new(Value::Atom(Atom::Symbol("quote".to_string()))));
+                list.append(Box::new(Sexp::Atom(Atom::Symbol("quote".to_string()))));
                 list.append(val);
                 return Ok(Some(list.release()));
             } else {
@@ -107,7 +107,7 @@ pub fn parse_sexp<I: Iterator<Item = TokenInfo>>(
             });
         }
         Token::Atom(atom) => {
-            return Ok(Some(Box::new(Value::Atom(atom))));
+            return Ok(Some(Box::new(Sexp::Atom(atom))));
         }
         Token::Comment(_) => {
             unreachable!();

@@ -3,28 +3,28 @@ use crate::function::{
     EvalErr::{self, *},
     ExpectedCount, Func, Ret,
 };
-use crate::sexp::{self, Atom, Value};
+use crate::sexp::{self, Atom, Sexp};
 
-pub fn eval(form: &Value) -> Ret {
+pub fn eval(form: &Sexp) -> Ret {
     match form {
-        Value::Atom(atom) => {
+        Sexp::Atom(atom) => {
             if let Atom::Symbol(symbol) = atom {
                 let value = builtin::BUILTINS.lookup(symbol);
                 return match value {
-                    Some(builtin) => Ok(Value::Atom(Atom::BuiltIn(builtin))),
+                    Some(builtin) => Ok(Sexp::Atom(Atom::BuiltIn(builtin))),
                     None => Err(UnboundSymbol(symbol.clone())),
                 };
             }
-            return Ok(Value::Atom(atom.clone()));
+            return Ok(Sexp::Atom(atom.clone()));
         }
 
-        Value::Cons(cons) => {
+        Sexp::Cons(cons) => {
             let car = match cons.car() {
                 Some(car) => car,
-                None => return Err(InvalidSexp(Value::Cons(cons.clone()))),
+                None => return Err(InvalidSexp(Sexp::Cons(cons.clone()))),
             };
 
-            if let Value::Atom(Atom::Symbol(first)) = car {
+            if let Sexp::Atom(Atom::Symbol(first)) = car {
                 match first.as_str() {
                     "quote" => {
                         return quote(cons.cdr());
@@ -33,7 +33,7 @@ pub fn eval(form: &Value) -> Ret {
                 }
             }
 
-            if let Value::Atom(Atom::BuiltIn(builtin)) = eval(car)? {
+            if let Sexp::Atom(Atom::BuiltIn(builtin)) = eval(car)? {
                 let args = evlis(cons.cdr())?;
                 return builtin.call(&args);
             }
@@ -45,18 +45,18 @@ pub fn eval(form: &Value) -> Ret {
     }
 }
 
-fn evlis(args: Option<&Value>) -> Result<Vec<Value>, EvalErr> {
-    let mut res = Vec::<Value>::new();
+fn evlis(args: Option<&Sexp>) -> Result<Vec<Sexp>, EvalErr> {
+    let mut res = Vec::<Sexp>::new();
     if args.is_none() {
         return Ok(res);
     }
 
     match args.unwrap() {
-        Value::Atom(atom) => {
-            return Err(InvalidSexp(Value::Atom(atom.clone())));
+        Sexp::Atom(atom) => {
+            return Err(InvalidSexp(Sexp::Atom(atom.clone())));
         }
 
-        Value::Cons(cons) => {
+        Sexp::Cons(cons) => {
             for arg in cons {
                 let val = eval(&arg)?;
                 res.push(val);
@@ -66,7 +66,7 @@ fn evlis(args: Option<&Value>) -> Result<Vec<Value>, EvalErr> {
     Ok(res)
 }
 
-fn quote(args: Option<&Value>) -> Ret {
+fn quote(args: Option<&Sexp>) -> Ret {
     if args.is_none() {
         return Err(WrongArgumentCount {
             given: 0,
@@ -75,11 +75,11 @@ fn quote(args: Option<&Value>) -> Ret {
     }
 
     match args.unwrap() {
-        Value::Atom(atom) => {
-            return Err(InvalidSexp(Value::Atom(atom.clone())));
+        Sexp::Atom(atom) => {
+            return Err(InvalidSexp(Sexp::Atom(atom.clone())));
         }
 
-        Value::Cons(cons) => {
+        Sexp::Cons(cons) => {
             let length = cons.iter().count();
             if length != 1 {
                 return Err(WrongArgumentCount {
@@ -90,7 +90,7 @@ fn quote(args: Option<&Value>) -> Ret {
 
             let ret = cons.car();
             return match ret {
-                None => Ok(Value::Cons(sexp::Cons::default())),
+                None => Ok(Sexp::Cons(sexp::Cons::default())),
                 Some(val) => Ok(val.clone()),
             };
         }

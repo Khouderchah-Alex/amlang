@@ -6,10 +6,10 @@ use std::fmt;
 use self::EvalErr::*;
 use self::ExpectedCount::*;
 pub use crate::builtin::BuiltIn;
-use crate::sexp::Value;
+use crate::sexp::Sexp;
 
-pub type Args<'a> = &'a Vec<Value>;
-pub type Ret = Result<Value, EvalErr>;
+pub type Args<'a> = &'a Vec<Sexp>;
+pub type Ret = Result<Sexp, EvalErr>;
 
 pub trait Func {
     fn call(self: &Self, args: Args) -> Ret;
@@ -18,10 +18,10 @@ pub trait Func {
 #[derive(Debug)]
 pub enum EvalErr {
     InvalidArgument {
-        given: Value,
+        given: Sexp,
         expected: Cow<'static, str>,
     },
-    InvalidSexp(Value),
+    InvalidSexp(Sexp),
     WrongArgumentCount {
         given: usize,
         expected: ExpectedCount,
