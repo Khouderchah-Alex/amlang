@@ -2,11 +2,11 @@
 
 use std::fmt;
 
-use crate::atom;
+use crate::primitive;
 
 #[derive(Clone, Debug)]
 pub enum Sexp {
-    Atom(atom::Atom),
+    Primitive(primitive::Primitive),
     Cons(Cons),
 }
 
@@ -150,7 +150,7 @@ impl IntoIterator for Cons {
 impl fmt::Display for Sexp {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Sexp::Atom(atom) => write!(f, "{}", atom),
+            Sexp::Primitive(primitive) => write!(f, "{}", primitive),
             Sexp::Cons(cons) => {
                 if f.alternate() {
                     write!(f, "{:#}", cons)

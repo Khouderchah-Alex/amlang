@@ -6,10 +6,10 @@ use std::borrow::Cow;
 use std::collections::HashMap;
 use std::fmt;
 
-use crate::atom::Atom;
 use crate::environment::Environment;
 use crate::function::{Args, EvalErr, ExpectedCount, Func, Ret};
 use crate::number::Number;
+use crate::primitive::Primitive;
 use crate::sexp::Sexp;
 
 macro_rules! builtins {
@@ -70,7 +70,7 @@ impl fmt::Display for BuiltIn {
 fn add(args: Args) -> Ret {
     let mut curr = Number::default();
     for arg in args {
-        if let Sexp::Atom(Atom::Number(num)) = arg {
+        if let Sexp::Primitive(Primitive::Number(num)) = arg {
             curr += *num;
         } else {
             return Err(EvalErr::InvalidArgument {
@@ -80,7 +80,7 @@ fn add(args: Args) -> Ret {
         }
     }
 
-    Ok(Sexp::Atom(Atom::Number(curr)))
+    Ok(Sexp::Primitive(Primitive::Number(curr)))
 }
 
 fn sub(args: Args) -> Ret {
@@ -94,7 +94,7 @@ fn sub(args: Args) -> Ret {
     let mut curr = Number::default();
     let mut first = true;
     for arg in args {
-        if let Sexp::Atom(Atom::Number(num)) = arg {
+        if let Sexp::Primitive(Primitive::Number(num)) = arg {
             if first {
                 curr = *num;
                 first = false;
@@ -109,13 +109,13 @@ fn sub(args: Args) -> Ret {
         }
     }
 
-    Ok(Sexp::Atom(Atom::Number(curr)))
+    Ok(Sexp::Primitive(Primitive::Number(curr)))
 }
 
 fn mul(args: Args) -> Ret {
     let mut curr = Number::Integer(1);
     for arg in args {
-        if let Sexp::Atom(Atom::Number(num)) = arg {
+        if let Sexp::Primitive(Primitive::Number(num)) = arg {
             curr *= *num;
         } else {
             return Err(EvalErr::InvalidArgument {
@@ -125,7 +125,7 @@ fn mul(args: Args) -> Ret {
         }
     }
 
-    Ok(Sexp::Atom(Atom::Number(curr)))
+    Ok(Sexp::Primitive(Primitive::Number(curr)))
 }
 
 fn div(args: Args) -> Ret {
@@ -139,7 +139,7 @@ fn div(args: Args) -> Ret {
     let mut curr = Number::default();
     let mut first = true;
     for arg in args {
-        if let Sexp::Atom(Atom::Number(num)) = arg {
+        if let Sexp::Primitive(Primitive::Number(num)) = arg {
             if first {
                 curr = *num;
                 first = false;
@@ -154,5 +154,5 @@ fn div(args: Args) -> Ret {
         }
     }
 
-    Ok(Sexp::Atom(Atom::Number(curr)))
+    Ok(Sexp::Primitive(Primitive::Number(curr)))
 }

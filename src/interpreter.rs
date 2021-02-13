@@ -1,22 +1,22 @@
-use crate::atom::Atom;
 use crate::builtin;
 use crate::function::{
     EvalErr::{self, *},
     ExpectedCount, Func, Ret,
 };
+use crate::primitive::Primitive;
 use crate::sexp::{self, Sexp};
 
 pub fn eval(form: &Sexp) -> Ret {
     match form {
-        Sexp::Atom(atom) => {
-            if let Atom::Symbol(symbol) = atom {
+        Sexp::Primitive(primitive) => {
+            if let Primitive::Symbol(symbol) = primitive {
                 let value = builtin::BUILTINS.lookup(symbol);
                 return match value {
-                    Some(builtin) => Ok(Sexp::Atom(Atom::BuiltIn(builtin))),
+                    Some(builtin) => Ok(Sexp::Primitive(Primitive::BuiltIn(builtin))),
                     None => Err(UnboundSymbol(symbol.clone())),
                 };
             }
-            return Ok(Sexp::Atom(atom.clone()));
+            return Ok(Sexp::Primitive(primitive.clone()));
         }
 
         Sexp::Cons(cons) => {
@@ -25,7 +25,7 @@ pub fn eval(form: &Sexp) -> Ret {
                 None => return Err(InvalidSexp(Sexp::Cons(cons.clone()))),
             };
 
-            if let Sexp::Atom(Atom::Symbol(first)) = car {
+            if let Sexp::Primitive(Primitive::Symbol(first)) = car {
                 match first.as_str() {
                     "quote" => {
                         return quote(cons.cdr());
@@ -34,7 +34,7 @@ pub fn eval(form: &Sexp) -> Ret {
                 }
             }
 
-            if let Sexp::Atom(Atom::BuiltIn(builtin)) = eval(car)? {
+            if let Sexp::Primitive(Primitive::BuiltIn(builtin)) = eval(car)? {
                 let args = evlis(cons.cdr())?;
                 return builtin.call(&args);
             }
@@ -53,8 +53,8 @@ fn evlis(args: Option<&Sexp>) -> Result<Vec<Sexp>, EvalErr> {
     }
 
     match args.unwrap() {
-        Sexp::Atom(atom) => {
-            return Err(InvalidSexp(Sexp::Atom(atom.clone())));
+        Sexp::Primitive(primitive) => {
+            return Err(InvalidSexp(Sexp::Primitive(primitive.clone())));
         }
 
         Sexp::Cons(cons) => {
@@ -76,8 +76,8 @@ fn quote(args: Option<&Sexp>) -> Ret {
     }
 
     match args.unwrap() {
-        Sexp::Atom(atom) => {
-            return Err(InvalidSexp(Sexp::Atom(atom.clone())));
+        Sexp::Primitive(primitive) => {
+            return Err(InvalidSexp(Sexp::Primitive(primitive.clone())));
         }
 
         Sexp::Cons(cons) => {

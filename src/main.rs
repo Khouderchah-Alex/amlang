@@ -1,7 +1,6 @@
 use std::env;
 use std::path::Path;
 
-mod atom;
 mod builtin;
 mod cons_list;
 mod environment;
@@ -9,6 +8,7 @@ mod function;
 mod interpreter;
 mod number;
 mod parser;
+mod primitive;
 mod sexp;
 mod token;
 

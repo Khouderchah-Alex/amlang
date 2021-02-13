@@ -3,8 +3,8 @@
 use std::fmt;
 use std::iter::Peekable;
 
-use crate::atom::Atom;
 use crate::cons_list::ConsList;
+use crate::primitive::Primitive;
 use crate::sexp::Sexp;
 use crate::token::{Token, TokenInfo};
 
@@ -91,7 +91,9 @@ pub fn parse_sexp<I: Iterator<Item = TokenInfo>>(
             let sexp = parse_sexp(tokens, depth + 1)?;
             if let Some(val) = sexp {
                 let mut list = ConsList::new();
-                list.append(Box::new(Sexp::Atom(Atom::Symbol("quote".to_string()))));
+                list.append(Box::new(Sexp::Primitive(Primitive::Symbol(
+                    "quote".to_string(),
+                ))));
                 list.append(val);
                 return Ok(Some(list.release()));
             } else {
@@ -107,8 +109,8 @@ pub fn parse_sexp<I: Iterator<Item = TokenInfo>>(
                 token,
             });
         }
-        Token::Atom(atom) => {
-            return Ok(Some(Box::new(Sexp::Atom(atom))));
+        Token::Primitive(primitive) => {
+            return Ok(Some(Box::new(Sexp::Primitive(primitive))));
         }
         Token::Comment(_) => {
             unreachable!();

@@ -1,13 +1,13 @@
 use std::fmt;
 
-use crate::atom;
+use crate::primitive;
 
 #[derive(Debug, PartialEq)]
 pub enum Token {
     LeftParen,
     RightParen,
     Quote,
-    Atom(atom::Atom),
+    Primitive(primitive::Primitive),
     Comment(String),
 }
 
