@@ -7,6 +7,7 @@ mod environment;
 mod function;
 mod interpreter;
 mod number;
+mod old_environment;
 mod parser;
 mod primitive;
 mod sexp;

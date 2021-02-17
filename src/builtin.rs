@@ -6,9 +6,9 @@ use std::borrow::Cow;
 use std::collections::HashMap;
 use std::fmt;
 
-use crate::environment::Environment;
 use crate::function::{Args, EvalErr, ExpectedCount, Func, Ret};
 use crate::number::Number;
+use crate::old_environment::Environment;
 use crate::primitive::Primitive;
 use crate::sexp::Sexp;
 
