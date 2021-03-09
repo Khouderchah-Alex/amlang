@@ -8,13 +8,13 @@ use crate::primitive;
 use crate::token::string_stream::StringStream;
 
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub enum Sexp {
     Primitive(primitive::Primitive),
     Cons(Cons),
 }
 
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Default, PartialEq)]
 pub struct Cons {
     car: Option<Box<Sexp>>,
     cdr: Option<Box<Sexp>>,
@@ -150,6 +150,18 @@ impl IntoIterator for Cons {
         SexpIntoIter {
             current: Some(self),
         }
+    }
+}
+
+impl fmt::Debug for Sexp {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(&self, f)
+    }
+}
+
+impl fmt::Debug for Cons {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(&self, f)
     }
 }
 
