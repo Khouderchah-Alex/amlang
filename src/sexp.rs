@@ -1,20 +1,33 @@
 //! Module for representing S-exps.
 
 use std::fmt;
+use std::str::FromStr;
 
+use crate::parser::{parse_sexp, ParseError};
 use crate::primitive;
+use crate::token::string_stream::StringStream;
 
-#[derive(Clone, Debug)]
+
+#[derive(Clone, Debug, PartialEq)]
 pub enum Sexp {
     Primitive(primitive::Primitive),
     Cons(Cons),
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct Cons {
     car: Option<Box<Sexp>>,
     cdr: Option<Box<Sexp>>,
 }
+
+pub struct SexpIter<'a> {
+    current: Option<&'a Cons>,
+}
+
+pub struct SexpIntoIter {
+    current: Option<Cons>,
+}
+
 
 impl Sexp {
     pub fn cons(&self) -> &Cons {
@@ -82,9 +95,6 @@ impl Cons {
     }
 }
 
-pub struct SexpIter<'a> {
-    current: Option<&'a Cons>,
-}
 
 impl<'a> Iterator for SexpIter<'a> {
     type Item = &'a Sexp;
@@ -102,10 +112,6 @@ impl<'a> Iterator for SexpIter<'a> {
 
         None
     }
-}
-
-pub struct SexpIntoIter {
-    current: Option<Cons>,
 }
 
 impl<'a> IntoIterator for &'a Cons {
@@ -181,5 +187,19 @@ impl fmt::Display for Cons {
         };
 
         write!(f, "({} . {})", a, b)
+    }
+}
+
+impl FromStr for Sexp {
+    type Err = ParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let stream = StringStream::new(s);
+
+        return match parse_sexp(&mut stream.peekable(), 0) {
+            Ok(Some(sexp)) => Ok(*sexp),
+            Ok(None) => Ok(Sexp::Cons(Cons::default())),
+            Err(err) => Err(err),
+        };
     }
 }
