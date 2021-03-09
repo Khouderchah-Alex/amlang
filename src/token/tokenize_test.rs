@@ -26,6 +26,21 @@ fn nested() {
 }
 
 #[test]
+fn newlines() {
+    let input = "\n(testing\n\n (\nthis (out))\n)";
+    let mut expected = nest(vec![Primitive(Symbol("out".to_string()))]);
+    expected.insert(0, Primitive(Symbol("this".to_string())));
+    expected = nest(expected);
+    expected.insert(0, Primitive(Symbol("testing".to_string())));
+    expected = nest(expected);
+
+    let tokens = StringStream::new(input);
+    for (i, elem) in tokens.enumerate() {
+        assert_eq!(elem.token, expected[i]);
+    }
+}
+
+#[test]
 fn ints() {
     let input = "(1 2 -4 33 128)";
     let mut expected: Vec<Token> = vec![1, 2, -4, 33, 128]
