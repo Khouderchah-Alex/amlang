@@ -51,7 +51,7 @@ fn interactive_repl() -> Result<(), String> {
         let result = interpreter::eval(&sexp);
         match result {
             Ok(val) => {
-                println!("-> {:#}", val);
+                println!("-> {}", val);
             }
             Err(err) => {
                 println!(" {}", err);
@@ -72,11 +72,11 @@ fn file_repl(path: &str) -> Result<(), String> {
     };
 
     for sexp in &sexps {
-        println!("> {:#}", sexp);
+        println!("> {}", sexp);
         let result = interpreter::eval(sexp);
         match result {
             Ok(val) => {
-                println!("-> {:#}", val);
+                println!("-> {}", val);
             }
             Err(err) => {
                 println!(" {}", err);

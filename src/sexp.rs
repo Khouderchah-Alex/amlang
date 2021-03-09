@@ -87,7 +87,7 @@ impl Cons {
             if pos > 0 {
                 write!(f, " ")?;
             }
-            write!(f, "{:#}", val)?;
+            write!(f, "{}", val)?;
 
             pos += 1;
         }
@@ -169,24 +169,26 @@ impl fmt::Display for Sexp {
 }
 
 impl fmt::Display for Cons {
-    /// Note: this does not check for loops and doesn't have a max depth.
-    /// Use the alternate formatting for untrusted S-exps.
+    /// Note: alternate does not check for loops and doesn't have a max depth.
+    /// Do NOT use the alternate formatting for untrusted S-exps.
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // Alternate print this with the list shorthand.
-        if f.alternate() {
+        // Normal print this with list shorthand.
+        if !f.alternate() {
             return self.list_fmt(f);
         }
 
-        let a = match self.car() {
-            Some(val) => val.to_string(),
-            None => "NIL".to_string(),
+        // Alternate print as sets of Cons.
+        write!(f, "(")?;
+        match self.car() {
+            Some(val) => write!(f, "{:#}", val)?,
+            None => write!(f, "NIL")?,
         };
-        let b = match self.cdr() {
-            Some(val) => val.to_string(),
-            None => "NIL".to_string(),
+        write!(f, " . ")?;
+        match self.cdr() {
+            Some(val) => write!(f, "{:#}", val)?,
+            None => write!(f, "NIL")?,
         };
-
-        write!(f, "({} . {})", a, b)
+        write!(f, ")")
     }
 }
 
