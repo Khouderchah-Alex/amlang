@@ -27,10 +27,7 @@ pub trait Environment {
 
     fn match_triple(&self, subject: NodeId, predicate: NodeId, object: NodeId) -> Option<TripleId>;
     fn match_all(&self) -> TripleSet;
-}
 
-/// Means of accessing structure of nodes.
-pub trait Resolver {
     fn node_structure(&self, node: NodeId) -> Option<&Sexp>;
     fn node_as_triple(&self, node: NodeId) -> Option<TripleId>;
 

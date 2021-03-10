@@ -2,7 +2,7 @@
 
 use std::collections::BTreeSet;
 
-use super::environment::{Environment, Resolver, TripleSet};
+use super::environment::{Environment, TripleSet};
 use super::node::{LocalId, NodeId, TripleId};
 use crate::sexp::Sexp;
 
@@ -133,6 +133,7 @@ impl Environment for MemEnvironment {
         id
     }
 
+
     fn match_subject(&self, subject: NodeId) -> TripleSet {
         let set = self.edges(subject).as_subject.iter();
         set.cloned().collect()
@@ -179,9 +180,8 @@ impl Environment for MemEnvironment {
             .map(|x| index_to_triple_id(x))
             .collect()
     }
-}
 
-impl Resolver for MemEnvironment {
+
     fn node_structure(&self, node: NodeId) -> Option<&Sexp> {
         if is_triple_id(node.id()) {
             return None;
