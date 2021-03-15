@@ -49,7 +49,7 @@ impl MemEnvironment {
             nodes: vec![],
             triples: vec![],
         };
-        // Set up SELF node.
+        // Set up self node.
         // TODO(func) This should be a Portal rather than Atom.
         env.insert_atom();
         env
@@ -105,7 +105,9 @@ impl MemEnvironment {
 }
 
 impl Environment for MemEnvironment {
-    const SELF: NodeId = NodeId::new(0);
+    fn self_node(&self) -> NodeId {
+        NodeId::new(0)
+    }
 
     fn insert_atom(&mut self) -> NodeId {
         let id = self.next_node_id();

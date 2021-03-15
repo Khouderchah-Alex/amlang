@@ -11,7 +11,8 @@ pub type TripleSet = BTreeSet<TripleId>;
 /// Triple store of Nodes, which can be atoms, structures, or triples.
 /// Always contains at least one node, which represents itself.
 pub trait Environment {
-    const SELF: NodeId; // Portal to SELF.
+    // Portal to self node.
+    fn self_node(&self) -> NodeId;
 
     fn insert_atom(&mut self) -> NodeId;
     fn insert_structure(&mut self, structure: Sexp) -> NodeId;
