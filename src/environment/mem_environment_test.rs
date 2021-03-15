@@ -1,16 +1,18 @@
 use super::*;
 
+use crate::sexp::Sexp;
+
 
 #[test]
 fn contains_self() {
-    let env = MemEnvironment::new();
+    let env = MemEnvironment::<Sexp>::new();
     assert_eq!(env.node_structure(env.self_node()), None);
     assert_eq!(env.node_as_triple(env.self_node()), None);
 }
 
 #[test]
 fn atomic_insertion() {
-    let mut env = MemEnvironment::new();
+    let mut env = MemEnvironment::<Sexp>::new();
     let a = env.insert_atom();
     let b = env.insert_atom();
 
@@ -24,7 +26,7 @@ fn atomic_insertion() {
 
 #[test]
 fn structure_insertion() {
-    let mut env = MemEnvironment::new();
+    let mut env = MemEnvironment::<Sexp>::new();
     let a = env.insert_structure("(1 2 3)".parse::<Sexp>().unwrap());
     assert_eq!(
         env.node_structure(a).unwrap(),

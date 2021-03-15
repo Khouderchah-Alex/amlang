@@ -1,15 +1,15 @@
 //! Thread-unsafe in-memory Environment.
 
 use std::collections::BTreeSet;
+use std::fmt::Debug;
 
 use super::environment::{Environment, TripleSet};
 use super::node::{LocalId, NodeId, TripleId};
-use crate::sexp::Sexp;
 
 
 #[derive(Debug)]
-pub struct MemEnvironment {
-    nodes: Vec<Node>,
+pub struct MemEnvironment<Structure: Debug> {
+    nodes: Vec<Node<Structure>>,
     triples: Vec<Triple>,
 }
 
@@ -22,15 +22,15 @@ struct Edges {
 }
 
 #[derive(Debug)]
-struct Node {
-    kind: NodeKind,
+struct Node<Structure: Debug> {
+    kind: NodeKind<Structure>,
     edges: Edges,
 }
 
 #[derive(Debug)]
-enum NodeKind {
+enum NodeKind<Structure: Debug> {
     Atomic,
-    Structured(Sexp),
+    Structured(Structure),
 }
 
 #[derive(Debug)]
@@ -43,8 +43,8 @@ struct Triple {
 }
 
 
-impl MemEnvironment {
-    pub fn new() -> MemEnvironment {
+impl<Structure: Debug> MemEnvironment<Structure> {
+    pub fn new() -> MemEnvironment<Structure> {
         let mut env = MemEnvironment {
             nodes: vec![],
             triples: vec![],
@@ -72,10 +72,10 @@ impl MemEnvironment {
         }
     }
 
-    fn node_unchecked(&self, node: NodeId) -> &Node {
+    fn node_unchecked(&self, node: NodeId) -> &Node<Structure> {
         &self.nodes[node_index_unchecked(node.id())]
     }
-    fn node_mut_unchecked(&mut self, node: NodeId) -> &mut Node {
+    fn node_mut_unchecked(&mut self, node: NodeId) -> &mut Node<Structure> {
         &mut self.nodes[node_index_unchecked(node.id())]
     }
 
@@ -104,7 +104,7 @@ impl MemEnvironment {
     }
 }
 
-impl Environment for MemEnvironment {
+impl<Structure: Debug> Environment<Structure> for MemEnvironment<Structure> {
     fn self_node(&self) -> NodeId {
         NodeId::new(0)
     }
@@ -114,7 +114,7 @@ impl Environment for MemEnvironment {
         self.nodes.push(Node::new(NodeKind::Atomic));
         id
     }
-    fn insert_structure(&mut self, structure: Sexp) -> NodeId {
+    fn insert_structure(&mut self, structure: Structure) -> NodeId {
         let id = self.next_node_id();
         self.nodes.push(Node::new(NodeKind::Structured(structure)));
         id
@@ -184,7 +184,7 @@ impl Environment for MemEnvironment {
     }
 
 
-    fn node_structure(&self, node: NodeId) -> Option<&Sexp> {
+    fn node_structure(&self, node: NodeId) -> Option<&Structure> {
         if is_triple_id(node.id()) {
             return None;
         }
@@ -214,8 +214,8 @@ impl Environment for MemEnvironment {
 }
 
 
-impl Node {
-    fn new(kind: NodeKind) -> Node {
+impl<Structure: Debug> Node<Structure> {
+    fn new(kind: NodeKind<Structure>) -> Node<Structure> {
         Node {
             kind,
             edges: Edges::default(),
