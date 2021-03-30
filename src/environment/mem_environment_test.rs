@@ -5,7 +5,7 @@ use crate::sexp::Sexp;
 
 #[test]
 fn contains_self() {
-    let env = MemEnvironment::<Sexp>::new();
+    let mut env = MemEnvironment::<Sexp>::new();
     assert_eq!(env.node_structure(env.self_node()), None);
     assert_eq!(env.node_as_triple(env.self_node()), None);
 }

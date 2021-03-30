@@ -184,12 +184,12 @@ impl<Structure: Debug> Environment<Structure> for MemEnvironment<Structure> {
     }
 
 
-    fn node_structure(&self, node: NodeId) -> Option<&Structure> {
+    fn node_structure(&mut self, node: NodeId) -> Option<&mut Structure> {
         if is_triple_id(node.id()) {
             return None;
         }
 
-        match &self.node_unchecked(node).kind {
+        match &mut self.node_mut_unchecked(node).kind {
             NodeKind::Atomic => None,
             NodeKind::Structured(structure) => Some(structure),
         }

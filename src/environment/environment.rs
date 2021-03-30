@@ -33,7 +33,7 @@ pub trait Environment<Structure> {
     fn match_triple(&self, subject: NodeId, predicate: NodeId, object: NodeId) -> Option<TripleId>;
     fn match_all(&self) -> TripleSet;
 
-    fn node_structure(&self, node: NodeId) -> Option<&Structure>;
+    fn node_structure(&mut self, node: NodeId) -> Option<&mut Structure>;
     fn node_as_triple(&self, node: NodeId) -> Option<TripleId>;
 
     fn triple_subject(&self, triple: TripleId) -> NodeId;
