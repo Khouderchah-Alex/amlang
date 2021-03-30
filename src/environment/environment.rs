@@ -37,6 +37,6 @@ pub trait Environment<Structure> {
     fn node_as_triple(&self, node: NodeId) -> Option<TripleId>;
 
     fn triple_subject(&self, triple: TripleId) -> NodeId;
-    fn triple_object(&self, triple: TripleId) -> NodeId;
     fn triple_predicate(&self, triple: TripleId) -> NodeId;
+    fn triple_object(&self, triple: TripleId) -> NodeId;
 }
