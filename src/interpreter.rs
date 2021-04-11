@@ -1,4 +1,4 @@
-use crate::builtin;
+use crate::agent::designation::Designation;
 use crate::function::{
     EvalErr::{self, *},
     ExpectedCount, Func, Ret,
@@ -6,17 +6,10 @@ use crate::function::{
 use crate::primitive::Primitive;
 use crate::sexp::{self, Sexp};
 
-pub fn eval(form: &Sexp) -> Ret {
+pub fn eval(form: &Sexp, designation: &mut dyn Designation) -> Ret {
     match form {
         Sexp::Primitive(primitive) => {
-            if let Primitive::Symbol(symbol) = primitive {
-                let value = builtin::BUILTINS.lookup(symbol);
-                return match value {
-                    Some(builtin) => Ok(Sexp::Primitive(Primitive::BuiltIn(builtin))),
-                    None => Err(UnboundSymbol(symbol.clone())),
-                };
-            }
-            return Ok(Sexp::Primitive(primitive.clone()));
+            return designation.designate(primitive);
         }
 
         Sexp::Cons(cons) => {
@@ -34,8 +27,8 @@ pub fn eval(form: &Sexp) -> Ret {
                 }
             }
 
-            if let Sexp::Primitive(Primitive::BuiltIn(builtin)) = eval(car)? {
-                let args = evlis(cons.cdr())?;
+            if let Sexp::Primitive(Primitive::BuiltIn(builtin)) = eval(car, designation)? {
+                let args = evlis(cons.cdr(), designation)?;
                 return builtin.call(&args);
             }
             panic!(
@@ -46,7 +39,7 @@ pub fn eval(form: &Sexp) -> Ret {
     }
 }
 
-fn evlis(args: Option<&Sexp>) -> Result<Vec<Sexp>, EvalErr> {
+fn evlis(args: Option<&Sexp>, designation: &mut dyn Designation) -> Result<Vec<Sexp>, EvalErr> {
     let mut res = Vec::<Sexp>::new();
     if args.is_none() {
         return Ok(res);
@@ -59,7 +52,7 @@ fn evlis(args: Option<&Sexp>) -> Result<Vec<Sexp>, EvalErr> {
 
         Sexp::Cons(cons) => {
             for arg in cons {
-                let val = eval(&arg)?;
+                let val = eval(&arg, designation)?;
                 res.push(val);
             }
         }

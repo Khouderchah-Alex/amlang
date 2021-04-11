@@ -26,6 +26,7 @@ pub struct ParseError {
     token: TokenInfo,
 }
 
+/*
 pub fn parse<I: Iterator<Item = TokenInfo>>(tokens: I) -> Result<Vec<Box<Sexp>>, ParseError> {
     let mut sexps = Vec::<Box<Sexp>>::new();
     let mut peekable = tokens.peekable();
@@ -35,6 +36,7 @@ pub fn parse<I: Iterator<Item = TokenInfo>>(tokens: I) -> Result<Vec<Box<Sexp>>,
 
     Ok(sexps)
 }
+*/
 
 /// Returns None when finished parsing, otherwise returns Some(sexp).
 pub fn parse_sexp<I: Iterator<Item = TokenInfo>>(
