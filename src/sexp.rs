@@ -165,6 +165,12 @@ impl fmt::Debug for Cons {
     }
 }
 
+impl Default for Sexp {
+    fn default() -> Self {
+        Sexp::Cons(Cons::default())
+    }
+}
+
 impl fmt::Display for Sexp {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
