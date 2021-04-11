@@ -6,10 +6,13 @@ use crate::environment::NodeId;
 use crate::function::BuiltIn;
 use crate::number::Number;
 
+
+pub type Symbol = String;
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum Primitive {
     Number(Number),
-    Symbol(String),
+    Symbol(Symbol),
     BuiltIn(&'static BuiltIn),
     Node(NodeId),
 }
