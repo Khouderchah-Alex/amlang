@@ -15,6 +15,8 @@ mod primitive;
 mod sexp;
 mod token;
 
+use crate::agent::agent::Agent;
+
 
 fn usage(args: &Vec<String>) {
     println!(
@@ -38,6 +40,6 @@ fn main() -> Result<(), String> {
 }
 
 fn interactive_agent() -> Result<(), String> {
-    let mut user_agent = agent::agent::Agent::new();
+    let mut user_agent = agent::generic_agent::GenericAgent::new();
     user_agent.run()
 }
