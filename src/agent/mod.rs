@@ -1,4 +1,3 @@
 pub mod agent;
-pub mod designation;
+pub mod amlang_agent;
 pub mod env_state;
-pub mod generic_agent;

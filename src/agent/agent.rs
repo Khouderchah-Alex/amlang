@@ -1,8 +1,8 @@
-use super::designation::Designation;
 use super::env_state::EnvState;
+use crate::model::Eval;
 
 
-pub trait Agent: Designation + Default {
+pub trait Agent: Eval {
     fn run(&mut self) -> Result<(), String>;
     fn env_state(&mut self) -> &mut EnvState;
 }

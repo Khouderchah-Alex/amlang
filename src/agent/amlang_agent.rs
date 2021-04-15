@@ -1,40 +1,43 @@
 use super::agent::Agent;
-use super::designation::Designation;
 use super::env_state::EnvState;
 use crate::builtin::BUILTINS;
-use crate::function::{EvalErr, Ret};
-use crate::interpreter;
-use crate::parser;
+use crate::function::{
+    EvalErr::{self, *},
+    Func, Ret,
+};
+use crate::model::{Designation, Eval};
+use crate::parser::parse_sexp;
 use crate::primitive::Primitive;
 use crate::sexp::Sexp;
+use crate::syntax;
 use crate::token::interactive_stream::InteractiveStream;
 
 
-pub struct GenericAgent {
+pub struct AmlangAgent {
     env_state: EnvState,
 }
 
-impl GenericAgent {
+impl AmlangAgent {
     pub fn new() -> Self {
-        Self {
-            env_state: EnvState::new(),
-        }
+        let env_state = EnvState::new();
+        Self { env_state }
     }
 }
 
-impl Default for GenericAgent {
+
+impl Default for AmlangAgent {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl Agent for GenericAgent {
+impl Agent for AmlangAgent {
     fn run(&mut self) -> Result<(), String> {
         let stream = InteractiveStream::new();
         let mut peekable = stream.peekable();
 
         loop {
-            let sexp = match parser::parse_sexp(&mut peekable, 0) {
+            let sexp = match parse_sexp(&mut peekable, 0) {
                 Ok(Some(parsed)) => parsed,
                 Ok(None) => return Ok(()),
                 Err(err) => {
@@ -44,7 +47,7 @@ impl Agent for GenericAgent {
                 }
             };
 
-            let result = interpreter::eval(&sexp, self);
+            let result = self.eval(&sexp);
             match result {
                 Ok(val) => {
                     println!("-> {}", val);
@@ -62,7 +65,7 @@ impl Agent for GenericAgent {
     }
 }
 
-impl Designation for GenericAgent {
+impl Designation for AmlangAgent {
     fn designate(&mut self, designator: &Primitive) -> Ret {
         return match designator {
             Primitive::Symbol(symbol) => {
@@ -81,5 +84,40 @@ impl Designation for GenericAgent {
             // Base case for self-designating.
             _ => Ok(Sexp::Primitive(designator.clone())),
         };
+    }
+}
+
+impl Eval for AmlangAgent {
+    fn eval(&mut self, structure: &Sexp) -> Ret {
+        match structure {
+            Sexp::Primitive(primitive) => {
+                return self.designate(primitive);
+            }
+
+            Sexp::Cons(cons) => {
+                let car = match cons.car() {
+                    Some(car) => car,
+                    None => return Err(InvalidSexp(Sexp::Cons(cons.clone()))),
+                };
+
+                if let Sexp::Primitive(Primitive::Symbol(first)) = car {
+                    match first.as_str() {
+                        "quote" => {
+                            return syntax::quote(cons.cdr());
+                        }
+                        _ => { /* Fallthrough */ }
+                    }
+                }
+
+                if let Sexp::Primitive(Primitive::BuiltIn(builtin)) = self.eval(car)? {
+                    let args = syntax::evlis(cons.cdr(), self)?;
+                    return builtin.call(&args);
+                }
+                panic!(
+                    "`{}` did not match functional application catchall",
+                    structure
+                );
+            }
+        }
     }
 }

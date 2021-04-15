@@ -7,12 +7,13 @@ mod builtin;
 mod cons_list;
 mod environment;
 mod function;
-mod interpreter;
+mod model;
 mod number;
 mod old_environment;
 mod parser;
 mod primitive;
 mod sexp;
+mod syntax;
 mod token;
 
 use crate::agent::agent::Agent;
@@ -40,6 +41,6 @@ fn main() -> Result<(), String> {
 }
 
 fn interactive_agent() -> Result<(), String> {
-    let mut user_agent = agent::generic_agent::GenericAgent::new();
+    let mut user_agent = agent::amlang_agent::AmlangAgent::new();
     user_agent.run()
 }
