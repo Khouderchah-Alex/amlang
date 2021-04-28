@@ -28,6 +28,10 @@ pub struct SexpIntoIter {
     current: Option<Cons>,
 }
 
+pub fn cons(car: Option<Box<Sexp>>, cdr: Option<Box<Sexp>>) -> Option<Box<Sexp>> {
+    Some(Box::new(Sexp::Cons(Cons::new(car, cdr))))
+}
+
 
 impl Sexp {
     pub fn cons(&self) -> &Cons {
@@ -39,7 +43,7 @@ impl Sexp {
 }
 
 impl Cons {
-    pub fn cons(car: Option<Box<Sexp>>, cdr: Option<Box<Sexp>>) -> Cons {
+    pub fn new(car: Option<Box<Sexp>>, cdr: Option<Box<Sexp>>) -> Cons {
         Cons { car, cdr }
     }
 

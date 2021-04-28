@@ -21,7 +21,7 @@ impl ConsList {
     }
 
     pub fn append(&mut self, val: Box<Sexp>) {
-        let mut tail = Box::new(Sexp::Cons(Cons::cons(Some(val), None)));
+        let mut tail = Box::new(Sexp::Cons(Cons::new(Some(val), None)));
         let new_end;
         if let Sexp::Cons(c) = tail.as_mut() {
             new_end = c as *mut Cons;
