@@ -8,6 +8,7 @@ use self::ExpectedCount::*;
 pub use crate::builtin::BuiltIn;
 use crate::sexp::Sexp;
 
+
 pub type Args<'a> = &'a Vec<Sexp>;
 pub type Ret = Result<Sexp, EvalErr>;
 
@@ -33,7 +34,9 @@ pub enum EvalErr {
 pub enum ExpectedCount {
     Exactly(usize),
     AtLeast(usize),
+    AtMost(usize),
 }
+
 
 impl fmt::Display for EvalErr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -61,6 +64,7 @@ impl fmt::Display for ExpectedCount {
         return match self {
             Exactly(exactly) => write!(f, "{}", exactly),
             AtLeast(minimum) => write!(f, "at least {}", minimum),
+            AtMost(maximum) => write!(f, "at most {}", maximum),
         };
     }
 }

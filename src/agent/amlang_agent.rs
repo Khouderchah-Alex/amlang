@@ -1,9 +1,11 @@
+use std::borrow::Cow;
+
 use super::agent::Agent;
 use super::env_state::EnvState;
 use crate::builtin::BUILTINS;
 use crate::function::{
     EvalErr::{self, *},
-    Func, Ret,
+    ExpectedCount, Func, Ret,
 };
 use crate::model::{Designation, Eval};
 use crate::parser::parse_sexp;
@@ -21,6 +23,54 @@ impl AmlangAgent {
     pub fn new() -> Self {
         let env_state = EnvState::new();
         Self { env_state }
+    }
+
+    fn env_insert(&mut self, args: Option<&Sexp>) -> Ret {
+        if args.is_none() {
+            return Err(WrongArgumentCount {
+                given: 0,
+                expected: ExpectedCount::AtLeast(1),
+            });
+        }
+
+        match args.unwrap() {
+            Sexp::Primitive(primitive) => {
+                return Err(InvalidSexp(Sexp::Primitive(primitive.clone())));
+            }
+
+            Sexp::Cons(cons) => {
+                let mut iter = cons.iter();
+                let name = if let Some(Sexp::Primitive(Primitive::Symbol(symbol))) = iter.next() {
+                    symbol.to_string()
+                } else {
+                    return Err(InvalidArgument {
+                        given: Sexp::Cons(cons.clone()),
+                        expected: Cow::Borrowed("symbol"),
+                    });
+                };
+
+                return match iter.next() {
+                    None => {
+                        let identifier = self.env_state().identifier();
+                        let env = self.env_state().env();
+
+                        let name_sexp = Sexp::Primitive(Primitive::Symbol(name));
+                        let node = env.insert_atom();
+                        let node_name = env.insert_structure(name_sexp.clone());
+                        env.insert_triple(node, identifier, node_name);
+
+                        for triple in env.match_all() {
+                            println!("    {}", self.env_state().triple_identifiers(triple));
+                        }
+                        Ok(name_sexp)
+                    }
+                    _ => Err(WrongArgumentCount {
+                        given: iter.count() + 2,
+                        expected: ExpectedCount::AtMost(2),
+                    }),
+                };
+            }
+        }
     }
 }
 
@@ -104,6 +154,9 @@ impl Eval for AmlangAgent {
                     match first.as_str() {
                         "quote" => {
                             return syntax::quote(cons.cdr());
+                        }
+                        "new" => {
+                            return self.env_insert(cons.cdr());
                         }
                         _ => { /* Fallthrough */ }
                     }
