@@ -1,5 +1,6 @@
 //! Representation of primitives.
 
+use std::collections::HashMap;
 use std::fmt;
 
 use crate::environment::NodeId;
@@ -8,6 +9,7 @@ use crate::number::Number;
 
 
 pub type Symbol = String;
+pub type SymbolTable = HashMap<Symbol, NodeId>;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Primitive {
@@ -15,6 +17,8 @@ pub enum Primitive {
     Symbol(Symbol),
     BuiltIn(&'static BuiltIn),
     Node(NodeId),
+
+    SymbolTable(SymbolTable),
 }
 
 impl fmt::Display for Primitive {
@@ -24,6 +28,8 @@ impl fmt::Display for Primitive {
             Primitive::Symbol(s) => write!(f, "{}", s),
             Primitive::BuiltIn(b) => write!(f, "{}", b),
             Primitive::Node(node) => write!(f, "{}", node),
+
+            Primitive::SymbolTable(table) => write!(f, "{:?}", table),
         }
     }
 }

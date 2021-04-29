@@ -51,16 +51,34 @@ impl AmlangAgent {
 
                 return match iter.next() {
                     None => {
-                        let identifier = self.env_state().identifier();
+                        let designation = self.env_state().designation();
                         let env = self.env_state().env();
 
-                        let name_sexp = Sexp::Primitive(Primitive::Symbol(name));
+                        if let Some(Sexp::Primitive(Primitive::SymbolTable(table))) =
+                            env.node_structure(designation)
+                        {
+                            if table.contains_key(&name) {
+                                return Err(AlreadyBoundSymbol(name));
+                            }
+                        } else {
+                            panic!("Env designation isn't a symbol table");
+                        }
+
+                        let name_sexp = Sexp::Primitive(Primitive::Symbol(name.clone()));
+                        let name_node = env.insert_structure(name_sexp.clone());
+                        if let Some(Sexp::Primitive(Primitive::SymbolTable(table))) =
+                            env.node_structure(designation)
+                        {
+                            table.insert(name, name_node);
+                        } else {
+                            panic!("Env designation isn't a symbol table");
+                        }
+
                         let node = env.insert_atom();
-                        let node_name = env.insert_structure(name_sexp.clone());
-                        env.insert_triple(node, identifier, node_name);
+                        env.insert_triple(node, designation, name_node);
 
                         for triple in env.match_all() {
-                            println!("    {}", self.env_state().triple_identifiers(triple));
+                            println!("    {}", self.env_state().triple_inner_designators(triple));
                         }
                         Ok(name_sexp)
                     }

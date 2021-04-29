@@ -6,6 +6,7 @@ use std::fmt;
 use self::EvalErr::*;
 use self::ExpectedCount::*;
 pub use crate::builtin::BuiltIn;
+use crate::primitive::Symbol;
 use crate::sexp::Sexp;
 
 
@@ -27,7 +28,8 @@ pub enum EvalErr {
         given: usize,
         expected: ExpectedCount,
     },
-    UnboundSymbol(String),
+    UnboundSymbol(Symbol),
+    AlreadyBoundSymbol(Symbol),
 }
 
 #[derive(Debug)]
@@ -54,6 +56,7 @@ impl fmt::Display for EvalErr {
                 given, expected
             ),
             UnboundSymbol(symbol) => write!(f, "Unbound symbol: \"{}\"", symbol),
+            AlreadyBoundSymbol(symbol) => write!(f, "Already bound symbol: \"{}\"", symbol),
         };
         res
     }
