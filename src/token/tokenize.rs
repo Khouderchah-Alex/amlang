@@ -5,6 +5,7 @@ use std::collections::VecDeque;
 use super::token::{Token, TokenInfo};
 use crate::number;
 use crate::primitive::Primitive::*;
+use crate::symbol::ToSymbol;
 
 pub type TokenStore = VecDeque<TokenInfo>;
 
@@ -26,19 +27,22 @@ pub fn tokenize_line<S: AsRef<str>>(line: S, linum: usize, result: &mut TokenSto
         .replace("'", " ' ");
 
     for ptoken in expanded.split_whitespace() {
-        let mut token = match ptoken {
+        let token = match ptoken {
             "(" => Token::LeftParen,
             ")" => Token::RightParen,
             "'" => Token::Quote,
-            _ => Token::Primitive(Symbol(ptoken.to_string())),
+            _ => {
+                // Try to parse as number before imposing Symbol constraints.
+                if let Ok(num) = ptoken.parse::<number::Number>() {
+                    Token::Primitive(Number(num))
+                } else {
+                    // TODO(func) Don't panic on invalid symbol.
+                    let symbol = ptoken.to_symbol_or_panic();
+                    Token::Primitive(Symbol(symbol))
+                }
+            }
         };
 
-        // Some additional post-processing for numbers.
-        if let Token::Primitive(Symbol(ref s)) = token {
-            if let Ok(num) = s.parse::<number::Number>() {
-                token = Token::Primitive(Number(num));
-            }
-        }
         result.push_back(TokenInfo {
             token,
             line: linum + 1,

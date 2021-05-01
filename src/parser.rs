@@ -6,6 +6,7 @@ use std::iter::Peekable;
 use crate::cons_list::ConsList;
 use crate::primitive::Primitive;
 use crate::sexp::Sexp;
+use crate::symbol::ToSymbol;
 use crate::token::{Token, TokenInfo};
 
 use self::ParseErrorReason::*;
@@ -94,7 +95,7 @@ pub fn parse_sexp<I: Iterator<Item = TokenInfo>>(
             if let Some(val) = sexp {
                 let mut list = ConsList::new();
                 list.append(Box::new(Sexp::Primitive(Primitive::Symbol(
-                    "quote".to_string(),
+                    "quote".to_symbol_or_panic(),
                 ))));
                 list.append(val);
                 return Ok(Some(list.release()));

@@ -1,6 +1,7 @@
 use super::*;
 
 use crate::number::Number;
+use crate::symbol::ToSymbol;
 use crate::token::string_stream::StringStream;
 use Token::*;
 
@@ -13,10 +14,10 @@ fn nest(mut v: Vec<Token>) -> Vec<Token> {
 #[test]
 fn nested() {
     let input = "(testing (this (out)))";
-    let mut expected = nest(vec![Primitive(Symbol("out".to_string()))]);
-    expected.insert(0, Primitive(Symbol("this".to_string())));
+    let mut expected = nest(vec![Primitive(Symbol("out".to_symbol_or_panic()))]);
+    expected.insert(0, Primitive(Symbol("this".to_symbol_or_panic())));
     expected = nest(expected);
-    expected.insert(0, Primitive(Symbol("testing".to_string())));
+    expected.insert(0, Primitive(Symbol("testing".to_symbol_or_panic())));
     expected = nest(expected);
 
     let tokens = StringStream::new(input);
@@ -28,10 +29,10 @@ fn nested() {
 #[test]
 fn newlines() {
     let input = "\n(testing\n\n (\nthis (out))\n)";
-    let mut expected = nest(vec![Primitive(Symbol("out".to_string()))]);
-    expected.insert(0, Primitive(Symbol("this".to_string())));
+    let mut expected = nest(vec![Primitive(Symbol("out".to_symbol_or_panic()))]);
+    expected.insert(0, Primitive(Symbol("this".to_symbol_or_panic())));
     expected = nest(expected);
-    expected.insert(0, Primitive(Symbol("testing".to_string())));
+    expected.insert(0, Primitive(Symbol("testing".to_symbol_or_panic())));
     expected = nest(expected);
 
     let tokens = StringStream::new(input);

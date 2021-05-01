@@ -4,6 +4,7 @@ use crate::environment::meta_environment::{MetaEnvStructure, MetaEnvironment};
 use crate::environment::{NodeId, TripleId};
 use crate::primitive::Primitive;
 use crate::sexp::{cons, Sexp};
+use crate::symbol::ToSymbol;
 
 
 pub struct EnvState {
@@ -31,7 +32,7 @@ impl EnvState {
         if let Some(Sexp::Primitive(Primitive::SymbolTable(table))) =
             env_obj.node_structure(designation)
         {
-            table.insert(META_DESIGNATION.to_string(), designation);
+            table.insert(META_DESIGNATION.to_symbol_or_panic(), designation);
         } else {
             panic!("Env designation isn't a symbol table");
         }
@@ -69,7 +70,7 @@ impl EnvState {
         let designation = self.designation();
         if node == designation {
             return Some(Box::new(Sexp::Primitive(Primitive::Symbol(
-                META_DESIGNATION.to_string(),
+                META_DESIGNATION.to_symbol_or_panic(),
             ))));
         }
 
@@ -93,7 +94,7 @@ impl EnvState {
         let oo = if p == self.designation() {
             cons(
                 Some(Box::new(Sexp::Primitive(Primitive::Symbol(
-                    "quote".to_string(),
+                    "quote".to_symbol_or_panic(),
                 )))),
                 cons(ss.clone(), None),
             )

@@ -6,8 +6,8 @@ use std::fmt;
 use self::EvalErr::*;
 use self::ExpectedCount::*;
 pub use crate::builtin::BuiltIn;
-use crate::primitive::Symbol;
 use crate::sexp::Sexp;
+use crate::symbol::Symbol;
 
 
 pub type Args<'a> = &'a Vec<Sexp>;

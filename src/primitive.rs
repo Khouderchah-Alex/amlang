@@ -6,9 +6,9 @@ use std::fmt;
 use crate::environment::NodeId;
 use crate::function::BuiltIn;
 use crate::number::Number;
+use crate::symbol::Symbol;
 
 
-pub type Symbol = String;
 pub type SymbolTable = HashMap<Symbol, NodeId>;
 
 #[derive(Clone, Debug, PartialEq)]

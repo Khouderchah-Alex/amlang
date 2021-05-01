@@ -41,7 +41,7 @@ impl AmlangAgent {
             Sexp::Cons(cons) => {
                 let mut iter = cons.iter();
                 let name = if let Some(Sexp::Primitive(Primitive::Symbol(symbol))) = iter.next() {
-                    symbol.to_string()
+                    symbol
                 } else {
                     return Err(InvalidArgument {
                         given: Sexp::Cons(cons.clone()),
@@ -58,7 +58,7 @@ impl AmlangAgent {
                             env.node_structure(designation)
                         {
                             if table.contains_key(&name) {
-                                return Err(AlreadyBoundSymbol(name));
+                                return Err(AlreadyBoundSymbol(name.clone()));
                             }
                         } else {
                             panic!("Env designation isn't a symbol table");
@@ -69,7 +69,7 @@ impl AmlangAgent {
                         if let Some(Sexp::Primitive(Primitive::SymbolTable(table))) =
                             env.node_structure(designation)
                         {
-                            table.insert(name, name_node);
+                            table.insert(name.clone(), name_node);
                         } else {
                             panic!("Env designation isn't a symbol table");
                         }
@@ -137,7 +137,7 @@ impl Designation for AmlangAgent {
     fn designate(&mut self, designator: &Primitive) -> Ret {
         return match designator {
             Primitive::Symbol(symbol) => {
-                let value = BUILTINS.lookup(symbol);
+                let value = BUILTINS.lookup(symbol.as_str());
                 match value {
                     Some(builtin) => Ok(Sexp::Primitive(Primitive::BuiltIn(builtin))),
                     None => Err(EvalErr::UnboundSymbol(symbol.clone())),

@@ -13,6 +13,7 @@ mod old_environment;
 mod parser;
 mod primitive;
 mod sexp;
+mod symbol;
 mod syntax;
 mod token;
 
