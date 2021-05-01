@@ -5,11 +5,21 @@ use std::collections::VecDeque;
 use super::token::{Token, TokenInfo};
 use crate::number;
 use crate::primitive::Primitive::*;
-use crate::symbol::ToSymbol;
+use crate::symbol::{SymbolError, ToSymbol};
+
 
 pub type TokenStore = VecDeque<TokenInfo>;
 
-pub fn tokenize_line<S: AsRef<str>>(line: S, linum: usize, result: &mut TokenStore) {
+#[derive(Debug)]
+pub enum TokenizeError {
+    InvalidSymbol(SymbolError),
+}
+
+pub fn tokenize_line<S: AsRef<str>>(
+    line: S,
+    linum: usize,
+    result: &mut TokenStore,
+) -> Result<(), TokenizeError> {
     let mut sexp_slice = line.as_ref();
 
     let mut comment: Option<TokenInfo> = None;
@@ -36,9 +46,10 @@ pub fn tokenize_line<S: AsRef<str>>(line: S, linum: usize, result: &mut TokenSto
                 if let Ok(num) = ptoken.parse::<number::Number>() {
                     Token::Primitive(Number(num))
                 } else {
-                    // TODO(func) Don't panic on invalid symbol.
-                    let symbol = ptoken.to_symbol_or_panic();
-                    Token::Primitive(Symbol(symbol))
+                    match ptoken.to_symbol() {
+                        Ok(symbol) => Token::Primitive(Symbol(symbol)),
+                        Err(err) => return Err(TokenizeError::InvalidSymbol(err)),
+                    }
                 }
             }
         };
@@ -52,6 +63,7 @@ pub fn tokenize_line<S: AsRef<str>>(line: S, linum: usize, result: &mut TokenSto
     if let Some(comment) = comment {
         result.push_back(comment);
     }
+    Ok(())
 }
 
 

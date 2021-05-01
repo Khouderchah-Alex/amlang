@@ -20,7 +20,7 @@ fn nested() {
     expected.insert(0, Primitive(Symbol("testing".to_symbol_or_panic())));
     expected = nest(expected);
 
-    let tokens = StringStream::new(input);
+    let tokens = StringStream::new(input).unwrap();
     for (i, elem) in tokens.enumerate() {
         assert_eq!(elem.token, expected[i]);
     }
@@ -35,7 +35,7 @@ fn newlines() {
     expected.insert(0, Primitive(Symbol("testing".to_symbol_or_panic())));
     expected = nest(expected);
 
-    let tokens = StringStream::new(input);
+    let tokens = StringStream::new(input).unwrap();
     for (i, elem) in tokens.enumerate() {
         assert_eq!(elem.token, expected[i]);
     }
@@ -50,7 +50,7 @@ fn ints() {
         .collect();
     expected = nest(expected);
 
-    let tokens = StringStream::new(input);
+    let tokens = StringStream::new(input).unwrap();
     for (i, elem) in tokens.enumerate() {
         assert_eq!(elem.token, expected[i]);
     }
@@ -65,7 +65,7 @@ fn floats() {
         .collect();
     expected = nest(expected);
 
-    let tokens = StringStream::new(input);
+    let tokens = StringStream::new(input).unwrap();
     for (i, elem) in tokens.enumerate() {
         assert_eq!(elem.token, expected[i]);
     }

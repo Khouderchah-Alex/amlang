@@ -10,6 +10,7 @@ use crate::parser::{parse_sexp, ParseError};
 use crate::primitive::Primitive;
 use crate::symbol::Symbol;
 use crate::token::string_stream::StringStream;
+use crate::token::TokenizeError;
 
 
 pub type HeapSexp = Box<Sexp>;
@@ -36,6 +37,12 @@ pub struct SexpIntoIter {
 
 pub fn cons(car: Option<HeapSexp>, cdr: Option<HeapSexp>) -> Option<HeapSexp> {
     Some(HeapSexp::new(Sexp::Cons(Cons::new(car, cdr))))
+}
+
+#[derive(Debug)]
+pub enum FromStrError {
+    TokenizeError(TokenizeError),
+    ParseError(ParseError),
 }
 
 
@@ -221,15 +228,18 @@ impl fmt::Display for Cons {
 }
 
 impl FromStr for Sexp {
-    type Err = ParseError;
+    type Err = FromStrError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let stream = StringStream::new(s);
+        let stream = match StringStream::new(s) {
+            Ok(stream) => stream,
+            Err(err) => return Err(FromStrError::TokenizeError(err)),
+        };
 
         return match parse_sexp(&mut stream.peekable(), 0) {
             Ok(Some(sexp)) => Ok(*sexp),
             Ok(None) => Ok(Sexp::Cons(Cons::default())),
-            Err(err) => Err(err),
+            Err(err) => Err(FromStrError::ParseError(err)),
         };
     }
 }

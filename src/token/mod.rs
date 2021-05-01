@@ -1,5 +1,6 @@
 // Public exports.
 pub use token::{Token, TokenInfo};
+pub use tokenize::TokenizeError;
 
 // Public mods.
 pub mod file_stream;

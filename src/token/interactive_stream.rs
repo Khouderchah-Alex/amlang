@@ -4,6 +4,7 @@ use rustyline::Editor;
 use super::token::TokenInfo;
 use super::tokenize::{tokenize_line, TokenStore};
 
+
 pub struct InteractiveStream {
     editor: Editor<()>,
     tokens: TokenStore,
@@ -21,6 +22,7 @@ impl InteractiveStream {
     }
 }
 
+
 impl Iterator for InteractiveStream {
     type Item = TokenInfo;
 
@@ -33,7 +35,11 @@ impl Iterator for InteractiveStream {
             match self.editor.readline("> ") {
                 Ok(line) => {
                     self.editor.add_history_entry(line.as_str());
-                    tokenize_line(&line, 0, &mut self.tokens);
+                    if let Err(err) = tokenize_line(&line, 0, &mut self.tokens) {
+                        println!("Error: {:?}", err);
+                        self.tokens.clear();
+                        continue;
+                    }
                 }
                 Err(ReadlineError::Interrupted) => {
                     println!("^C");
