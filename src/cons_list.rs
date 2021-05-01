@@ -1,10 +1,10 @@
 //! Module for constructing lists as S-exps.
 
-use crate::sexp::{Cons, Sexp};
+use crate::sexp::{Cons, HeapSexp, Sexp};
 
 #[derive(Debug)]
 pub struct ConsList {
-    head: Box<Sexp>,
+    head: HeapSexp,
     end: *mut Cons,
 }
 
@@ -16,11 +16,11 @@ impl ConsList {
         }
     }
 
-    pub fn release(self) -> Box<Sexp> {
+    pub fn release(self) -> HeapSexp {
         self.head
     }
 
-    pub fn append(&mut self, val: Box<Sexp>) {
+    pub fn append(&mut self, val: HeapSexp) {
         let mut tail = Box::new(Sexp::Cons(Cons::new(Some(val), None)));
         let new_end;
         if let Sexp::Cons(c) = tail.as_mut() {

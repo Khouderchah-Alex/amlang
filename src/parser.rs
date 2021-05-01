@@ -5,7 +5,7 @@ use std::iter::Peekable;
 
 use crate::cons_list::ConsList;
 use crate::primitive::Primitive;
-use crate::sexp::Sexp;
+use crate::sexp::{HeapSexp, Sexp};
 use crate::symbol::ToSymbol;
 use crate::token::{Token, TokenInfo};
 
@@ -28,8 +28,8 @@ pub struct ParseError {
 }
 
 /*
-pub fn parse<I: Iterator<Item = TokenInfo>>(tokens: I) -> Result<Vec<Box<Sexp>>, ParseError> {
-    let mut sexps = Vec::<Box<Sexp>>::new();
+pub fn parse<I: Iterator<Item = TokenInfo>>(tokens: I) -> Result<Vec<HeapSexp>, ParseError> {
+    let mut sexps = Vec::<HeapSexp>::new();
     let mut peekable = tokens.peekable();
     while let Some(sexp) = parse_sexp(&mut peekable, 0)? {
         sexps.push(sexp);
@@ -43,7 +43,7 @@ pub fn parse<I: Iterator<Item = TokenInfo>>(tokens: I) -> Result<Vec<Box<Sexp>>,
 pub fn parse_sexp<I: Iterator<Item = TokenInfo>>(
     tokens: &mut Peekable<I>,
     depth: usize,
-) -> Result<Option<Box<Sexp>>, ParseError> {
+) -> Result<Option<HeapSexp>, ParseError> {
     // Let's just ignore comments for now.
     let mut current = tokens.next();
     while let Some(TokenInfo {
@@ -94,7 +94,8 @@ pub fn parse_sexp<I: Iterator<Item = TokenInfo>>(
             let sexp = parse_sexp(tokens, depth + 1)?;
             if let Some(val) = sexp {
                 let mut list = ConsList::new();
-                list.append(Box::new(Sexp::Primitive(Primitive::Symbol(
+
+                list.append(HeapSexp::new(Sexp::Primitive(Primitive::Symbol(
                     "quote".to_symbol_or_panic(),
                 ))));
                 list.append(val);
@@ -113,7 +114,7 @@ pub fn parse_sexp<I: Iterator<Item = TokenInfo>>(
             });
         }
         Token::Primitive(primitive) => {
-            return Ok(Some(Box::new(Sexp::Primitive(primitive))));
+            return Ok(Some(HeapSexp::new(Sexp::Primitive(primitive))));
         }
         Token::Comment(_) => {
             unreachable!();

@@ -3,7 +3,7 @@ use crate::environment::mem_environment::MemEnvironment;
 use crate::environment::meta_environment::{MetaEnvStructure, MetaEnvironment};
 use crate::environment::{NodeId, TripleId};
 use crate::primitive::Primitive;
-use crate::sexp::{cons, Sexp};
+use crate::sexp::{cons, HeapSexp, Sexp};
 use crate::symbol::ToSymbol;
 
 
@@ -66,10 +66,10 @@ impl EnvState {
         EnvState::access_env(&mut self.meta, self.env)
     }
 
-    pub fn node_designator(&mut self, node: NodeId) -> Option<Box<Sexp>> {
+    pub fn node_designator(&mut self, node: NodeId) -> Option<HeapSexp> {
         let designation = self.designation();
         if node == designation {
-            return Some(Box::new(Sexp::Primitive(Primitive::Symbol(
+            return Some(HeapSexp::new(Sexp::Primitive(Primitive::Symbol(
                 META_DESIGNATION.to_symbol_or_panic(),
             ))));
         }
@@ -78,12 +78,12 @@ impl EnvState {
         let names = env.match_but_object(node, designation);
         if let Some(name_node) = names.iter().next() {
             let name = env.triple_object(*name_node);
-            return Some(Box::new(env.node_structure(name).cloned().unwrap()));
+            return Some(HeapSexp::new(env.node_structure(name).cloned().unwrap()));
         }
         None
     }
 
-    pub fn triple_inner_designators(&mut self, triple: TripleId) -> Box<Sexp> {
+    pub fn triple_inner_designators(&mut self, triple: TripleId) -> HeapSexp {
         let env = self.env();
         let s = env.triple_subject(triple);
         let p = env.triple_predicate(triple);
@@ -93,7 +93,7 @@ impl EnvState {
         let pp = self.node_designator(p);
         let oo = if p == self.designation() {
             cons(
-                Some(Box::new(Sexp::Primitive(Primitive::Symbol(
+                Some(HeapSexp::new(Sexp::Primitive(Primitive::Symbol(
                     "quote".to_symbol_or_panic(),
                 )))),
                 cons(ss.clone(), None),

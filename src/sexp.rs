@@ -8,6 +8,8 @@ use crate::primitive;
 use crate::token::string_stream::StringStream;
 
 
+pub type HeapSexp = Box<Sexp>;
+
 #[derive(Clone, PartialEq)]
 pub enum Sexp {
     Primitive(primitive::Primitive),
@@ -16,8 +18,8 @@ pub enum Sexp {
 
 #[derive(Clone, Default, PartialEq)]
 pub struct Cons {
-    car: Option<Box<Sexp>>,
-    cdr: Option<Box<Sexp>>,
+    car: Option<HeapSexp>,
+    cdr: Option<HeapSexp>,
 }
 
 pub struct SexpIter<'a> {
@@ -28,8 +30,8 @@ pub struct SexpIntoIter {
     current: Option<Cons>,
 }
 
-pub fn cons(car: Option<Box<Sexp>>, cdr: Option<Box<Sexp>>) -> Option<Box<Sexp>> {
-    Some(Box::new(Sexp::Cons(Cons::new(car, cdr))))
+pub fn cons(car: Option<HeapSexp>, cdr: Option<HeapSexp>) -> Option<HeapSexp> {
+    Some(HeapSexp::new(Sexp::Cons(Cons::new(car, cdr))))
 }
 
 
@@ -43,7 +45,7 @@ impl Sexp {
 }
 
 impl Cons {
-    pub fn new(car: Option<Box<Sexp>>, cdr: Option<Box<Sexp>>) -> Cons {
+    pub fn new(car: Option<HeapSexp>, cdr: Option<HeapSexp>) -> Cons {
         Cons { car, cdr }
     }
 
@@ -67,11 +69,11 @@ impl Cons {
         }
     }
 
-    pub fn consume(self) -> (Option<Box<Sexp>>, Option<Box<Sexp>>) {
+    pub fn consume(self) -> (Option<HeapSexp>, Option<HeapSexp>) {
         (self.car, self.cdr)
     }
 
-    pub fn set_cdr(&mut self, new: Option<Box<Sexp>>) {
+    pub fn set_cdr(&mut self, new: Option<HeapSexp>) {
         self.cdr = new;
     }
 
@@ -128,7 +130,7 @@ impl<'a> IntoIterator for &'a Cons {
 }
 
 impl Iterator for SexpIntoIter {
-    type Item = Box<Sexp>;
+    type Item = HeapSexp;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.current.is_none() {
@@ -147,7 +149,7 @@ impl Iterator for SexpIntoIter {
 }
 
 impl IntoIterator for Cons {
-    type Item = Box<Sexp>;
+    type Item = HeapSexp;
     type IntoIter = SexpIntoIter;
 
     fn into_iter(self) -> Self::IntoIter {
