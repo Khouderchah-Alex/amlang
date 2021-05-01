@@ -37,7 +37,7 @@ impl Iterator for InteractiveStream {
                 }
                 Err(ReadlineError::Interrupted) => {
                     println!("^C");
-                    break;
+                    continue;
                 }
                 Err(ReadlineError::Eof) => {
                     println!("^D");
