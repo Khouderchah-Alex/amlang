@@ -4,6 +4,7 @@ use lazy_static::lazy_static;
 
 use std::borrow::Cow;
 use std::collections::HashMap;
+use std::convert::TryFrom;
 use std::fmt;
 
 use crate::function::{Args, EvalErr, ExpectedCount, Func, Ret};
@@ -43,6 +44,98 @@ pub struct BuiltIn {
     fun: fn(Args) -> Ret,
 }
 
+
+fn add(args: Args) -> Ret {
+    let mut curr = Number::default();
+    for arg in args {
+        if let Ok(num) = <&Number>::try_from(arg) {
+            curr += *num;
+        } else {
+            return Err(EvalErr::InvalidArgument {
+                given: (*arg).clone(),
+                expected: Cow::Borrowed("a Number"),
+            });
+        }
+    }
+
+    Ok(Sexp::Primitive(Primitive::Number(curr)))
+}
+
+fn sub(args: Args) -> Ret {
+    if args.len() < 1 {
+        return Err(EvalErr::WrongArgumentCount {
+            given: 0,
+            expected: ExpectedCount::AtLeast(1),
+        });
+    }
+
+    let mut curr = Number::default();
+    let mut first = true;
+    for arg in args {
+        if let Ok(num) = <&Number>::try_from(arg) {
+            if first {
+                curr = *num;
+                first = false;
+            } else {
+                curr -= *num;
+            }
+        } else {
+            return Err(EvalErr::InvalidArgument {
+                given: (*arg).clone(),
+                expected: Cow::Borrowed("a Number"),
+            });
+        }
+    }
+
+    Ok(Sexp::Primitive(Primitive::Number(curr)))
+}
+
+fn mul(args: Args) -> Ret {
+    let mut curr = Number::Integer(1);
+    for arg in args {
+        if let Ok(num) = <&Number>::try_from(arg) {
+            curr *= *num;
+        } else {
+            return Err(EvalErr::InvalidArgument {
+                given: (*arg).clone(),
+                expected: Cow::Borrowed("a Number"),
+            });
+        }
+    }
+
+    Ok(Sexp::Primitive(Primitive::Number(curr)))
+}
+
+fn div(args: Args) -> Ret {
+    if args.len() < 1 {
+        return Err(EvalErr::WrongArgumentCount {
+            given: 0,
+            expected: ExpectedCount::AtLeast(1),
+        });
+    }
+
+    let mut curr = Number::default();
+    let mut first = true;
+    for arg in args {
+        if let Ok(num) = <&Number>::try_from(arg) {
+            if first {
+                curr = *num;
+                first = false;
+            } else {
+                curr /= *num;
+            }
+        } else {
+            return Err(EvalErr::InvalidArgument {
+                given: (*arg).clone(),
+                expected: Cow::Borrowed("a Number"),
+            });
+        }
+    }
+
+    Ok(Sexp::Primitive(Primitive::Number(curr)))
+}
+
+
 impl Func for BuiltIn {
     fn call(&self, args: Args) -> Ret {
         (self.fun)(args)
@@ -67,92 +160,38 @@ impl fmt::Display for BuiltIn {
     }
 }
 
-fn add(args: Args) -> Ret {
-    let mut curr = Number::default();
-    for arg in args {
-        if let Sexp::Primitive(Primitive::Number(num)) = arg {
-            curr += *num;
+impl<'a> TryFrom<Sexp> for &'a BuiltIn {
+    type Error = ();
+
+    fn try_from(value: Sexp) -> Result<Self, Self::Error> {
+        if let Sexp::Primitive(Primitive::BuiltIn(builtin)) = value {
+            Ok(builtin)
         } else {
-            return Err(EvalErr::InvalidArgument {
-                given: (*arg).clone(),
-                expected: Cow::Borrowed("a Number"),
-            });
+            Err(())
         }
     }
-
-    Ok(Sexp::Primitive(Primitive::Number(curr)))
 }
 
-fn sub(args: Args) -> Ret {
-    if args.len() < 1 {
-        return Err(EvalErr::WrongArgumentCount {
-            given: 0,
-            expected: ExpectedCount::AtLeast(1),
-        });
-    }
+impl<'a> TryFrom<&'a Sexp> for &'a BuiltIn {
+    type Error = ();
 
-    let mut curr = Number::default();
-    let mut first = true;
-    for arg in args {
-        if let Sexp::Primitive(Primitive::Number(num)) = arg {
-            if first {
-                curr = *num;
-                first = false;
-            } else {
-                curr -= *num;
-            }
+    fn try_from(value: &'a Sexp) -> Result<Self, Self::Error> {
+        if let Sexp::Primitive(Primitive::BuiltIn(builtin)) = value {
+            Ok(builtin)
         } else {
-            return Err(EvalErr::InvalidArgument {
-                given: (*arg).clone(),
-                expected: Cow::Borrowed("a Number"),
-            });
+            Err(())
         }
     }
-
-    Ok(Sexp::Primitive(Primitive::Number(curr)))
 }
 
-fn mul(args: Args) -> Ret {
-    let mut curr = Number::Integer(1);
-    for arg in args {
-        if let Sexp::Primitive(Primitive::Number(num)) = arg {
-            curr *= *num;
+impl<'a> TryFrom<Option<&'a Sexp>> for &'a BuiltIn {
+    type Error = ();
+
+    fn try_from(value: Option<&'a Sexp>) -> Result<Self, Self::Error> {
+        if let Some(Sexp::Primitive(Primitive::BuiltIn(builtin))) = value {
+            Ok(builtin)
         } else {
-            return Err(EvalErr::InvalidArgument {
-                given: (*arg).clone(),
-                expected: Cow::Borrowed("a Number"),
-            });
+            Err(())
         }
     }
-
-    Ok(Sexp::Primitive(Primitive::Number(curr)))
-}
-
-fn div(args: Args) -> Ret {
-    if args.len() < 1 {
-        return Err(EvalErr::WrongArgumentCount {
-            given: 0,
-            expected: ExpectedCount::AtLeast(1),
-        });
-    }
-
-    let mut curr = Number::default();
-    let mut first = true;
-    for arg in args {
-        if let Sexp::Primitive(Primitive::Number(num)) = arg {
-            if first {
-                curr = *num;
-                first = false;
-            } else {
-                curr /= *num;
-            }
-        } else {
-            return Err(EvalErr::InvalidArgument {
-                given: (*arg).clone(),
-                expected: Cow::Borrowed("a Number"),
-            });
-        }
-    }
-
-    Ok(Sexp::Primitive(Primitive::Number(curr)))
 }

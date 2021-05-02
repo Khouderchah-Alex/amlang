@@ -1,4 +1,8 @@
+use std::convert::TryFrom;
 use std::fmt;
+
+use crate::primitive::Primitive;
+use crate::sexp::Sexp;
 
 
 /// String which can be used as an identifier (amlang designator).
@@ -42,14 +46,50 @@ impl Symbol {
 }
 
 
+impl<S: AsRef<str>> ToSymbol for S {
+    fn to_symbol(&self) -> SymbolResult {
+        Symbol::new(self)
+    }
+}
+
 impl fmt::Display for Symbol {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.0)
     }
 }
 
-impl<S: AsRef<str>> ToSymbol for S {
-    fn to_symbol(&self) -> SymbolResult {
-        Symbol::new(self)
+impl TryFrom<Sexp> for Symbol {
+    type Error = ();
+
+    fn try_from(value: Sexp) -> Result<Self, Self::Error> {
+        if let Sexp::Primitive(Primitive::Symbol(symbol)) = value {
+            Ok(symbol)
+        } else {
+            Err(())
+        }
+    }
+}
+
+impl<'a> TryFrom<&'a Sexp> for &'a Symbol {
+    type Error = ();
+
+    fn try_from(value: &'a Sexp) -> Result<Self, Self::Error> {
+        if let Sexp::Primitive(Primitive::Symbol(symbol)) = value {
+            Ok(symbol)
+        } else {
+            Err(())
+        }
+    }
+}
+
+impl<'a> TryFrom<Option<&'a Sexp>> for &'a Symbol {
+    type Error = ();
+
+    fn try_from(value: Option<&'a Sexp>) -> Result<Self, Self::Error> {
+        if let Some(Sexp::Primitive(Primitive::Symbol(symbol))) = value {
+            Ok(symbol)
+        } else {
+            Err(())
+        }
     }
 }

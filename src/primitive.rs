@@ -21,6 +21,7 @@ pub enum Primitive {
     SymbolTable(SymbolTable),
 }
 
+
 impl fmt::Display for Primitive {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {

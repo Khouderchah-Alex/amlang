@@ -1,10 +1,14 @@
 //! Representation of Amlang numbers.
 
+use std::convert::TryFrom;
 use std::fmt;
 use std::ops;
 use std::str;
 
 use self::Number::*;
+use crate::primitive::Primitive;
+use crate::sexp::Sexp;
+
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Number {
@@ -127,6 +131,42 @@ impl ops::DivAssign for Number {
             let a = *a as f64;
             let b: f64 = other.into();
             *self = Number::Float(a / b);
+        }
+    }
+}
+
+impl TryFrom<Sexp> for Number {
+    type Error = ();
+
+    fn try_from(value: Sexp) -> Result<Self, Self::Error> {
+        if let Sexp::Primitive(Primitive::Number(number)) = value {
+            Ok(number)
+        } else {
+            Err(())
+        }
+    }
+}
+
+impl<'a> TryFrom<&'a Sexp> for &'a Number {
+    type Error = ();
+
+    fn try_from(value: &'a Sexp) -> Result<Self, Self::Error> {
+        if let Sexp::Primitive(Primitive::Number(number)) = value {
+            Ok(number)
+        } else {
+            Err(())
+        }
+    }
+}
+
+impl<'a> TryFrom<Option<&'a Sexp>> for &'a Number {
+    type Error = ();
+
+    fn try_from(value: Option<&'a Sexp>) -> Result<Self, Self::Error> {
+        if let Some(Sexp::Primitive(Primitive::Number(number))) = value {
+            Ok(number)
+        } else {
+            Err(())
         }
     }
 }

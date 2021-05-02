@@ -1,8 +1,9 @@
 use std::borrow::Cow;
+use std::convert::TryFrom;
 
 use super::agent::Agent;
 use super::env_state::EnvState;
-use crate::builtin::BUILTINS;
+use crate::builtin::{BuiltIn, BUILTINS};
 use crate::function::{
     EvalErr::{self, *},
     ExpectedCount, Func, Ret,
@@ -11,6 +12,7 @@ use crate::model::{Designation, Eval};
 use crate::parser::parse_sexp;
 use crate::primitive::Primitive;
 use crate::sexp::Sexp;
+use crate::symbol::Symbol;
 use crate::syntax;
 use crate::token::interactive_stream::InteractiveStream;
 
@@ -40,7 +42,7 @@ impl AmlangAgent {
 
             Sexp::Cons(cons) => {
                 let mut iter = cons.iter();
-                let name = if let Some(Sexp::Primitive(Primitive::Symbol(symbol))) = iter.next() {
+                let name = if let Ok(symbol) = <&Symbol>::try_from(iter.next()) {
                     symbol
                 } else {
                     return Err(InvalidArgument {
@@ -168,7 +170,7 @@ impl Eval for AmlangAgent {
                     None => return Err(InvalidSexp(Sexp::Cons(cons.clone()))),
                 };
 
-                if let Sexp::Primitive(Primitive::Symbol(first)) = car {
+                if let Ok(first) = <&Symbol>::try_from(car) {
                     match first.as_str() {
                         "quote" => {
                             return syntax::quote(cons.cdr());
@@ -180,7 +182,7 @@ impl Eval for AmlangAgent {
                     }
                 }
 
-                if let Sexp::Primitive(Primitive::BuiltIn(builtin)) = self.eval(car)? {
+                if let Ok(builtin) = <&BuiltIn>::try_from(self.eval(car)?) {
                     let args = syntax::evlis(cons.cdr(), self)?;
                     return builtin.call(&args);
                 }
