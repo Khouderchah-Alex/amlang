@@ -69,9 +69,7 @@ impl EnvState {
     pub fn node_designator(&mut self, node: NodeId) -> Option<HeapSexp> {
         let designation = self.designation();
         if node == designation {
-            return Some(HeapSexp::new(Sexp::Primitive(Primitive::Symbol(
-                META_DESIGNATION.to_symbol_or_panic(),
-            ))));
+            return Some(HeapSexp::new(META_DESIGNATION.to_symbol_or_panic().into()));
         }
 
         let env = self.env();
@@ -93,9 +91,7 @@ impl EnvState {
         let pp = self.node_designator(p);
         let oo = if p == self.designation() {
             cons(
-                Some(HeapSexp::new(Sexp::Primitive(Primitive::Symbol(
-                    "quote".to_symbol_or_panic(),
-                )))),
+                Some(HeapSexp::new("quote".to_symbol_or_panic().into())),
                 cons(ss.clone(), None),
             )
         } else {

@@ -37,7 +37,7 @@ impl AmlangAgent {
 
         match args.unwrap() {
             Sexp::Primitive(primitive) => {
-                return Err(InvalidSexp(Sexp::Primitive(primitive.clone())));
+                return Err(InvalidSexp(primitive.clone().into()));
             }
 
             Sexp::Cons(cons) => {
@@ -46,7 +46,7 @@ impl AmlangAgent {
                     symbol
                 } else {
                     return Err(InvalidArgument {
-                        given: Sexp::Cons(cons.clone()),
+                        given: cons.clone().into(),
                         expected: Cow::Borrowed("symbol"),
                     });
                 };
@@ -66,8 +66,7 @@ impl AmlangAgent {
                             panic!("Env designation isn't a symbol table");
                         }
 
-                        let name_sexp = Sexp::Primitive(Primitive::Symbol(name.clone()));
-                        let name_node = env.insert_structure(name_sexp.clone());
+                        let name_node = env.insert_structure(name.clone().into());
                         if let Some(Sexp::Primitive(Primitive::SymbolTable(table))) =
                             env.node_structure(designation)
                         {
@@ -82,7 +81,7 @@ impl AmlangAgent {
                         for triple in env.match_all() {
                             println!("    {}", self.env_state().triple_inner_designators(triple));
                         }
-                        Ok(name_sexp)
+                        Ok(name.clone().into())
                     }
                     _ => Err(WrongArgumentCount {
                         given: iter.count() + 2,
@@ -141,7 +140,7 @@ impl Designation for AmlangAgent {
             Primitive::Symbol(symbol) => {
                 let value = BUILTINS.lookup(symbol.as_str());
                 match value {
-                    Some(builtin) => Ok(Sexp::Primitive(Primitive::BuiltIn(builtin))),
+                    Some(builtin) => Ok(builtin.into()),
                     None => Err(EvalErr::UnboundSymbol(symbol.clone())),
                 }
             }
@@ -152,7 +151,7 @@ impl Designation for AmlangAgent {
                 .cloned()
                 .unwrap_or_else(Default::default)),
             // Base case for self-designating.
-            _ => Ok(Sexp::Primitive(designator.clone())),
+            _ => Ok(designator.clone().into()),
         };
     }
 }
@@ -167,7 +166,7 @@ impl Eval for AmlangAgent {
             Sexp::Cons(cons) => {
                 let car = match cons.car() {
                     Some(car) => car,
-                    None => return Err(InvalidSexp(Sexp::Cons(cons.clone()))),
+                    None => return Err(InvalidSexp(cons.clone().into())),
                 };
 
                 if let Ok(first) = <&Symbol>::try_from(car) {

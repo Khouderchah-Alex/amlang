@@ -18,7 +18,7 @@ pub fn evlis<T: Eval>(args: Option<&Sexp>, eval: &mut T) -> Result<Vec<Sexp>, Ev
 
     match args.unwrap() {
         Sexp::Primitive(primitive) => {
-            return Err(InvalidSexp(Sexp::Primitive(primitive.clone())));
+            return Err(InvalidSexp(primitive.clone().into()));
         }
 
         Sexp::Cons(cons) => {
@@ -41,7 +41,7 @@ pub fn quote(args: Option<&Sexp>) -> Ret {
 
     match args.unwrap() {
         Sexp::Primitive(primitive) => {
-            return Err(InvalidSexp(Sexp::Primitive(primitive.clone())));
+            return Err(InvalidSexp(primitive.clone().into()));
         }
 
         Sexp::Cons(cons) => {
@@ -55,7 +55,7 @@ pub fn quote(args: Option<&Sexp>) -> Ret {
 
             let ret = cons.car();
             return match ret {
-                None => Ok(Sexp::Cons(Cons::default())),
+                None => Ok(Cons::default().into()),
                 Some(val) => Ok(val.clone()),
             };
         }

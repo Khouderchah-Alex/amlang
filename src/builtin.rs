@@ -58,7 +58,7 @@ fn add(args: Args) -> Ret {
         }
     }
 
-    Ok(Sexp::Primitive(Primitive::Number(curr)))
+    Ok(curr.into())
 }
 
 fn sub(args: Args) -> Ret {
@@ -87,7 +87,7 @@ fn sub(args: Args) -> Ret {
         }
     }
 
-    Ok(Sexp::Primitive(Primitive::Number(curr)))
+    Ok(curr.into())
 }
 
 fn mul(args: Args) -> Ret {
@@ -103,7 +103,7 @@ fn mul(args: Args) -> Ret {
         }
     }
 
-    Ok(Sexp::Primitive(Primitive::Number(curr)))
+    Ok(curr.into())
 }
 
 fn div(args: Args) -> Ret {
@@ -132,7 +132,7 @@ fn div(args: Args) -> Ret {
         }
     }
 
-    Ok(Sexp::Primitive(Primitive::Number(curr)))
+    Ok(curr.into())
 }
 
 

@@ -95,9 +95,7 @@ pub fn parse_sexp<I: Iterator<Item = TokenInfo>>(
             if let Some(val) = sexp {
                 let mut list = ConsList::new();
 
-                list.append(HeapSexp::new(Sexp::Primitive(Primitive::Symbol(
-                    "quote".to_symbol_or_panic(),
-                ))));
+                list.append(HeapSexp::new("quote".to_symbol_or_panic().into()));
                 list.append(val);
                 return Ok(Some(list.release()));
             } else {
@@ -114,7 +112,7 @@ pub fn parse_sexp<I: Iterator<Item = TokenInfo>>(
             });
         }
         Token::Primitive(primitive) => {
-            return Ok(Some(HeapSexp::new(Sexp::Primitive(primitive))));
+            return Ok(Some(HeapSexp::new(primitive.into())));
         }
         Token::Comment(_) => {
             unreachable!();

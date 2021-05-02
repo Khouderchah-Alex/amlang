@@ -3,8 +3,12 @@
 use std::fmt;
 use std::str::FromStr;
 
+use crate::environment::NodeId;
+use crate::function::BuiltIn;
+use crate::number::Number;
 use crate::parser::{parse_sexp, ParseError};
-use crate::primitive;
+use crate::primitive::Primitive;
+use crate::symbol::Symbol;
 use crate::token::string_stream::StringStream;
 
 
@@ -12,7 +16,7 @@ pub type HeapSexp = Box<Sexp>;
 
 #[derive(Clone, PartialEq)]
 pub enum Sexp {
-    Primitive(primitive::Primitive),
+    Primitive(Primitive),
     Cons(Cons),
 }
 
@@ -227,5 +231,42 @@ impl FromStr for Sexp {
             Ok(None) => Ok(Sexp::Cons(Cons::default())),
             Err(err) => Err(err),
         };
+    }
+}
+
+
+impl From<Primitive> for Sexp {
+    fn from(primitive: Primitive) -> Self {
+        Sexp::Primitive(primitive)
+    }
+}
+
+impl From<Cons> for Sexp {
+    fn from(cons: Cons) -> Self {
+        Sexp::Cons(cons)
+    }
+}
+
+impl From<Number> for Sexp {
+    fn from(number: Number) -> Self {
+        Sexp::Primitive(Primitive::Number(number))
+    }
+}
+
+impl From<Symbol> for Sexp {
+    fn from(symbol: Symbol) -> Self {
+        Sexp::Primitive(Primitive::Symbol(symbol))
+    }
+}
+
+impl From<&'static BuiltIn> for Sexp {
+    fn from(builtin: &'static BuiltIn) -> Self {
+        Sexp::Primitive(Primitive::BuiltIn(builtin))
+    }
+}
+
+impl From<NodeId> for Sexp {
+    fn from(node: NodeId) -> Self {
+        Sexp::Primitive(Primitive::Node(node))
     }
 }
