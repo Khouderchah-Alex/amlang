@@ -36,60 +36,115 @@ impl AmlangAgent {
             });
         }
 
-        match args.unwrap() {
+        let cons = match args.unwrap() {
             Sexp::Primitive(primitive) => {
                 return Err(InvalidSexp(primitive.clone().into()));
             }
+            Sexp::Cons(cons) => cons,
+        };
 
-            Sexp::Cons(cons) => {
-                let mut iter = cons.iter();
-                let name = if let Ok(symbol) = <&Symbol>::try_from(iter.next()) {
-                    symbol
-                } else {
-                    return Err(InvalidArgument {
-                        given: cons.clone().into(),
-                        expected: Cow::Borrowed("symbol"),
-                    });
-                };
+        let mut iter = cons.iter();
+        let name = if let Ok(symbol) = <&Symbol>::try_from(iter.next()) {
+            symbol
+        } else {
+            return Err(InvalidArgument {
+                given: cons.clone().into(),
+                expected: Cow::Borrowed("symbol"),
+            });
+        };
 
-                return match iter.next() {
-                    None => {
-                        let designation = self.env_state().designation();
-                        let env = self.env_state().env();
+        let designation = self.env_state().designation();
 
-                        if let Ok(table) =
-                            <&mut SymbolTable>::try_from(env.node_structure(designation))
-                        {
-                            if table.contains_key(name) {
-                                return Err(AlreadyBoundSymbol(name.clone()));
-                            }
-                        } else {
-                            panic!("Env designation isn't a symbol table");
-                        }
-
-                        let name_node = env.insert_structure(name.clone().into());
-                        if let Ok(table) =
-                            <&mut SymbolTable>::try_from(env.node_structure(designation))
-                        {
-                            table.insert(name.clone(), name_node);
-                        } else {
-                            panic!("Env designation isn't a symbol table");
-                        }
-
-                        let node = env.insert_atom();
-                        env.insert_triple(node, designation, name_node);
-
-                        for triple in env.match_all() {
-                            println!("    {}", self.env_state().triple_inner_designators(triple));
-                        }
-                        Ok(name.clone().into())
-                    }
-                    _ => Err(WrongArgumentCount {
-                        given: iter.count() + 2,
-                        expected: ExpectedCount::AtMost(2),
-                    }),
-                };
+        if let Ok(table) =
+            <&mut SymbolTable>::try_from(self.env_state().env().node_structure(designation))
+        {
+            if table.contains_key(name) {
+                return Err(AlreadyBoundSymbol(name.clone()));
             }
+        } else {
+            panic!("Env designation isn't a symbol table");
+        }
+
+        let node = if let Some(structure) = iter.next() {
+            if let Some(_) = iter.next() {
+                return Err(WrongArgumentCount {
+                    given: iter.count() + 3,
+                    expected: ExpectedCount::AtMost(2),
+                });
+            }
+            let s = self.eval(structure)?;
+            self.env_state().env().insert_structure(s)
+        } else {
+            self.env_state().env().insert_atom()
+        };
+        let env = self.env_state().env();
+        let name_node = env.insert_structure(name.clone().into());
+
+        if let Ok(table) = <&mut SymbolTable>::try_from(env.node_structure(designation)) {
+            table.insert(name.clone(), node);
+        } else {
+            panic!("Env designation isn't a symbol table");
+        }
+
+        env.insert_triple(node, designation, name_node);
+
+        for triple in env.match_all() {
+            println!("    {}", self.env_state().triple_inner_designators(triple));
+        }
+        Ok(name.clone().into())
+    }
+
+
+    fn env_query(&mut self, args: Option<&Sexp>) -> Ret {
+        if args.is_none() {
+            return Err(WrongArgumentCount {
+                given: 0,
+                expected: ExpectedCount::AtLeast(1),
+            });
+        }
+
+        let cons = match args.unwrap() {
+            Sexp::Primitive(primitive) => {
+                return Err(InvalidSexp(primitive.clone().into()));
+            }
+            Sexp::Cons(cons) => cons,
+        };
+
+        let mut iter = cons.iter();
+        let name = if let Ok(symbol) = <&Symbol>::try_from(iter.next()) {
+            symbol
+        } else {
+            return Err(InvalidArgument {
+                given: cons.clone().into(),
+                expected: Cow::Borrowed("symbol"),
+            });
+        };
+
+        if let Some(_) = iter.next() {
+            return Err(WrongArgumentCount {
+                given: iter.count() + 2,
+                expected: ExpectedCount::Exactly(1),
+            });
+        }
+
+        let designation = self.env_state().designation();
+        let env = self.env_state().env();
+
+        let node = if let Ok(table) = <&mut SymbolTable>::try_from(env.node_structure(designation))
+        {
+            if let Some(node) = table.lookup(name) {
+                *node
+            } else {
+                return Err(EvalErr::UnboundSymbol(name.clone()));
+            }
+        } else {
+            panic!("Env designation isn't a symbol table");
+        };
+
+        if let Some(sexp) = env.node_structure(node) {
+            Ok(sexp.clone())
+        } else {
+            Ok(Sexp::default())
         }
     }
 }
@@ -175,8 +230,11 @@ impl Eval for AmlangAgent {
                         "quote" => {
                             return syntax::quote(cons.cdr());
                         }
-                        "new" => {
+                        "def" => {
                             return self.env_insert(cons.cdr());
+                        }
+                        "ask" => {
+                            return self.env_query(cons.cdr());
                         }
                         _ => { /* Fallthrough */ }
                     }
