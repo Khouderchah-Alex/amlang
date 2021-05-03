@@ -9,6 +9,7 @@ use crate::number::Number;
 use crate::parser::{parse_sexp, ParseError};
 use crate::primitive::Primitive;
 use crate::symbol::Symbol;
+use crate::symbol_table::SymbolTable;
 use crate::token::string_stream::StringStream;
 use crate::token::TokenizeError;
 
@@ -266,6 +267,12 @@ impl From<Number> for Sexp {
 impl From<Symbol> for Sexp {
     fn from(symbol: Symbol) -> Self {
         Sexp::Primitive(Primitive::Symbol(symbol))
+    }
+}
+
+impl From<SymbolTable> for Sexp {
+    fn from(table: SymbolTable) -> Self {
+        Sexp::Primitive(Primitive::SymbolTable(table))
     }
 }
 

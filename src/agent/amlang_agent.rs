@@ -13,6 +13,7 @@ use crate::parser::parse_sexp;
 use crate::primitive::Primitive;
 use crate::sexp::Sexp;
 use crate::symbol::Symbol;
+use crate::symbol_table::SymbolTable;
 use crate::syntax;
 use crate::token::interactive_stream::InteractiveStream;
 
@@ -56,10 +57,10 @@ impl AmlangAgent {
                         let designation = self.env_state().designation();
                         let env = self.env_state().env();
 
-                        if let Some(Sexp::Primitive(Primitive::SymbolTable(table))) =
-                            env.node_structure(designation)
+                        if let Ok(table) =
+                            <&mut SymbolTable>::try_from(env.node_structure(designation))
                         {
-                            if table.contains_key(&name) {
+                            if table.contains_key(name) {
                                 return Err(AlreadyBoundSymbol(name.clone()));
                             }
                         } else {
@@ -67,8 +68,8 @@ impl AmlangAgent {
                         }
 
                         let name_node = env.insert_structure(name.clone().into());
-                        if let Some(Sexp::Primitive(Primitive::SymbolTable(table))) =
-                            env.node_structure(designation)
+                        if let Ok(table) =
+                            <&mut SymbolTable>::try_from(env.node_structure(designation))
                         {
                             table.insert(name.clone(), name_node);
                         } else {

@@ -15,6 +15,7 @@ mod parser;
 mod primitive;
 mod sexp;
 mod symbol;
+mod symbol_table;
 mod syntax;
 mod token;
 

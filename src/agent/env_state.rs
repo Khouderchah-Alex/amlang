@@ -1,10 +1,12 @@
+use std::convert::TryFrom;
+
 use crate::environment::environment::{EnvObject, Environment};
 use crate::environment::mem_environment::MemEnvironment;
 use crate::environment::meta_environment::{MetaEnvStructure, MetaEnvironment};
 use crate::environment::{NodeId, TripleId};
-use crate::primitive::Primitive;
-use crate::sexp::{cons, HeapSexp, Sexp};
+use crate::sexp::{cons, HeapSexp};
 use crate::symbol::ToSymbol;
+use crate::symbol_table::SymbolTable;
 
 
 pub struct EnvState {
@@ -27,11 +29,9 @@ impl EnvState {
         let env_obj = EnvState::access_env(&mut meta, env);
         let pos = env_obj.self_node();
 
-        let designation =
-            env_obj.insert_structure(Sexp::Primitive(Primitive::SymbolTable(Default::default())));
-        if let Some(Sexp::Primitive(Primitive::SymbolTable(table))) =
-            env_obj.node_structure(designation)
-        {
+        let designation = env_obj.insert_structure(SymbolTable::default().into());
+
+        if let Ok(table) = <&mut SymbolTable>::try_from(env_obj.node_structure(designation)) {
             table.insert(META_DESIGNATION.to_symbol_or_panic(), designation);
         } else {
             panic!("Env designation isn't a symbol table");

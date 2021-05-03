@@ -1,15 +1,13 @@
 //! Representation of primitives.
 
-use std::collections::HashMap;
 use std::fmt;
 
 use crate::environment::NodeId;
 use crate::function::BuiltIn;
 use crate::number::Number;
 use crate::symbol::Symbol;
+use crate::symbol_table::SymbolTable;
 
-
-pub type SymbolTable = HashMap<Symbol, NodeId>;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Primitive {
