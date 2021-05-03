@@ -2,6 +2,7 @@ use std::env;
 use std::path::Path;
 
 mod agent;
+#[cfg(test)]
 mod append_vec;
 mod builtin;
 mod cons_list;
