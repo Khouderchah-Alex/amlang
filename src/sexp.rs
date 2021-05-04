@@ -1,5 +1,6 @@
 //! Module for representing S-exps.
 
+use std::convert::TryFrom;
 use std::fmt;
 use std::str::FromStr;
 
@@ -95,21 +96,34 @@ impl Cons {
         const MAX_DISPLAY_LENGTH: usize = 64;
 
         let mut pos: usize = 0;
-        write!(f, "(")?;
+        let mut outer_quote = false;
         for val in self.iter() {
+            if pos == 0 {
+                if let Ok(symbol) = <&Symbol>::try_from(val) {
+                    if symbol.as_str() == "quote" {
+                        outer_quote = true;
+                        write!(f, "'")?;
+                        pos += 1;
+                        continue;
+                    }
+                }
+                write!(f, "(")?;
+            }
+
             if pos >= MAX_DISPLAY_LENGTH {
                 write!(f, "...")?;
                 break;
             }
 
-            if pos > 0 {
+            if pos > 0 && !outer_quote {
                 write!(f, " ")?;
             }
             write!(f, "{}", val)?;
 
             pos += 1;
         }
-        write!(f, ")")
+
+        if !outer_quote { write!(f, ")") } else { Ok(()) }
     }
 }
 
