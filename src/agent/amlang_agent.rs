@@ -53,47 +53,16 @@ impl AmlangAgent {
             });
         };
 
-        let designation = self.env_state().designation();
-
-        if let Ok(table) =
-            <&mut SymbolTable>::try_from(self.env_state().env().node_structure(designation))
-        {
-            if table.contains_key(name) {
-                return Err(AlreadyBoundSymbol(name.clone()));
-            }
-        } else {
-            panic!("Env designation isn't a symbol table");
+        let structure = iter.next();
+        if structure.is_some() && iter.next().is_some() {
+            return Err(WrongArgumentCount {
+                given: iter.count() + 3,
+                expected: ExpectedCount::AtMost(2),
+            });
         }
 
-        let node = if let Some(structure) = iter.next() {
-            if let Some(_) = iter.next() {
-                return Err(WrongArgumentCount {
-                    given: iter.count() + 3,
-                    expected: ExpectedCount::AtMost(2),
-                });
-            }
-            let s = self.eval(structure)?;
-            self.env_state().env().insert_structure(s)
-        } else {
-            self.env_state().env().insert_atom()
-        };
-        let env = self.env_state().env();
-        let name_node = env.insert_structure(name.clone().into());
-
-        if let Ok(table) = <&mut SymbolTable>::try_from(env.node_structure(designation)) {
-            table.insert(name.clone(), node);
-        } else {
-            panic!("Env designation isn't a symbol table");
-        }
-
-        env.insert_triple(node, designation, name_node);
-
-        for triple in env.match_all() {
-            println!("    {}", self.env_state().triple_inner_designators(triple));
-        }
-        Ok(name.clone().into())
+        self.env_insert_internal(name, structure)
     }
-
 
     fn env_query(&mut self, args: Option<&Sexp>) -> Ret {
         if args.is_none() {
@@ -127,6 +96,46 @@ impl AmlangAgent {
             });
         }
 
+        self.env_query_internal(name)
+    }
+
+    fn env_insert_internal(&mut self, name: &Symbol, structure: Option<&Sexp>) -> Ret {
+        let designation = self.env_state().designation();
+
+        if let Ok(table) =
+            <&mut SymbolTable>::try_from(self.env_state().env().node_structure(designation))
+        {
+            if table.contains_key(name) {
+                return Err(AlreadyBoundSymbol(name.clone()));
+            }
+        } else {
+            panic!("Env designation isn't a symbol table");
+        }
+
+        let node = if let Some(sexp) = structure {
+            let s = self.eval(sexp)?;
+            self.env_state().env().insert_structure(s)
+        } else {
+            self.env_state().env().insert_atom()
+        };
+        let env = self.env_state().env();
+        let name_node = env.insert_structure(name.clone().into());
+
+        if let Ok(table) = <&mut SymbolTable>::try_from(env.node_structure(designation)) {
+            table.insert(name.clone(), node);
+        } else {
+            panic!("Env designation isn't a symbol table");
+        }
+
+        env.insert_triple(node, designation, name_node);
+
+        for triple in env.match_all() {
+            println!("    {}", self.env_state().triple_inner_designators(triple));
+        }
+        Ok(name.clone().into())
+    }
+
+    fn env_query_internal(&mut self, name: &Symbol) -> Ret {
         let designation = self.env_state().designation();
         let env = self.env_state().env();
 
@@ -197,7 +206,13 @@ impl Designation for AmlangAgent {
                 let value = BUILTINS.lookup(symbol.as_str());
                 match value {
                     Some(builtin) => Ok(builtin.into()),
-                    None => Err(EvalErr::UnboundSymbol(symbol.clone())),
+                    None => {
+                        if let Ok(structure) = self.env_query_internal(symbol) {
+                            Ok(structure.clone())
+                        } else {
+                            Err(EvalErr::UnboundSymbol(symbol.clone()))
+                        }
+                    }
                 }
             }
             Primitive::Node(node) => Ok(self
