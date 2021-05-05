@@ -4,9 +4,8 @@ use std::convert::TryFrom;
 use std::fmt;
 use std::str::FromStr;
 
-use crate::environment::NodeId;
 use crate::parser::{parse_sexp, ParseError};
-use crate::primitive::{BuiltIn, Number, Primitive, Symbol, SymbolTable};
+use crate::primitive::{BuiltIn, NodeId, Number, Primitive, Symbol, SymbolTable};
 use crate::token::string_stream::StringStream;
 use crate::token::TokenizeError;
 
