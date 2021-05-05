@@ -4,11 +4,11 @@ use std::path::Path;
 mod agent;
 #[cfg(test)]
 mod append_vec;
+mod builtins;
 mod cons_list;
 mod environment;
 mod function;
 mod model;
-mod old_environment;
 mod parser;
 mod primitive;
 mod sexp;

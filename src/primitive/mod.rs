@@ -18,7 +18,7 @@ pub use crate::environment::NodeId;
 pub enum Primitive {
     Number(Number),
     Symbol(Symbol),
-    BuiltIn(&'static BuiltIn),
+    BuiltIn(BuiltIn),
     Node(NodeId),
 
     SymbolTable(SymbolTable),

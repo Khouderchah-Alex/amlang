@@ -286,8 +286,8 @@ impl From<SymbolTable> for Sexp {
     }
 }
 
-impl From<&'static BuiltIn> for Sexp {
-    fn from(builtin: &'static BuiltIn) -> Self {
+impl From<BuiltIn> for Sexp {
+    fn from(builtin: BuiltIn) -> Self {
         Sexp::Primitive(Primitive::BuiltIn(builtin))
     }
 }

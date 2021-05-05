@@ -3,14 +3,14 @@ use std::convert::TryFrom;
 
 use super::agent::Agent;
 use super::env_state::EnvState;
+use crate::builtins::{add, div, mul, sub};
 use crate::function::{
     EvalErr::{self, *},
     ExpectedCount, Func, Ret,
 };
 use crate::model::{Designation, Eval};
 use crate::parser::parse_sexp;
-use crate::primitive::builtin::BUILTINS;
-use crate::primitive::{BuiltIn, Primitive, Symbol, SymbolTable};
+use crate::primitive::{BuiltIn, Primitive, Symbol, SymbolTable, ToSymbol};
 use crate::sexp::Sexp;
 use crate::syntax;
 use crate::token::interactive_stream::InteractiveStream;
@@ -26,7 +26,7 @@ impl AmlangAgent {
         Self { env_state }
     }
 
-    fn env_insert(&mut self, args: Option<&Sexp>) -> Ret {
+    fn env_insert_wrapper(&mut self, args: Option<&Sexp>) -> Ret {
         if args.is_none() {
             return Err(WrongArgumentCount {
                 given: 0,
@@ -59,10 +59,10 @@ impl AmlangAgent {
             });
         }
 
-        self.env_insert_internal(name, structure)
+        self.env_insert(name, structure)
     }
 
-    fn env_query(&mut self, args: Option<&Sexp>) -> Ret {
+    fn env_query_wrapper(&mut self, args: Option<&Sexp>) -> Ret {
         if args.is_none() {
             return Err(WrongArgumentCount {
                 given: 0,
@@ -94,10 +94,10 @@ impl AmlangAgent {
             });
         }
 
-        self.env_query_internal(name)
+        self.env_query(name)
     }
 
-    fn env_insert_internal(&mut self, name: &Symbol, structure: Option<&Sexp>) -> Ret {
+    fn env_insert(&mut self, name: &Symbol, structure: Option<&Sexp>) -> Ret {
         let designation = self.env_state().designation();
 
         if let Ok(table) =
@@ -133,7 +133,7 @@ impl AmlangAgent {
         Ok(name.clone().into())
     }
 
-    fn env_query_internal(&mut self, name: &Symbol) -> Ret {
+    fn env_query(&mut self, name: &Symbol) -> Ret {
         let designation = self.env_state().designation();
         let env = self.env_state().env();
 
@@ -163,8 +163,26 @@ impl Default for AmlangAgent {
     }
 }
 
+macro_rules! insert_builtins {
+    [$self:ident, $($n:tt : $x:expr),*] => {
+        {
+            $(
+                {
+                    let fun: Sexp = BuiltIn::new(stringify!($x), $x).into();
+                    $self.env_insert(&$n.to_symbol_or_panic(), Some(&fun)).unwrap();
+                }
+            )*
+        }
+    };
+    [$($n:tt : $x:expr),+ ,] => {
+        builtins![$($n : $x),*]
+    };
+}
+
 impl Agent for AmlangAgent {
     fn run(&mut self) -> Result<(), String> {
+        insert_builtins![self, "+": add, "-": sub, "*": mul, "/": div];
+
         let stream = InteractiveStream::new();
         let mut peekable = stream.peekable();
 
@@ -201,16 +219,10 @@ impl Designation for AmlangAgent {
     fn designate(&mut self, designator: &Primitive) -> Ret {
         return match designator {
             Primitive::Symbol(symbol) => {
-                let value = BUILTINS.lookup(symbol.as_str());
-                match value {
-                    Some(builtin) => Ok(builtin.into()),
-                    None => {
-                        if let Ok(structure) = self.env_query_internal(symbol) {
-                            Ok(structure.clone())
-                        } else {
-                            Err(EvalErr::UnboundSymbol(symbol.clone()))
-                        }
-                    }
+                if let Ok(structure) = self.env_query(symbol) {
+                    Ok(structure.clone())
+                } else {
+                    Err(EvalErr::UnboundSymbol(symbol.clone()))
                 }
             }
             Primitive::Node(node) => Ok(self
@@ -244,16 +256,16 @@ impl Eval for AmlangAgent {
                             return syntax::quote(cons.cdr());
                         }
                         "def" => {
-                            return self.env_insert(cons.cdr());
+                            return self.env_insert_wrapper(cons.cdr());
                         }
                         "ask" => {
-                            return self.env_query(cons.cdr());
+                            return self.env_query_wrapper(cons.cdr());
                         }
                         _ => { /* Fallthrough */ }
                     }
                 }
 
-                if let Ok(builtin) = <&BuiltIn>::try_from(self.eval(car)?) {
+                if let Ok(builtin) = <BuiltIn>::try_from(self.eval(car)?) {
                     let args = syntax::evlis(cons.cdr(), self)?;
                     return builtin.call(&args);
                 }

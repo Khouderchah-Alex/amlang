@@ -17,17 +17,9 @@ pub enum Number {
     // TODO fraction repr?
 }
 
-impl Into<f64> for Number {
-    fn into(self) -> f64 {
-        match self {
-            Integer(i) => i as f64,
-            Float(f) => f,
-        }
-    }
-}
-
 #[derive(Debug)]
 pub struct ParseNumberError(String);
+
 
 impl fmt::Display for Number {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -59,6 +51,15 @@ impl str::FromStr for Number {
 impl Default for Number {
     fn default() -> Self {
         Number::Integer(0)
+    }
+}
+
+impl Into<f64> for Number {
+    fn into(self) -> f64 {
+        match self {
+            Integer(i) => i as f64,
+            Float(f) => f,
+        }
     }
 }
 
