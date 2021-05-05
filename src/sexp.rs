@@ -119,6 +119,9 @@ impl Cons {
             pos += 1;
         }
 
+        if pos == 0 {
+            write!(f, "(")?;
+        }
         if !outer_quote { write!(f, ")") } else { Ok(()) }
     }
 }
