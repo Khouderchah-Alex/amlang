@@ -151,7 +151,7 @@ impl AmlangAgent {
         if let Some(sexp) = env.node_structure(node) {
             Ok(sexp.clone())
         } else {
-            Ok(Sexp::default())
+            Ok(name.clone().into())
         }
     }
 }
@@ -230,7 +230,7 @@ impl Designation for AmlangAgent {
                 .env()
                 .node_structure(*node)
                 .cloned()
-                .unwrap_or_else(Default::default)),
+                .unwrap_or((*node).into())),
             // Base case for self-designating.
             _ => Ok(designator.clone().into()),
         };
