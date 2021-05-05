@@ -8,9 +8,8 @@ use std::convert::TryFrom;
 use std::fmt;
 
 use crate::function::{Args, EvalErr, ExpectedCount, Func, Ret};
-use crate::number::Number;
 use crate::old_environment::Environment;
-use crate::primitive::Primitive;
+use crate::primitive::{Number, Primitive};
 use crate::sexp::Sexp;
 
 macro_rules! builtins {

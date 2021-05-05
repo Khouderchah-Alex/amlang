@@ -5,10 +5,10 @@ use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::hash::Hash;
 
+use super::Primitive;
+use super::Symbol;
 use crate::environment::NodeId;
-use crate::primitive::Primitive;
 use crate::sexp::Sexp;
-use crate::symbol::Symbol;
 
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]

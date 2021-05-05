@@ -2,7 +2,7 @@ use std::borrow::Borrow;
 use std::convert::TryFrom;
 use std::fmt;
 
-use crate::primitive::Primitive;
+use super::Primitive;
 use crate::sexp::Sexp;
 
 

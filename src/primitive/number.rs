@@ -6,7 +6,7 @@ use std::ops;
 use std::str;
 
 use self::Number::*;
-use crate::primitive::Primitive;
+use super::Primitive;
 use crate::sexp::Sexp;
 
 

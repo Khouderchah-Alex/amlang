@@ -3,17 +3,15 @@ use std::convert::TryFrom;
 
 use super::agent::Agent;
 use super::env_state::EnvState;
-use crate::builtin::{BuiltIn, BUILTINS};
 use crate::function::{
     EvalErr::{self, *},
     ExpectedCount, Func, Ret,
 };
 use crate::model::{Designation, Eval};
 use crate::parser::parse_sexp;
-use crate::primitive::Primitive;
+use crate::primitive::builtin::BUILTINS;
+use crate::primitive::{BuiltIn, Primitive, Symbol, SymbolTable};
 use crate::sexp::Sexp;
-use crate::symbol::Symbol;
-use crate::symbol_table::SymbolTable;
 use crate::syntax;
 use crate::token::interactive_stream::InteractiveStream;
 

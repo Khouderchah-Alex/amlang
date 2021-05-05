@@ -1,7 +1,6 @@
 use super::*;
 
-use crate::number::Number;
-use crate::symbol::ToSymbol;
+use crate::primitive::{Number, ToSymbol};
 use crate::token::string_stream::StringStream;
 use Token::*;
 

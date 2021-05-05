@@ -2,11 +2,16 @@
 
 use std::fmt;
 
-use crate::environment::NodeId;
-use crate::function::BuiltIn;
-use crate::number::Number;
-use crate::symbol::Symbol;
-use crate::symbol_table::SymbolTable;
+pub mod builtin;
+pub mod number;
+pub mod symbol;
+pub mod symbol_table;
+
+pub use self::builtin::BuiltIn;
+pub use self::number::Number;
+pub use self::symbol::{Symbol, ToSymbol};
+pub use self::symbol_table::SymbolTable;
+pub use crate::environment::NodeId;
 
 
 #[derive(Clone, Debug, PartialEq)]

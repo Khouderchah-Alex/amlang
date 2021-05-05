@@ -4,8 +4,8 @@ use std::fmt;
 use std::iter::Peekable;
 
 use crate::cons_list::ConsList;
+use crate::primitive::ToSymbol;
 use crate::sexp::HeapSexp;
-use crate::symbol::ToSymbol;
 use crate::token::{Token, TokenInfo};
 
 use self::ParseErrorReason::*;

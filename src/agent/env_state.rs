@@ -4,9 +4,8 @@ use crate::environment::environment::{EnvObject, Environment};
 use crate::environment::mem_environment::MemEnvironment;
 use crate::environment::meta_environment::{MetaEnvStructure, MetaEnvironment};
 use crate::environment::{NodeId, TripleId};
+use crate::primitive::{SymbolTable, ToSymbol};
 use crate::sexp::{cons, HeapSexp};
-use crate::symbol::ToSymbol;
-use crate::symbol_table::SymbolTable;
 
 
 pub struct EnvState {

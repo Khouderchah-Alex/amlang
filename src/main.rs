@@ -4,18 +4,14 @@ use std::path::Path;
 mod agent;
 #[cfg(test)]
 mod append_vec;
-mod builtin;
 mod cons_list;
 mod environment;
 mod function;
 mod model;
-mod number;
 mod old_environment;
 mod parser;
 mod primitive;
 mod sexp;
-mod symbol;
-mod symbol_table;
 mod syntax;
 mod token;
 

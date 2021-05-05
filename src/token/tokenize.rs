@@ -3,9 +3,9 @@
 use std::collections::VecDeque;
 
 use super::token::{Token, TokenInfo};
-use crate::number;
+use crate::primitive::symbol::{SymbolError, ToSymbol};
+use crate::primitive::Number as Num;
 use crate::primitive::Primitive::*;
-use crate::symbol::{SymbolError, ToSymbol};
 
 
 pub type TokenStore = VecDeque<TokenInfo>;
@@ -43,7 +43,7 @@ pub fn tokenize_line<S: AsRef<str>>(
             "'" => Token::Quote,
             _ => {
                 // Try to parse as number before imposing Symbol constraints.
-                if let Ok(num) = ptoken.parse::<number::Number>() {
+                if let Ok(num) = ptoken.parse::<Num>() {
                     Token::Primitive(Number(num))
                 } else {
                     match ptoken.to_symbol() {

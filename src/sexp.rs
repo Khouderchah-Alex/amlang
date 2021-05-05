@@ -5,12 +5,8 @@ use std::fmt;
 use std::str::FromStr;
 
 use crate::environment::NodeId;
-use crate::function::BuiltIn;
-use crate::number::Number;
 use crate::parser::{parse_sexp, ParseError};
-use crate::primitive::Primitive;
-use crate::symbol::Symbol;
-use crate::symbol_table::SymbolTable;
+use crate::primitive::{BuiltIn, Number, Primitive, Symbol, SymbolTable};
 use crate::token::string_stream::StringStream;
 use crate::token::TokenizeError;
 
