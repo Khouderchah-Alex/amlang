@@ -10,7 +10,7 @@ use crate::function::{
 };
 use crate::model::{Designation, Eval};
 use crate::parser::parse_sexp;
-use crate::primitive::{BuiltIn, Primitive, Symbol, SymbolTable, ToSymbol};
+use crate::primitive::{BuiltIn, NodeId, Primitive, Symbol, SymbolTable, ToSymbol};
 use crate::sexp::Sexp;
 use crate::syntax;
 use crate::token::interactive_stream::InteractiveStream;
@@ -62,41 +62,6 @@ impl AmlangAgent {
         self.env_insert(name, structure)
     }
 
-    fn env_query_wrapper(&mut self, args: Option<&Sexp>) -> Ret {
-        if args.is_none() {
-            return Err(WrongArgumentCount {
-                given: 0,
-                expected: ExpectedCount::AtLeast(1),
-            });
-        }
-
-        let cons = match args.unwrap() {
-            Sexp::Primitive(primitive) => {
-                return Err(InvalidSexp(primitive.clone().into()));
-            }
-            Sexp::Cons(cons) => cons,
-        };
-
-        let mut iter = cons.iter();
-        let name = if let Ok(symbol) = <&Symbol>::try_from(iter.next()) {
-            symbol
-        } else {
-            return Err(InvalidArgument {
-                given: cons.clone().into(),
-                expected: Cow::Borrowed("symbol"),
-            });
-        };
-
-        if let Some(_) = iter.next() {
-            return Err(WrongArgumentCount {
-                given: iter.count() + 2,
-                expected: ExpectedCount::Exactly(1),
-            });
-        }
-
-        self.env_query(name)
-    }
-
     fn env_insert(&mut self, name: &Symbol, structure: Option<&Sexp>) -> Ret {
         let designation = self.env_state().designation();
 
@@ -133,7 +98,7 @@ impl AmlangAgent {
         Ok(name.clone().into())
     }
 
-    fn env_query(&mut self, name: &Symbol) -> Ret {
+    fn resolve(&mut self, name: &Symbol) -> Ret {
         let designation = self.env_state().designation();
         let env = self.env_state().env();
 
@@ -148,11 +113,7 @@ impl AmlangAgent {
             panic!("Env designation isn't a symbol table");
         };
 
-        if let Some(sexp) = env.node_structure(node) {
-            Ok(sexp.clone())
-        } else {
-            Ok(name.clone().into())
-        }
+        Ok(node.into())
     }
 }
 
@@ -217,23 +178,21 @@ impl Agent for AmlangAgent {
 
 impl Designation for AmlangAgent {
     fn designate(&mut self, designator: &Primitive) -> Ret {
-        return match designator {
-            Primitive::Symbol(symbol) => {
-                if let Ok(structure) = self.env_query(symbol) {
-                    Ok(structure.clone())
-                } else {
-                    Err(EvalErr::UnboundSymbol(symbol.clone()))
-                }
-            }
-            Primitive::Node(node) => Ok(self
-                .env_state()
-                .env()
-                .node_structure(*node)
-                .cloned()
-                .unwrap_or((*node).into())),
+        let node = if let Primitive::Symbol(symbol) = designator {
+            <NodeId>::try_from(self.resolve(symbol)?).unwrap()
+        } else if let Primitive::Node(node) = designator {
+            *node
+        } else {
             // Base case for self-designating.
-            _ => Ok(designator.clone().into()),
+            return Ok(designator.clone().into());
         };
+
+        if let Some(structure) = self.env_state().env().node_structure(node) {
+            Ok(structure.clone())
+        } else {
+            // Atoms are self-designating; retain original context of Symbol or Node.
+            Ok(designator.clone().into())
+        }
     }
 }
 
@@ -257,9 +216,6 @@ impl Eval for AmlangAgent {
                         }
                         "def" => {
                             return self.env_insert_wrapper(cons.cdr());
-                        }
-                        "ask" => {
-                            return self.env_query_wrapper(cons.cdr());
                         }
                         _ => { /* Fallthrough */ }
                     }
