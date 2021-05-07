@@ -41,13 +41,13 @@ impl TripleId {
 
 impl fmt::Display for NodeId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "NodeId {}", self.id())
+        write!(f, "[Node_{}]", self.id())
     }
 }
 
 impl fmt::Display for TripleId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "TripleId {}", self.node())
+        write!(f, "[Triple_{}]", self.node())
     }
 }
 
