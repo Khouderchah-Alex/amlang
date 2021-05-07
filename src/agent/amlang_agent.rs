@@ -113,6 +113,42 @@ impl AmlangAgent {
         self.env_insert_triple(subject, predicate, object)
     }
 
+    fn jump_wrapper(&mut self, args: Option<&Sexp>) -> Ret {
+        if args.is_none() {
+            return Err(WrongArgumentCount {
+                given: 0,
+                expected: ExpectedCount::Exactly(1),
+            });
+        }
+
+        let cons = match args.unwrap() {
+            Sexp::Primitive(primitive) => {
+                return Err(InvalidSexp(primitive.clone().into()));
+            }
+            Sexp::Cons(cons) => cons,
+        };
+
+        let mut iter = cons.iter();
+        let node = if let Ok(symbol) = <&Symbol>::try_from(iter.next()) {
+            self.resolve(symbol)?
+        } else {
+            return Err(InvalidArgument {
+                given: cons.clone().into(),
+                expected: Cow::Borrowed("node"),
+            });
+        };
+
+        if iter.next().is_some() {
+            return Err(WrongArgumentCount {
+                given: iter.count() + 2,
+                expected: ExpectedCount::Exactly(1),
+            });
+        }
+
+        self.env_state().jump(node);
+        self.curr_structure()
+    }
+
     fn env_insert_node(&mut self, name: &Symbol, structure: Option<&Sexp>) -> Ret {
         let designation = self.env_state().designation();
 
@@ -170,7 +206,32 @@ impl AmlangAgent {
         Ok(self.env_state().triple_inner_designators(triple).into())
     }
 
-    fn resolve(&mut self, name: &Symbol) -> Ret {
+    fn curr_structure(&mut self) -> Ret {
+        //let env = self.env_state().env();
+        let node = self.env_state().pos();
+        let node_sexp = node.into();
+
+        let mut triples = self.env_state().env().match_subject(node);
+        triples = triples
+            .union(&self.env_state().env().match_predicate(node))
+            .cloned()
+            .collect();
+        triples = triples
+            .union(&self.env_state().env().match_object(node))
+            .cloned()
+            .collect();
+        for triple in triples {
+            println!("    {}", self.env_state().triple_inner_designators(triple));
+        }
+
+        if let Some(designator) = self.env_state().node_designator(node) {
+            Ok(designator.into())
+        } else {
+            self.eval(&node_sexp)
+        }
+    }
+
+    fn resolve(&mut self, name: &Symbol) -> Result<NodeId, EvalErr> {
         let designation = self.env_state().designation();
         let env = self.env_state().env();
 
@@ -251,7 +312,7 @@ impl Agent for AmlangAgent {
 impl Designation for AmlangAgent {
     fn designate(&mut self, designator: &Primitive) -> Ret {
         let node = if let Primitive::Symbol(symbol) = designator {
-            <NodeId>::try_from(self.resolve(symbol)?).unwrap()
+            self.resolve(symbol)?
         } else if let Primitive::Node(node) = designator {
             *node
         } else {
@@ -291,6 +352,23 @@ impl Eval for AmlangAgent {
                         }
                         "tell" => {
                             return self.env_insert_triple_wrapper(cons.cdr());
+                        }
+                        "curr" => {
+                            if let Some(cdr) = cons.cdr() {
+                                return match cdr {
+                                    Sexp::Primitive(primitive) => {
+                                        Err(InvalidSexp(primitive.clone().into()))
+                                    }
+                                    Sexp::Cons(cons) => Err(WrongArgumentCount {
+                                        given: cons.iter().count(),
+                                        expected: ExpectedCount::Exactly(0),
+                                    }),
+                                };
+                            }
+                            return self.curr_structure();
+                        }
+                        "jump" => {
+                            return self.jump_wrapper(cons.cdr());
                         }
                         _ => { /* Fallthrough */ }
                     }
