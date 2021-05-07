@@ -300,10 +300,10 @@ impl Eval for AmlangAgent {
                     let args = syntax::evlis(cons.cdr(), self)?;
                     return builtin.call(&args);
                 }
-                panic!(
-                    "`{}` did not match functional application catchall",
-                    structure
-                );
+                return Err(InvalidArgument {
+                    given: structure.clone(),
+                    expected: Cow::Borrowed("special form or functional application"),
+                });
             }
         }
     }
