@@ -26,7 +26,7 @@ impl AmlangAgent {
         Self { env_state }
     }
 
-    fn env_insert_wrapper(&mut self, args: Option<&Sexp>) -> Ret {
+    fn env_insert_node_wrapper(&mut self, args: Option<&Sexp>) -> Ret {
         if args.is_none() {
             return Err(WrongArgumentCount {
                 given: 0,
@@ -59,10 +59,61 @@ impl AmlangAgent {
             });
         }
 
-        self.env_insert(name, structure)
+        self.env_insert_node(name, structure)
     }
 
-    fn env_insert(&mut self, name: &Symbol, structure: Option<&Sexp>) -> Ret {
+    fn env_insert_triple_wrapper(&mut self, args: Option<&Sexp>) -> Ret {
+        if args.is_none() {
+            return Err(WrongArgumentCount {
+                given: 0,
+                expected: ExpectedCount::Exactly(3),
+            });
+        }
+
+        let cons = match args.unwrap() {
+            Sexp::Primitive(primitive) => {
+                return Err(InvalidSexp(primitive.clone().into()));
+            }
+            Sexp::Cons(cons) => cons,
+        };
+
+        fn extract_symbol<'a, I: Iterator<Item = &'a Sexp>>(
+            i: usize,
+            iter: &mut I,
+        ) -> Result<&'a Symbol, EvalErr> {
+            if let Some(elem) = iter.next() {
+                if let Ok(symbol) = <&Symbol>::try_from(elem) {
+                    Ok(symbol)
+                } else {
+                    Err(InvalidArgument {
+                        given: elem.clone().into(),
+                        expected: Cow::Borrowed("symbol"),
+                    })
+                }
+            } else {
+                Err(WrongArgumentCount {
+                    given: i,
+                    expected: ExpectedCount::Exactly(3),
+                })
+            }
+        }
+
+        let mut iter = cons.iter();
+        let subject = extract_symbol(0, &mut iter)?;
+        let predicate = extract_symbol(1, &mut iter)?;
+        let object = extract_symbol(2, &mut iter)?;
+
+        if let Some(_) = iter.next() {
+            return Err(WrongArgumentCount {
+                given: cons.iter().count(),
+                expected: ExpectedCount::Exactly(3),
+            });
+        }
+
+        self.env_insert_triple(subject, predicate, object)
+    }
+
+    fn env_insert_node(&mut self, name: &Symbol, structure: Option<&Sexp>) -> Ret {
         let designation = self.env_state().designation();
 
         if let Ok(table) =
@@ -98,6 +149,27 @@ impl AmlangAgent {
         Ok(name.clone().into())
     }
 
+    fn env_insert_triple(&mut self, subject: &Symbol, predicate: &Symbol, object: &Symbol) -> Ret {
+        fn lookup(table: &mut SymbolTable, name: &Symbol) -> Result<NodeId, EvalErr> {
+            if let Some(node) = table.lookup(name) {
+                Ok(*node)
+            } else {
+                Err(EvalErr::UnboundSymbol(name.clone()))
+            }
+        }
+
+        let designation = self.env_state().designation();
+        let env = self.env_state().env();
+        let table = <&mut SymbolTable>::try_from(env.node_structure(designation)).unwrap();
+
+        let s = lookup(table, subject)?;
+        let p = lookup(table, predicate)?;
+        let o = lookup(table, object)?;
+
+        let triple = self.env_state().env().insert_triple(s, p, o);
+        Ok(self.env_state().triple_inner_designators(triple).into())
+    }
+
     fn resolve(&mut self, name: &Symbol) -> Ret {
         let designation = self.env_state().designation();
         let env = self.env_state().env();
@@ -130,7 +202,7 @@ macro_rules! insert_builtins {
             $(
                 {
                     let fun: Sexp = BuiltIn::new(stringify!($x), $x).into();
-                    $self.env_insert(&$n.to_symbol_or_panic(), Some(&fun)).unwrap();
+                    $self.env_insert_node(&$n.to_symbol_or_panic(), Some(&fun)).unwrap();
                 }
             )*
         }
@@ -215,7 +287,10 @@ impl Eval for AmlangAgent {
                             return syntax::quote(cons.cdr());
                         }
                         "def" => {
-                            return self.env_insert_wrapper(cons.cdr());
+                            return self.env_insert_node_wrapper(cons.cdr());
+                        }
+                        "tell" => {
+                            return self.env_insert_triple_wrapper(cons.cdr());
                         }
                         _ => { /* Fallthrough */ }
                     }

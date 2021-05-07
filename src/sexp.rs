@@ -258,6 +258,15 @@ impl FromStr for Sexp {
 }
 
 
+impl From<HeapSexp> for Sexp {
+    fn from(sexp: HeapSexp) -> Self {
+        match *sexp {
+            Sexp::Primitive(primitive) => Sexp::Primitive(primitive),
+            Sexp::Cons(cons) => Sexp::Cons(cons),
+        }
+    }
+}
+
 impl From<Primitive> for Sexp {
     fn from(primitive: Primitive) -> Self {
         Sexp::Primitive(primitive)

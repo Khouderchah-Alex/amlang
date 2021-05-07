@@ -51,7 +51,7 @@ impl fmt::Display for EvalErr {
             InvalidSexp(val) => write!(f, "Invalid S-exp for evaluation: {:#}", val),
             WrongArgumentCount { given, expected } => write!(
                 f,
-                "Wrong argument count; given {}, expected {}",
+                "Wrong argument count: given {}, expected {}",
                 given, expected
             ),
             UnboundSymbol(symbol) => write!(f, "Unbound symbol: \"{}\"", symbol),
