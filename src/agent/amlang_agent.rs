@@ -227,15 +227,7 @@ impl AmlangAgent {
 
     fn print_curr_triples(&mut self) {
         let node = self.env_state().pos();
-        let mut triples = self.env_state().env().match_subject(node);
-        triples = triples
-            .union(&self.env_state().env().match_predicate(node))
-            .cloned()
-            .collect();
-        triples = triples
-            .union(&self.env_state().env().match_object(node))
-            .cloned()
-            .collect();
+        let triples = self.env_state().env().match_any(node);
         for triple in triples {
             println!("    {}", self.env_state().triple_inner_designators(triple));
         }
