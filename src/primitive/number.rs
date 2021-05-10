@@ -171,3 +171,27 @@ impl<'a> TryFrom<Option<&'a Sexp>> for &'a Number {
         }
     }
 }
+
+impl<E> TryFrom<Result<Sexp, E>> for Number {
+    type Error = ();
+
+    fn try_from(value: Result<Sexp, E>) -> Result<Self, Self::Error> {
+        if let Ok(Sexp::Primitive(Primitive::Number(number))) = value {
+            Ok(number)
+        } else {
+            Err(())
+        }
+    }
+}
+
+impl<'a, E> TryFrom<&'a Result<Sexp, E>> for &'a Number {
+    type Error = ();
+
+    fn try_from(value: &'a Result<Sexp, E>) -> Result<Self, Self::Error> {
+        if let Ok(Sexp::Primitive(Primitive::Number(number))) = value {
+            Ok(number)
+        } else {
+            Err(())
+        }
+    }
+}

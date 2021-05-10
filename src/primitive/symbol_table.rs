@@ -90,3 +90,27 @@ impl<'a> TryFrom<Option<&'a mut Sexp>> for &'a mut SymbolTable {
         }
     }
 }
+
+impl<E> TryFrom<Result<Sexp, E>> for SymbolTable {
+    type Error = ();
+
+    fn try_from(value: Result<Sexp, E>) -> Result<Self, Self::Error> {
+        if let Ok(Sexp::Primitive(Primitive::SymbolTable(table))) = value {
+            Ok(table)
+        } else {
+            Err(())
+        }
+    }
+}
+
+impl<'a, E> TryFrom<&'a Result<Sexp, E>> for &'a SymbolTable {
+    type Error = ();
+
+    fn try_from(value: &'a Result<Sexp, E>) -> Result<Self, Self::Error> {
+        if let Ok(Sexp::Primitive(Primitive::SymbolTable(table))) = value {
+            Ok(table)
+        } else {
+            Err(())
+        }
+    }
+}

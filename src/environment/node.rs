@@ -86,3 +86,27 @@ impl<'a> TryFrom<Option<&'a Sexp>> for NodeId {
         }
     }
 }
+
+impl<E> TryFrom<Result<Sexp, E>> for NodeId {
+    type Error = ();
+
+    fn try_from(value: Result<Sexp, E>) -> Result<Self, Self::Error> {
+        if let Ok(Sexp::Primitive(Primitive::Node(node))) = value {
+            Ok(node)
+        } else {
+            Err(())
+        }
+    }
+}
+
+impl<'a, E> TryFrom<&'a Result<Sexp, E>> for NodeId {
+    type Error = ();
+
+    fn try_from(value: &'a Result<Sexp, E>) -> Result<Self, Self::Error> {
+        if let Ok(Sexp::Primitive(Primitive::Node(node))) = value {
+            Ok(*node)
+        } else {
+            Err(())
+        }
+    }
+}
