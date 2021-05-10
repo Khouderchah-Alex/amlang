@@ -291,13 +291,23 @@ impl Agent for AmlangAgent {
                 }
             };
 
-            let result = self.eval(&sexp);
-            match result {
-                Ok(val) => {
-                    println!("-> {}", val);
+            let mut result = self.eval(&sexp);
+            if let Ok(sym) = <&Symbol>::try_from(&result) {
+                println!("-> [Symbol_\"{}\"]", sym);
+            } else {
+                // Print Nodes as their designators if possible.
+                if let Ok(node) = <NodeId>::try_from(&result) {
+                    if let Some(designator) = self.env_state().node_designator(node) {
+                        result = Ok(designator.into());
+                    }
                 }
-                Err(err) => {
-                    println!(" {}", err);
+                match result {
+                    Ok(val) => {
+                        println!("-> {}", val);
+                    }
+                    Err(err) => {
+                        println!(" {}", err);
+                    }
                 }
             }
             println!();
