@@ -59,7 +59,7 @@ impl AmlangAgent {
             });
         }
 
-        self.env_insert_node(name, structure)
+        Ok(self.env_insert_node(name, structure)?.into())
     }
 
     fn env_insert_triple_wrapper(&mut self, args: Option<&Sexp>) -> Ret {
@@ -113,6 +113,20 @@ impl AmlangAgent {
         self.env_insert_triple(subject, predicate, object)
     }
 
+    fn curr_wrapper(&mut self, args: Option<&Sexp>) -> Ret {
+        if let Some(arg) = args {
+            return match arg {
+                Sexp::Primitive(primitive) => Err(InvalidSexp(primitive.clone().into())),
+                Sexp::Cons(cons) => Err(WrongArgumentCount {
+                    given: cons.iter().count(),
+                    expected: ExpectedCount::Exactly(0),
+                }),
+            };
+        }
+        self.print_curr_triples();
+        Ok(self.env_state().pos().into())
+    }
+
     fn jump_wrapper(&mut self, args: Option<&Sexp>) -> Ret {
         if args.is_none() {
             return Err(WrongArgumentCount {
@@ -146,10 +160,15 @@ impl AmlangAgent {
         }
 
         self.env_state().jump(node);
-        self.curr_structure()
+        self.print_curr_triples();
+        Ok(self.env_state().pos().into())
     }
 
-    fn env_insert_node(&mut self, name: &Symbol, structure: Option<&Sexp>) -> Ret {
+    fn env_insert_node(
+        &mut self,
+        name: &Symbol,
+        structure: Option<&Sexp>,
+    ) -> Result<NodeId, EvalErr> {
         let designation = self.env_state().designation();
 
         if let Ok(table) =
@@ -182,7 +201,7 @@ impl AmlangAgent {
         for triple in env.match_all() {
             println!("    {}", self.env_state().triple_inner_designators(triple));
         }
-        Ok(name.clone().into())
+        Ok(node)
     }
 
     fn env_insert_triple(&mut self, subject: &Symbol, predicate: &Symbol, object: &Symbol) -> Ret {
@@ -206,11 +225,8 @@ impl AmlangAgent {
         Ok(self.env_state().triple_inner_designators(triple).into())
     }
 
-    fn curr_structure(&mut self) -> Ret {
-        //let env = self.env_state().env();
+    fn print_curr_triples(&mut self) {
         let node = self.env_state().pos();
-        let node_sexp = node.into();
-
         let mut triples = self.env_state().env().match_subject(node);
         triples = triples
             .union(&self.env_state().env().match_predicate(node))
@@ -222,12 +238,6 @@ impl AmlangAgent {
             .collect();
         for triple in triples {
             println!("    {}", self.env_state().triple_inner_designators(triple));
-        }
-
-        if let Some(designator) = self.env_state().node_designator(node) {
-            Ok(designator.into())
-        } else {
-            self.eval(&node_sexp)
         }
     }
 
@@ -333,8 +343,8 @@ impl Designation for AmlangAgent {
         if let Some(structure) = self.env_state().env().node_structure(node) {
             Ok(structure.clone())
         } else {
-            // Atoms are self-designating; retain original context of Symbol or Node.
-            Ok(designator.clone().into())
+            // Atoms are self-designating.
+            Ok(node.into())
         }
     }
 }
@@ -364,18 +374,7 @@ impl Eval for AmlangAgent {
                             return self.env_insert_triple_wrapper(cons.cdr());
                         }
                         "curr" => {
-                            if let Some(cdr) = cons.cdr() {
-                                return match cdr {
-                                    Sexp::Primitive(primitive) => {
-                                        Err(InvalidSexp(primitive.clone().into()))
-                                    }
-                                    Sexp::Cons(cons) => Err(WrongArgumentCount {
-                                        given: cons.iter().count(),
-                                        expected: ExpectedCount::Exactly(0),
-                                    }),
-                                };
-                            }
-                            return self.curr_structure();
+                            return self.curr_wrapper(cons.cdr());
                         }
                         "jump" => {
                             return self.jump_wrapper(cons.cdr());
