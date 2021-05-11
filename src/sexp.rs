@@ -85,10 +85,15 @@ impl Cons {
         self.cdr = new;
     }
 
-    fn list_fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    fn list_fmt(&self, f: &mut fmt::Formatter<'_>, depth: usize) -> fmt::Result {
         // Any list longer than this will simply be suffixed with "..." after these
         // many elements.
         const MAX_DISPLAY_LENGTH: usize = 64;
+        const MAX_DISPLAY_DEPTH: usize = 32;
+
+        if depth >= MAX_DISPLAY_DEPTH {
+            return write!(f, "(..)");
+        }
 
         let mut pos: usize = 0;
         let mut outer_quote = false;
@@ -113,7 +118,10 @@ impl Cons {
             if pos > 0 && !outer_quote {
                 write!(f, " ")?;
             }
-            write!(f, "{}", val)?;
+            match val {
+                Sexp::Primitive(primitive) => write!(f, "{}", primitive)?,
+                Sexp::Cons(cons) => cons.list_fmt(f, depth + 1)?,
+            }
 
             pos += 1;
         }
@@ -222,7 +230,7 @@ impl fmt::Display for Cons {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // Normal print this with list shorthand.
         if !f.alternate() {
-            return self.list_fmt(f);
+            return self.list_fmt(f, 0);
         }
 
         // Alternate print as sets of Cons.
