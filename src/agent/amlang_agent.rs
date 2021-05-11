@@ -250,6 +250,70 @@ impl AmlangAgent {
 
         Ok(node.into())
     }
+
+    // TODO This needs to be merged with list_fmt. Struggling to make generic
+    // over io:: and fmt::Write led to this duplication.
+    fn print_list(&mut self, sexp: &Sexp, depth: usize) {
+        // Any list longer than this will simply be suffixed with "..." after these
+        // many elements.
+        const MAX_DISPLAY_LENGTH: usize = 64;
+        const MAX_DISPLAY_DEPTH: usize = 32;
+
+        if let Sexp::Primitive(primitive) = sexp {
+            match primitive {
+                Primitive::Symbol(symbol) => print!("[Symbol_\"{}\"]", symbol),
+                Primitive::Node(node) => {
+                    // Print Nodes as their designators if possible.
+                    if let Some(designator) = self.env_state().node_designator(*node) {
+                        print!("{}", designator);
+                    } else {
+                        print!("{}", node);
+                    }
+                }
+                _ => print!("{}", primitive),
+            }
+            return;
+        };
+
+        if depth >= MAX_DISPLAY_DEPTH {
+            return print!("(..)");
+        }
+
+        let mut pos: usize = 0;
+        let mut outer_quote = false;
+        for val in sexp.cons().iter() {
+            if pos == 0 {
+                if let Ok(symbol) = <&Symbol>::try_from(val) {
+                    if symbol.as_str() == "quote" {
+                        outer_quote = true;
+                        print!("'");
+                        pos += 1;
+                        continue;
+                    }
+                }
+                print!("(");
+            }
+
+            if pos >= MAX_DISPLAY_LENGTH {
+                print!("...");
+                break;
+            }
+
+            if pos > 0 && !outer_quote {
+                print!(" ");
+            }
+            self.print_list(val, depth + 1);
+
+            pos += 1;
+        }
+
+        if pos == 0 {
+            print!("(");
+        }
+        if !outer_quote {
+            print!(")");
+        }
+    }
 }
 
 
@@ -293,23 +357,14 @@ impl Agent for AmlangAgent {
                 }
             };
 
-            let mut result = self.eval(&sexp);
-            if let Ok(sym) = <&Symbol>::try_from(&result) {
-                println!("-> [Symbol_\"{}\"]", sym);
-            } else {
-                // Print Nodes as their designators if possible.
-                if let Ok(node) = <NodeId>::try_from(&result) {
-                    if let Some(designator) = self.env_state().node_designator(node) {
-                        result = Ok(designator.into());
-                    }
+            match self.eval(&sexp) {
+                Ok(val) => {
+                    print!("-> ");
+                    self.print_list(&val, 0);
+                    println!("");
                 }
-                match result {
-                    Ok(val) => {
-                        println!("-> {}", val);
-                    }
-                    Err(err) => {
-                        println!(" {}", err);
-                    }
+                Err(err) => {
+                    println!(" {}", err);
                 }
             }
             println!();
