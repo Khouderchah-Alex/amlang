@@ -199,7 +199,10 @@ impl AmlangAgent {
         env.insert_triple(node, designation, name_node);
 
         for triple in env.match_all() {
-            println!("    {}", self.env_state().triple_inner_designators(triple));
+            print!("    ");
+            let structure = self.env_state().triple_structure(triple);
+            self.print_list(&structure, 0);
+            println!("");
         }
         Ok(node)
     }
@@ -222,14 +225,17 @@ impl AmlangAgent {
         let o = lookup(table, object)?;
 
         let triple = self.env_state().env().insert_triple(s, p, o);
-        Ok(self.env_state().triple_inner_designators(triple).into())
+        Ok(self.env_state().triple_structure(triple).into())
     }
 
     fn print_curr_triples(&mut self) {
         let node = self.env_state().pos();
         let triples = self.env_state().env().match_any(node);
         for triple in triples {
-            println!("    {}", self.env_state().triple_inner_designators(triple));
+            print!("    ");
+            let structure = self.env_state().triple_structure(triple);
+            self.print_list(&structure, 0);
+            println!("");
         }
     }
 
@@ -267,7 +273,14 @@ impl AmlangAgent {
                     if let Some(designator) = self.env_state().node_designator(*node) {
                         print!("{}", designator);
                     } else {
-                        print!("{}", node);
+                        let s =
+                            if let Some(structure) = self.env_state().env().node_structure(*node) {
+                                structure.clone()
+                            } else {
+                                print!("{}", node);
+                                return;
+                            };
+                        self.print_list(&s, depth + 1);
                     }
                 }
                 _ => print!("{}", primitive),

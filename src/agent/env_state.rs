@@ -80,23 +80,19 @@ impl EnvState {
         None
     }
 
-    pub fn triple_inner_designators(&mut self, triple: TripleId) -> HeapSexp {
+    pub fn triple_structure(&mut self, triple: TripleId) -> HeapSexp {
         let env = self.env();
         let s = env.triple_subject(triple);
         let p = env.triple_predicate(triple);
         let o = env.triple_object(triple);
-
-        let ss = self.node_designator(s);
-        let pp = self.node_designator(p);
-        let oo = if p == self.designation() {
+        cons(
+            Some(Box::new(s.into())),
             cons(
-                Some(HeapSexp::new("quote".to_symbol_or_panic().into())),
-                cons(ss.clone(), None),
-            )
-        } else {
-            self.node_designator(o)
-        };
-        cons(ss, cons(pp, cons(oo, None))).unwrap()
+                Some(Box::new(p.into())),
+                cons(Some(Box::new(o.into())), None),
+            ),
+        )
+        .unwrap()
     }
 
     // TODO(func) Move to same central location as above.
