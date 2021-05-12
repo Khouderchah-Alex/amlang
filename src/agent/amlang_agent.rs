@@ -208,21 +208,13 @@ impl AmlangAgent {
     }
 
     fn env_insert_triple(&mut self, subject: &Symbol, predicate: &Symbol, object: &Symbol) -> Ret {
-        fn lookup(table: &mut SymbolTable, name: &Symbol) -> Result<NodeId, EvalErr> {
-            if let Some(node) = table.lookup(name) {
-                Ok(*node)
-            } else {
-                Err(EvalErr::UnboundSymbol(name.clone()))
-            }
-        }
-
         let designation = self.env_state().designation();
         let env = self.env_state().env();
         let table = <&mut SymbolTable>::try_from(env.node_structure(designation)).unwrap();
 
-        let s = lookup(table, subject)?;
-        let p = lookup(table, predicate)?;
-        let o = lookup(table, object)?;
+        let s = table.lookup(subject)?;
+        let p = table.lookup(predicate)?;
+        let o = table.lookup(object)?;
 
         if let Some(triple) = env.match_triple(s, p, o).iter().next() {
             return Err(EvalErr::DuplicateTriple(
@@ -249,17 +241,8 @@ impl AmlangAgent {
         let designation = self.env_state().designation();
         let env = self.env_state().env();
 
-        let node = if let Ok(table) = <&mut SymbolTable>::try_from(env.node_structure(designation))
-        {
-            if let Some(node) = table.lookup(name) {
-                *node
-            } else {
-                return Err(EvalErr::UnboundSymbol(name.clone()));
-            }
-        } else {
-            panic!("Env designation isn't a symbol table");
-        };
-
+        let table = <&mut SymbolTable>::try_from(env.node_structure(designation)).unwrap();
+        let node = table.lookup(name)?;
         Ok(node.into())
     }
 

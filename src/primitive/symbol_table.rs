@@ -5,9 +5,9 @@ use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::hash::Hash;
 
-use super::Primitive;
-use super::Symbol;
+use super::{Primitive, Symbol, ToSymbol};
 use crate::environment::NodeId;
+use crate::function::EvalErr;
 use crate::sexp::Sexp;
 
 
@@ -21,12 +21,16 @@ impl SymbolTable {
         SymbolTable { map }
     }
 
-    pub fn lookup<Q>(&self, k: &Q) -> Option<&NodeId>
+    pub fn lookup<Q>(&self, k: &Q) -> Result<NodeId, EvalErr>
     where
         Symbol: Borrow<Q>,
-        Q: Hash + Eq + ?Sized,
+        Q: Hash + Eq + ToSymbol + ?Sized,
     {
-        self.map.get(k)
+        if let Some(node) = self.map.get(k) {
+            Ok(*node)
+        } else {
+            Err(EvalErr::UnboundSymbol(k.to_symbol_or_panic()))
+        }
     }
 
     pub fn contains_key<Q>(&self, k: &Q) -> bool

@@ -53,6 +53,12 @@ impl<S: AsRef<str>> ToSymbol for S {
     }
 }
 
+impl ToSymbol for Symbol {
+    fn to_symbol(&self) -> SymbolResult {
+        Ok(self.clone())
+    }
+}
+
 impl fmt::Display for Symbol {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.0)
