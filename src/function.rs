@@ -29,6 +29,7 @@ pub enum EvalErr {
     },
     UnboundSymbol(Symbol),
     AlreadyBoundSymbol(Symbol),
+    DuplicateTriple(Sexp),
 }
 
 #[derive(Debug)]
@@ -56,6 +57,7 @@ impl fmt::Display for EvalErr {
             ),
             UnboundSymbol(symbol) => write!(f, "Unbound symbol: \"{}\"", symbol),
             AlreadyBoundSymbol(symbol) => write!(f, "Already bound symbol: \"{}\"", symbol),
+            DuplicateTriple(sexp) => write!(f, "Duplicate triple: {}", sexp),
         };
         res
     }

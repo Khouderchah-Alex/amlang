@@ -224,7 +224,13 @@ impl AmlangAgent {
         let p = lookup(table, predicate)?;
         let o = lookup(table, object)?;
 
-        let triple = self.env_state().env().insert_triple(s, p, o);
+        if let Some(triple) = env.match_triple(s, p, o).iter().next() {
+            return Err(EvalErr::DuplicateTriple(
+                self.env_state().triple_structure(*triple).into(),
+            ));
+        }
+
+        let triple = env.insert_triple(s, p, o);
         Ok(self.env_state().triple_structure(triple).into())
     }
 
