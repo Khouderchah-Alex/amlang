@@ -36,7 +36,8 @@ impl Iterator for InteractiveStream {
                 Ok(line) => {
                     self.editor.add_history_entry(line.as_str());
                     if let Err(err) = tokenize_line(&line, 0, &mut self.tokens) {
-                        println!("Error: {:?}", err);
+                        println!("[Tokenize Error]: {:?}", err);
+                        println!("");
                         self.tokens.clear();
                         continue;
                     }
@@ -50,7 +51,8 @@ impl Iterator for InteractiveStream {
                     break;
                 }
                 Err(err) => {
-                    println!("Error: {:?}", err);
+                    println!("[Tokenize Error]: {:?}", err);
+                    println!("");
                     break;
                 }
             }
