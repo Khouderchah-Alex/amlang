@@ -4,11 +4,13 @@ use std::fmt;
 
 pub mod builtin;
 pub mod number;
+pub mod procedure;
 pub mod symbol;
 pub mod symbol_table;
 
 pub use self::builtin::BuiltIn;
 pub use self::number::Number;
+pub use self::procedure::Procedure;
 pub use self::symbol::{Symbol, ToSymbol};
 pub use self::symbol_table::SymbolTable;
 pub use crate::environment::NodeId;
@@ -22,6 +24,7 @@ pub enum Primitive {
     Node(NodeId),
 
     SymbolTable(SymbolTable),
+    Procedure(Procedure),
 }
 
 
@@ -34,6 +37,7 @@ impl fmt::Display for Primitive {
             Primitive::Node(node) => write!(f, "{}", node),
 
             Primitive::SymbolTable(table) => write!(f, "{:?}", table),
+            Primitive::Procedure(proc) => write!(f, "{:?}", proc),
         }
     }
 }

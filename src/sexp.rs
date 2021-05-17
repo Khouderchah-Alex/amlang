@@ -5,7 +5,7 @@ use std::fmt;
 use std::str::FromStr;
 
 use crate::parser::{parse_sexp, ParseError};
-use crate::primitive::{BuiltIn, NodeId, Number, Primitive, Symbol, SymbolTable};
+use crate::primitive::{BuiltIn, NodeId, Number, Primitive, Procedure, Symbol, SymbolTable};
 use crate::token::string_stream::StringStream;
 use crate::token::TokenizeError;
 
@@ -308,6 +308,12 @@ impl From<SymbolTable> for Sexp {
 impl From<BuiltIn> for Sexp {
     fn from(builtin: BuiltIn) -> Self {
         Sexp::Primitive(Primitive::BuiltIn(builtin))
+    }
+}
+
+impl From<Procedure> for Sexp {
+    fn from(procedure: Procedure) -> Self {
+        Sexp::Primitive(Primitive::Procedure(procedure))
     }
 }
 
