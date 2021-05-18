@@ -12,7 +12,7 @@ use crate::function::{
 use crate::model::{Designation, Eval};
 use crate::parser::parse_sexp;
 use crate::primitive::{BuiltIn, NodeId, Primitive, Procedure, Symbol, SymbolTable, ToSymbol};
-use crate::sexp::Sexp;
+use crate::sexp::{Cons, HeapSexp, Sexp};
 use crate::syntax;
 use crate::token::interactive_stream::InteractiveStream;
 
@@ -27,9 +27,9 @@ impl AmlangAgent {
         Self { env_state }
     }
 
-    fn curr_wrapper(&mut self, args: Option<&Sexp>) -> Ret {
+    fn curr_wrapper(&mut self, args: Option<HeapSexp>) -> Ret {
         if let Some(arg) = args {
-            return match arg {
+            return match *arg {
                 Sexp::Primitive(primitive) => Err(InvalidSexp(primitive.clone().into())),
                 Sexp::Cons(cons) => Err(WrongArgumentCount {
                     given: cons.iter().count(),
@@ -41,7 +41,7 @@ impl AmlangAgent {
         Ok(self.env_state().pos().into())
     }
 
-    fn jump_wrapper(&mut self, args: Option<&Sexp>) -> Ret {
+    fn jump_wrapper(&mut self, args: Option<HeapSexp>) -> Ret {
         if args.is_none() {
             return Err(WrongArgumentCount {
                 given: 0,
@@ -49,7 +49,7 @@ impl AmlangAgent {
             });
         }
 
-        let cons = match args.unwrap() {
+        let cons = match *args.unwrap() {
             Sexp::Primitive(primitive) => {
                 return Err(InvalidSexp(primitive.clone().into()));
             }
@@ -81,7 +81,7 @@ impl AmlangAgent {
     fn env_insert_node(
         &mut self,
         name: &Symbol,
-        structure: Option<&Sexp>,
+        structure: Option<HeapSexp>,
     ) -> Result<NodeId, EvalErr> {
         let designation = self.env_state().designation();
 
@@ -236,7 +236,7 @@ impl AmlangAgent {
             match proc {
                 Procedure::Application(node, args) => {
                     let builtin =
-                        <BuiltIn>::try_from(self.designate(&Primitive::Node(*node))?).unwrap();
+                        <BuiltIn>::try_from(self.designate(Primitive::Node(*node))?).unwrap();
 
                     let mut a = Vec::with_capacity(args.len());
                     for arg in args {
@@ -265,8 +265,8 @@ macro_rules! insert_builtins {
         {
             $(
                 {
-                    let fun: Sexp = BuiltIn::new(stringify!($x), $x).into();
-                    $self.env_insert_node(&$n.to_symbol_or_panic(), Some(&fun)).unwrap();
+                    let fun = HeapSexp::new(BuiltIn::new(stringify!($x), $x).into());
+                    $self.env_insert_node(&$n.to_symbol_or_panic(), Some(fun)).unwrap();
                 }
             )*
         }
@@ -294,7 +294,7 @@ impl Agent for AmlangAgent {
                 }
             };
 
-            let meaning = match self.eval(&sexp) {
+            let meaning = match self.eval(sexp) {
                 Ok(meaning) => meaning,
                 Err(err) => {
                     println!("[Compile error] {}", err);
@@ -324,12 +324,12 @@ impl Agent for AmlangAgent {
 }
 
 impl Designation for AmlangAgent {
-    fn designate(&mut self, designator: &Primitive) -> Ret {
+    fn designate(&mut self, designator: Primitive) -> Ret {
         match designator {
             // Symbol -> Node
-            Primitive::Symbol(symbol) => Ok(self.resolve(symbol)?.into()),
+            Primitive::Symbol(symbol) => Ok(self.resolve(&symbol)?.into()),
             // Node -> Structure
-            &Primitive::Node(node) => {
+            Primitive::Node(node) => {
                 if let Some(structure) = self.env_state().env().node_structure(node) {
                     Ok(structure.clone())
                 } else {
@@ -344,22 +344,23 @@ impl Designation for AmlangAgent {
 }
 
 impl Eval for AmlangAgent {
-    fn eval(&mut self, structure: &Sexp) -> Ret {
-        match structure {
+    fn eval(&mut self, structure: HeapSexp) -> Ret {
+        match *structure {
             Sexp::Primitive(primitive) => {
                 return self.designate(primitive);
             }
 
             Sexp::Cons(cons) => {
-                let car = match cons.car() {
+                let (car, cdr) = cons.consume();
+                let car = match car {
                     Some(car) => car,
-                    None => return Err(InvalidSexp(cons.clone().into())),
+                    None => return Err(InvalidSexp(Cons::new(car, cdr).into())),
                 };
 
-                if let Ok(first) = <&Symbol>::try_from(car) {
+                if let Ok(first) = <&Symbol>::try_from(&*car) {
                     match first.as_str() {
                         "quote" => {
-                            return syntax::quote(cons.cdr());
+                            return syntax::quote(cdr);
                         }
                         /*
                         "def" => {
@@ -381,12 +382,13 @@ impl Eval for AmlangAgent {
                     }
                 }
 
-                if let Ok(node) = <NodeId>::try_from(self.eval(car)?) {
-                    let args = syntax::evlis(cons.cdr(), self)?;
+                let eval_car = self.eval(car.clone())?;
+                if let Ok(node) = <NodeId>::try_from(&eval_car) {
+                    let args = syntax::evlis(cdr, self)?;
                     return Ok(Procedure::Application(node, args).into());
                 }
                 return Err(InvalidArgument {
-                    given: structure.clone(),
+                    given: Cons::new(Some(Box::new(eval_car)), cdr).into(),
                     expected: Cow::Borrowed("special form or functional application"),
                 });
             }
