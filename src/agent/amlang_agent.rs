@@ -11,7 +11,7 @@ use crate::function::{
 };
 use crate::model::{Designation, Eval};
 use crate::parser::parse_sexp;
-use crate::primitive::{BuiltIn, NodeId, Primitive, Symbol, SymbolTable, ToSymbol};
+use crate::primitive::{BuiltIn, NodeId, Primitive, Procedure, Symbol, SymbolTable, ToSymbol};
 use crate::sexp::Sexp;
 use crate::syntax;
 use crate::token::interactive_stream::InteractiveStream;
@@ -230,6 +230,27 @@ impl AmlangAgent {
             print!(")");
         }
     }
+
+    fn exec(&mut self, meaning: &Sexp) -> Ret {
+        if let Ok(proc) = <&Procedure>::try_from(meaning) {
+            match proc {
+                Procedure::Application(node, args) => {
+                    let builtin =
+                        <BuiltIn>::try_from(self.designate(&Primitive::Node(*node))?).unwrap();
+
+                    let mut a = Vec::with_capacity(args.len());
+                    for arg in args {
+                        a.push(self.exec(arg)?);
+                    }
+                    builtin.call(&a)
+                }
+                _ => panic!("Invalid proc"),
+            }
+        } else {
+            // TODO (func) Return Cow?
+            Ok(meaning.clone())
+        }
+    }
 }
 
 
@@ -273,7 +294,15 @@ impl Agent for AmlangAgent {
                 }
             };
 
-            match self.eval(&sexp) {
+            let meaning = match self.eval(&sexp) {
+                Ok(meaning) => meaning,
+                Err(err) => {
+                    println!("[Compile error] {}", err);
+                    continue;
+                }
+            };
+
+            match self.exec(&meaning) {
                 Ok(val) => {
                     print!("-> ");
                     self.print_list(&val, 0);
@@ -281,8 +310,10 @@ impl Agent for AmlangAgent {
                 }
                 Err(err) => {
                     println!(" {}", err);
+                    continue;
                 }
-            }
+            };
+
             println!();
         }
     }
@@ -294,20 +325,20 @@ impl Agent for AmlangAgent {
 
 impl Designation for AmlangAgent {
     fn designate(&mut self, designator: &Primitive) -> Ret {
-        let node = if let Primitive::Symbol(symbol) = designator {
-            self.resolve(symbol)?
-        } else if let Primitive::Node(node) = designator {
-            *node
-        } else {
+        match designator {
+            // Symbol -> Node
+            Primitive::Symbol(symbol) => Ok(self.resolve(symbol)?.into()),
+            // Node -> Structure
+            &Primitive::Node(node) => {
+                if let Some(structure) = self.env_state().env().node_structure(node) {
+                    Ok(structure.clone())
+                } else {
+                    // Atoms are self-designating.
+                    Ok(node.into())
+                }
+            }
             // Base case for self-designating.
-            return Ok(designator.clone().into());
-        };
-
-        if let Some(structure) = self.env_state().env().node_structure(node) {
-            Ok(structure.clone())
-        } else {
-            // Atoms are self-designating.
-            Ok(node.into())
+            _ => Ok(designator.clone().into()),
         }
     }
 }
@@ -330,6 +361,7 @@ impl Eval for AmlangAgent {
                         "quote" => {
                             return syntax::quote(cons.cdr());
                         }
+                        /*
                         "def" => {
                             let (name, structure) = env_insert_node_wrapper(cons.cdr())?;
                             return Ok(self.env_insert_node(name, structure)?.into());
@@ -344,13 +376,14 @@ impl Eval for AmlangAgent {
                         "jump" => {
                             return self.jump_wrapper(cons.cdr());
                         }
+                         */
                         _ => { /* Fallthrough */ }
                     }
                 }
 
-                if let Ok(builtin) = <BuiltIn>::try_from(self.eval(car)?) {
+                if let Ok(node) = <NodeId>::try_from(self.eval(car)?) {
                     let args = syntax::evlis(cons.cdr(), self)?;
-                    return builtin.call(&args);
+                    return Ok(Procedure::Application(node, args).into());
                 }
                 return Err(InvalidArgument {
                     given: structure.clone(),
