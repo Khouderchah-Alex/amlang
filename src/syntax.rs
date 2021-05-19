@@ -1,35 +1,6 @@
-use crate::function::{
-    EvalErr::{self, *},
-    ExpectedCount, Ret,
-};
-use crate::model::Eval;
+use crate::function::{EvalErr::*, ExpectedCount, Ret};
 use crate::sexp::{Cons, HeapSexp, Sexp};
 
-
-/// Surface of syntax Model asserting that List elements can be usefully eval'd
-/// independently.
-///
-/// TODO(feat) Make this an actual Model surface.
-pub fn evlis<T: Eval>(args: Option<HeapSexp>, eval: &mut T) -> Result<Vec<Sexp>, EvalErr> {
-    let mut res = Vec::<Sexp>::new();
-    if args.is_none() {
-        return Ok(res);
-    }
-
-    match *args.unwrap() {
-        Sexp::Primitive(primitive) => {
-            return Err(InvalidSexp(primitive.clone().into()));
-        }
-
-        Sexp::Cons(cons) => {
-            for arg in cons {
-                let val = eval.eval(arg)?;
-                res.push(val);
-            }
-        }
-    }
-    Ok(res)
-}
 
 pub fn quote(args: Option<HeapSexp>) -> Ret {
     if args.is_none() {

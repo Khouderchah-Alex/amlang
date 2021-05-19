@@ -11,7 +11,8 @@ use crate::function::{
 };
 use crate::model::{Designation, Eval};
 use crate::parser::parse_sexp;
-use crate::primitive::{BuiltIn, NodeId, Primitive, Procedure, Symbol, SymbolTable, ToSymbol};
+use crate::primitive::procedure::{BProcedure, Bindings, Procedure, SProcedure};
+use crate::primitive::{BuiltIn, NodeId, Primitive, Symbol, SymbolTable, ToSymbol};
 use crate::sexp::{Cons, HeapSexp, Sexp};
 use crate::syntax;
 use crate::token::interactive_stream::InteractiveStream;
@@ -96,8 +97,7 @@ impl AmlangAgent {
         }
 
         let node = if let Some(sexp) = structure {
-            let s = self.eval(sexp)?;
-            self.env_state().env().insert_structure(s)
+            self.env_state().env().insert_structure(*sexp)
         } else {
             self.env_state().env().insert_atom()
         };
@@ -233,23 +233,55 @@ impl AmlangAgent {
 
     fn exec(&mut self, meaning: &Sexp) -> Ret {
         if let Ok(proc) = <&Procedure>::try_from(meaning) {
-            match proc {
-                Procedure::Application(node, args) => {
+            match proc.body() {
+                BProcedure::Application(node) => {
                     let builtin =
                         <BuiltIn>::try_from(self.designate(Primitive::Node(*node))?).unwrap();
 
-                    let mut a = Vec::with_capacity(args.len());
-                    for arg in args {
-                        a.push(self.exec(arg)?);
+                    let surface_args = proc.surface_args();
+                    let mut cont = Vec::with_capacity(surface_args.len());
+                    for node in surface_args {
+                        let proc = self.designate(Primitive::Node(*node))?;
+                        cont.push(self.exec(&proc)?);
                     }
-                    builtin.call(&a)
+                    let args = proc.generate_args(cont);
+                    builtin.call(&args)
                 }
                 _ => panic!("Invalid proc"),
             }
         } else {
-            // TODO (func) Return Cow?
             Ok(meaning.clone())
         }
+    }
+
+    fn evlis(&mut self, args: Option<HeapSexp>) -> Result<(SProcedure, Bindings), EvalErr> {
+        let mut surface = SProcedure::new();
+        let mut bindings = Bindings::new();
+        if args.is_none() {
+            return Ok((surface, bindings));
+        }
+
+        match *args.unwrap() {
+            Sexp::Primitive(primitive) => {
+                return Err(InvalidSexp(primitive.clone().into()));
+            }
+
+            Sexp::Cons(cons) => {
+                for (i, arg) in cons.into_iter().enumerate() {
+                    let val = self.eval(arg)?;
+                    match val {
+                        Sexp::Primitive(Primitive::Procedure(proc)) => {
+                            let proc_node = self.env_state().env().insert_structure(proc.into());
+                            surface.push(proc_node);
+                        }
+                        _ => {
+                            bindings.insert(i, val);
+                        }
+                    }
+                }
+            }
+        }
+        Ok((surface, bindings))
     }
 }
 
@@ -384,8 +416,10 @@ impl Eval for AmlangAgent {
 
                 let eval_car = self.eval(car.clone())?;
                 if let Ok(node) = <NodeId>::try_from(&eval_car) {
-                    let args = syntax::evlis(cdr, self)?;
-                    return Ok(Procedure::Application(node, args).into());
+                    let (surface, bindings) = self.evlis(cdr)?;
+                    return Ok(
+                        Procedure::new(surface, bindings, BProcedure::Application(node)).into(),
+                    );
                 }
                 return Err(InvalidArgument {
                     given: Cons::new(Some(Box::new(eval_car)), cdr).into(),
