@@ -14,7 +14,6 @@ use crate::parser::parse_sexp;
 use crate::primitive::procedure::{BProcedure, Bindings, Procedure, SProcedure};
 use crate::primitive::{BuiltIn, NodeId, Primitive, Symbol, SymbolTable, ToSymbol};
 use crate::sexp::{Cons, HeapSexp, Sexp};
-use crate::syntax;
 use crate::token::interactive_stream::InteractiveStream;
 
 
@@ -392,7 +391,7 @@ impl Eval for AmlangAgent {
                 if let Ok(first) = <&Symbol>::try_from(&*car) {
                     match first.as_str() {
                         "quote" => {
-                            return syntax::quote(cdr);
+                            return quote_wrapper(cdr);
                         }
                         /*
                         "def" => {

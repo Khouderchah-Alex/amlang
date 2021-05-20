@@ -12,7 +12,6 @@ mod model;
 mod parser;
 mod primitive;
 mod sexp;
-mod syntax;
 mod token;
 
 use crate::agent::agent::Agent;

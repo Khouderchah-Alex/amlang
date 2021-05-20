@@ -3,10 +3,42 @@ use std::convert::TryFrom;
 
 use crate::function::{
     EvalErr::{self, *},
-    ExpectedCount,
+    ExpectedCount, Ret,
 };
 use crate::primitive::Symbol;
-use crate::sexp::Sexp;
+use crate::sexp::{Cons, HeapSexp, Sexp};
+
+
+pub fn quote_wrapper(args: Option<HeapSexp>) -> Ret {
+    if args.is_none() {
+        return Err(WrongArgumentCount {
+            given: 0,
+            expected: ExpectedCount::Exactly(1),
+        });
+    }
+
+    match *args.unwrap() {
+        Sexp::Primitive(primitive) => {
+            return Err(InvalidSexp(primitive.clone().into()));
+        }
+
+        Sexp::Cons(cons) => {
+            let length = cons.iter().count();
+            if length != 1 {
+                return Err(WrongArgumentCount {
+                    given: length,
+                    expected: ExpectedCount::Exactly(1),
+                });
+            }
+
+            let ret = cons.car();
+            return match ret {
+                None => Ok(Cons::default().into()),
+                Some(val) => Ok(val.clone()),
+            };
+        }
+    }
+}
 
 pub fn env_insert_triple_wrapper(
     args: Option<&Sexp>,
