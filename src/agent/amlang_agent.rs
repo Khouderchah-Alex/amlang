@@ -139,6 +139,14 @@ impl AmlangAgent {
         Ok(self.env_state().triple_structure(triple).into())
     }
 
+    fn print_curr_nodes(&mut self) {
+        let nodes = self.env_state().env().all_nodes();
+        for node in nodes {
+            self.print_list(&node.into(), 0);
+            println!("");
+        }
+    }
+
     fn print_curr_triples(&mut self) {
         let node = self.env_state().pos();
         let triples = self.env_state().env().match_any(node);
@@ -333,6 +341,8 @@ impl Agent for AmlangAgent {
                 }
             };
 
+            println!();
+            self.print_curr_nodes();
             println!();
         }
     }
