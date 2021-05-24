@@ -10,6 +10,7 @@ pub type BaseEnvObject<Structure> = dyn Environment<Structure> + Send + Sync;
 pub type EnvObject = BaseEnvObject<Sexp>;
 
 // TODO(flex) Use newtype w/trait impls? In future could be enum w/static dispatch.
+pub type NodeSet = BTreeSet<NodeId>;
 pub type TripleSet = BTreeSet<TripleId>;
 
 /// Triple store of Nodes, which can be atoms, structures, or triples.
@@ -17,6 +18,7 @@ pub type TripleSet = BTreeSet<TripleId>;
 pub trait Environment<Structure> {
     // Portal to self node.
     fn self_node(&self) -> NodeId;
+    fn all_nodes(&self) -> NodeSet;
 
     fn insert_atom(&mut self) -> NodeId;
     fn insert_structure(&mut self, structure: Structure) -> NodeId;

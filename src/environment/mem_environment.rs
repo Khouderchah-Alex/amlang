@@ -3,7 +3,7 @@
 use std::collections::BTreeSet;
 use std::fmt::Debug;
 
-use super::environment::{Environment, TripleSet};
+use super::environment::{Environment, NodeSet, TripleSet};
 use super::node::{LocalId, NodeId, TripleId};
 
 
@@ -107,6 +107,12 @@ impl<Structure: Debug> MemEnvironment<Structure> {
 impl<Structure: Debug> Environment<Structure> for MemEnvironment<Structure> {
     fn self_node(&self) -> NodeId {
         NodeId::new(0)
+    }
+
+    fn all_nodes(&self) -> NodeSet {
+        (0..self.nodes.len())
+            .map(|x| NodeId::new(x as LocalId))
+            .collect()
     }
 
     fn insert_atom(&mut self) -> NodeId {
