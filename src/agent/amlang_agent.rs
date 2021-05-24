@@ -11,7 +11,7 @@ use crate::function::{
 };
 use crate::model::{Designation, Eval};
 use crate::parser::parse_sexp;
-use crate::primitive::procedure::{BProcedure, Bindings, Procedure, SProcedure};
+use crate::primitive::procedure::Procedure;
 use crate::primitive::{BuiltIn, NodeId, Primitive, Symbol, SymbolTable, ToSymbol};
 use crate::sexp::{Cons, HeapSexp, Sexp};
 use crate::token::interactive_stream::InteractiveStream;
@@ -232,19 +232,17 @@ impl AmlangAgent {
 
     fn exec(&mut self, meaning: &Sexp) -> Ret {
         if let Ok(proc) = <&Procedure>::try_from(meaning) {
-            match proc.body() {
-                BProcedure::Application(node) => {
+            match proc {
+                Procedure::Application(node, args) => {
                     let builtin =
                         <BuiltIn>::try_from(self.designate(Primitive::Node(*node))?).unwrap();
 
-                    let surface_args = proc.surface_args();
-                    let mut cont = Vec::with_capacity(surface_args.len());
-                    for node in surface_args {
-                        let proc = self.designate(Primitive::Node(*node))?;
-                        cont.push(self.exec(&proc)?);
+                    let mut cont = Vec::with_capacity(args.len());
+                    for node in args {
+                        let structure = self.designate(Primitive::Node(*node))?;
+                        cont.push(self.exec(&structure)?);
                     }
-                    let args = proc.generate_args(cont);
-                    builtin.call(&args)
+                    builtin.call(&cont)
                 }
                 _ => panic!("Invalid proc"),
             }
@@ -253,34 +251,24 @@ impl AmlangAgent {
         }
     }
 
-    fn evlis(&mut self, args: Option<HeapSexp>) -> Result<(SProcedure, Bindings), EvalErr> {
-        let mut surface = SProcedure::new();
-        let mut bindings = Bindings::new();
-        if args.is_none() {
-            return Ok((surface, bindings));
+    fn evlis(&mut self, structures: Option<HeapSexp>) -> Result<Vec<NodeId>, EvalErr> {
+        if structures.is_none() {
+            return Ok(vec![]);
         }
 
-        match *args.unwrap() {
-            Sexp::Primitive(primitive) => {
-                return Err(InvalidSexp(primitive.clone().into()));
-            }
+        return match *structures.unwrap() {
+            Sexp::Primitive(primitive) => Err(InvalidSexp(primitive.clone().into())),
 
             Sexp::Cons(cons) => {
-                for (i, arg) in cons.into_iter().enumerate() {
-                    let val = self.eval(arg)?;
-                    match val {
-                        Sexp::Primitive(Primitive::Procedure(proc)) => {
-                            let proc_node = self.env_state().env().insert_structure(proc.into());
-                            surface.push(proc_node);
-                        }
-                        _ => {
-                            bindings.insert(i, val);
-                        }
-                    }
+                // TODO(perf) Return Cow.
+                let mut args = Vec::<NodeId>::with_capacity(cons.iter().count());
+                for structure in cons.into_iter() {
+                    let val = self.eval(structure)?;
+                    args.push(self.env_state().env().insert_structure(val));
                 }
+                Ok(args)
             }
-        }
-        Ok((surface, bindings))
+        };
     }
 }
 
@@ -415,10 +403,8 @@ impl Eval for AmlangAgent {
 
                 let eval_car = self.eval(car.clone())?;
                 if let Ok(node) = <NodeId>::try_from(&eval_car) {
-                    let (surface, bindings) = self.evlis(cdr)?;
-                    return Ok(
-                        Procedure::new(surface, bindings, BProcedure::Application(node)).into(),
-                    );
+                    let args = self.evlis(cdr)?;
+                    return Ok(Procedure::Application(node, args).into());
                 }
                 return Err(InvalidArgument {
                     given: Cons::new(Some(Box::new(eval_car)), cdr).into(),
