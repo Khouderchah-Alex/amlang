@@ -11,7 +11,7 @@ use crate::sexp::Sexp;
 
 pub type LocalId = u64;
 
-#[derive(Clone, Copy, Debug, Eq, Ord, PartialOrd, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialOrd, PartialEq)]
 pub struct NodeId(LocalId);
 
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialOrd, PartialEq)]

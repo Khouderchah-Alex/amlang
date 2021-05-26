@@ -17,14 +17,42 @@ use crate::sexp::{Cons, HeapSexp, Sexp};
 use crate::token::interactive_stream::InteractiveStream;
 
 
+pub type Continuation = std::collections::HashMap<NodeId, Sexp>;
+
 pub struct AmlangAgent {
     env_state: EnvState,
+    eval_symbols: SymbolTable,
 }
 
 impl AmlangAgent {
     pub fn new() -> Self {
         let env_state = EnvState::new();
-        Self { env_state }
+        let eval_symbols = SymbolTable::default();
+        Self {
+            env_state,
+            eval_symbols,
+        }
+    }
+
+    fn make_procedure(&mut self, params: Vec<Symbol>, body: Sexp) -> Result<Procedure, EvalErr> {
+        let mut surface = Vec::new();
+        for symbol in params {
+            let node = self.env_state().env().insert_atom();
+            // TODO(func) Use actual deep environment representation (including popping off).
+            self.eval_symbols.insert(symbol, node);
+            surface.push(node);
+        }
+
+        let cons = match body {
+            Sexp::Primitive(primitive) => {
+                return Err(InvalidSexp(primitive.clone().into()));
+            }
+            Sexp::Cons(cons) => cons,
+        };
+        // TODO(func) Allow for sequence.
+        let body_eval = self.eval(Box::new(cons.car().unwrap().clone()))?;
+        let body_node = self.env_state().env().insert_structure(body_eval);
+        Ok(Procedure::Abstraction(surface, body_node))
     }
 
     fn curr_wrapper(&mut self, args: Option<HeapSexp>) -> Ret {
@@ -238,24 +266,50 @@ impl AmlangAgent {
         }
     }
 
-    fn exec(&mut self, meaning: &Sexp) -> Ret {
-        if let Ok(proc) = <&Procedure>::try_from(meaning) {
-            match proc {
-                Procedure::Application(node, args) => {
-                    let builtin =
-                        <BuiltIn>::try_from(self.designate(Primitive::Node(*node))?).unwrap();
-
-                    let mut cont = Vec::with_capacity(args.len());
-                    for node in args {
+    fn exec(&mut self, meaning: &Sexp, cont: &mut Continuation) -> Ret {
+        match meaning {
+            Sexp::Primitive(Primitive::Procedure(proc)) => match proc {
+                Procedure::Application(proc_node, arg_nodes) => {
+                    let mut args = Vec::with_capacity(arg_nodes.len());
+                    for node in arg_nodes {
                         let structure = self.designate(Primitive::Node(*node))?;
-                        cont.push(self.exec(&structure)?);
+                        let arg = if let Ok(node) = <NodeId>::try_from(&structure) {
+                            cont.get(&node).unwrap().clone()
+                        } else {
+                            self.exec(&structure, cont)?
+                        };
+                        args.push(arg);
                     }
-                    builtin.call(&cont)
+
+                    match self.designate(Primitive::Node(*proc_node))? {
+                        Sexp::Primitive(Primitive::BuiltIn(builtin)) => builtin.call(&args),
+                        // TODO(func) Allow for abstraction outside of
+                        // application (e.g. returning a lambda).
+                        Sexp::Primitive(Primitive::Procedure(Procedure::Abstraction(
+                            params,
+                            body_node,
+                        ))) => {
+                            if args.len() != params.len() {
+                                return Err(WrongArgumentCount {
+                                    given: args.len(),
+                                    // TODO(func) support variable arity.
+                                    expected: ExpectedCount::Exactly(params.len()),
+                                });
+                            }
+                            for (i, node) in params.iter().enumerate() {
+                                // TODO(func) Use actual deep continuation
+                                // representation (including popping off).
+                                cont.insert(*node, args[i].clone());
+                            }
+                            let body = self.designate(Primitive::Node(body_node))?;
+                            self.exec(&body, cont)
+                        }
+                        _ => panic!(),
+                    }
                 }
-                _ => panic!("Invalid proc"),
-            }
-        } else {
-            Ok(meaning.clone())
+                _ => panic!("Unsupported procedure type: {:?}", proc),
+            },
+            _ => Ok(meaning.clone()),
         }
     }
 
@@ -329,7 +383,8 @@ impl Agent for AmlangAgent {
                 }
             };
 
-            match self.exec(&meaning) {
+            let mut cont = Continuation::default();
+            match self.exec(&meaning, &mut cont) {
                 Ok(val) => {
                     print!("-> ");
                     self.print_list(&val, 0);
@@ -376,6 +431,11 @@ impl Eval for AmlangAgent {
     fn eval(&mut self, structure: HeapSexp) -> Ret {
         match *structure {
             Sexp::Primitive(primitive) => {
+                if let Primitive::Symbol(symbol) = &primitive {
+                    if let Ok(node) = self.eval_symbols.lookup(symbol) {
+                        return Ok(node.into());
+                    }
+                }
                 return self.designate(primitive);
             }
 
@@ -390,6 +450,11 @@ impl Eval for AmlangAgent {
                     match first.as_str() {
                         "quote" => {
                             return quote_wrapper(cdr);
+                        }
+                        "lambda" => {
+                            let (params, body) = make_procedure_wrapper(cdr)?;
+                            let proc = self.make_procedure(params, body)?;
+                            return Ok(self.env_state().env().insert_structure(proc.into()).into());
                         }
                         /*
                         "def" => {

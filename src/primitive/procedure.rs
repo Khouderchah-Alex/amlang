@@ -7,14 +7,9 @@ use crate::sexp::Sexp;
 #[derive(Clone, Debug, PartialEq)]
 pub enum Procedure {
     Application(NodeId, Vec<NodeId>),
-    Abstraction(Params),
+    Abstraction(Vec<NodeId>, NodeId),
     Sequence(Vec<NodeId>),
     Branch(Box<Branch>),
-}
-
-#[derive(Clone, Debug, Default, PartialEq)]
-pub struct Params {
-    args: Vec<NodeId>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -22,21 +17,6 @@ pub struct Branch {
     cond: NodeId,
     a: NodeId,
     b: NodeId,
-}
-
-
-impl Params {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    pub fn push(&mut self, node: NodeId) {
-        self.args.push(node);
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.args.is_empty()
-    }
 }
 
 

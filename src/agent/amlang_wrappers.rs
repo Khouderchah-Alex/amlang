@@ -5,7 +5,7 @@ use crate::function::{
     EvalErr::{self, *},
     ExpectedCount, Ret,
 };
-use crate::primitive::Symbol;
+use crate::primitive::{Primitive, Symbol};
 use crate::sexp::{Cons, HeapSexp, Sexp};
 
 
@@ -38,6 +38,69 @@ pub fn quote_wrapper(args: Option<HeapSexp>) -> Ret {
             };
         }
     }
+}
+
+pub fn make_procedure_wrapper(args: Option<HeapSexp>) -> Result<(Vec<Symbol>, Sexp), EvalErr> {
+    if args.is_none() {
+        return Err(WrongArgumentCount {
+            given: 0,
+            expected: ExpectedCount::AtLeast(2),
+        });
+    }
+
+    let cons = match *args.unwrap() {
+        Sexp::Primitive(primitive) => {
+            return Err(InvalidSexp(primitive.clone().into()));
+        }
+        Sexp::Cons(cons) => cons,
+    };
+
+    let (car, cdr) = cons.consume();
+    // Pull params into a list of symbols.
+    let params = if let Some(params) = car {
+        let cons = match *params {
+            Sexp::Primitive(primitive) => {
+                return Err(InvalidArgument {
+                    given: primitive.clone().into(),
+                    expected: Cow::Borrowed("params list"),
+                });
+            }
+            Sexp::Cons(cons) => cons,
+        };
+        let mut vec = Vec::<Symbol>::with_capacity(cons.iter().count());
+        for param in cons {
+            let name = match *param {
+                Sexp::Primitive(Primitive::Symbol(symbol)) => symbol,
+                _ => {
+                    return Err(InvalidArgument {
+                        given: param.clone().into(),
+                        expected: Cow::Borrowed("symbol"),
+                    });
+                }
+            };
+            vec.push(name);
+        }
+        vec
+    } else {
+        return Err(InvalidArgument {
+            given: Sexp::default(),
+            expected: Cow::Borrowed("params list"),
+        });
+    };
+
+    return match cdr {
+        Some(hsexp) => match *hsexp {
+            Sexp::Cons(cons) => Ok((params, cons.into())),
+            Sexp::Primitive(primitive) => Err(InvalidArgument {
+                given: primitive.into(),
+                expected: Cow::Borrowed("procedure body"),
+            }),
+        },
+        None => Err(WrongArgumentCount {
+            given: 1,
+            expected: ExpectedCount::AtLeast(2),
+        }),
+    };
 }
 
 pub fn env_insert_triple_wrapper(
