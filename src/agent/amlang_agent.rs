@@ -9,7 +9,7 @@ use crate::function::{
     EvalErr::{self, *},
     ExpectedCount, Func, Ret,
 };
-use crate::model::{Designation, Eval};
+use crate::model::Eval;
 use crate::parser::parse_sexp;
 use crate::primitive::procedure::Procedure;
 use crate::primitive::{BuiltIn, NodeId, Primitive, Symbol, SymbolTable, ToSymbol};
@@ -86,7 +86,7 @@ impl AmlangAgent {
 
         let mut iter = cons.iter();
         let node = if let Ok(symbol) = <&Symbol>::try_from(iter.next()) {
-            self.resolve(symbol)?
+            self.env_state().resolve(symbol)?
         } else {
             return Err(InvalidArgument {
                 given: cons.clone().into(),
@@ -108,44 +108,19 @@ impl AmlangAgent {
 
     fn env_insert_node(
         &mut self,
-        name: &Symbol,
+        name: Symbol,
         structure: Option<HeapSexp>,
     ) -> Result<NodeId, EvalErr> {
-        let designation = self.env_state().designation();
+        let ret = self.env_state().def_node(name, structure)?;
 
-        if let Ok(table) =
-            <&mut SymbolTable>::try_from(self.env_state().env().node_structure(designation))
-        {
-            if table.contains_key(name) {
-                return Err(AlreadyBoundSymbol(name.clone()));
-            }
-        } else {
-            panic!("Env designation isn't a symbol table");
-        }
-
-        let node = if let Some(sexp) = structure {
-            self.env_state().env().insert_structure(*sexp)
-        } else {
-            self.env_state().env().insert_atom()
-        };
-        let env = self.env_state().env();
-        let name_node = env.insert_structure(name.clone().into());
-
-        if let Ok(table) = <&mut SymbolTable>::try_from(env.node_structure(designation)) {
-            table.insert(name.clone(), node);
-        } else {
-            panic!("Env designation isn't a symbol table");
-        }
-
-        env.insert_triple(node, designation, name_node);
-
-        for triple in env.match_all() {
+        for triple in self.env_state().env().match_all() {
             print!("    ");
             let structure = self.env_state().triple_structure(triple);
             self.print_list(&structure, 0);
             println!("");
         }
-        Ok(node)
+
+        Ok(ret)
     }
 
     fn env_insert_triple(&mut self, subject: &Symbol, predicate: &Symbol, object: &Symbol) -> Ret {
@@ -184,15 +159,6 @@ impl AmlangAgent {
             self.print_list(&structure, 0);
             println!("");
         }
-    }
-
-    fn resolve(&mut self, name: &Symbol) -> Result<NodeId, EvalErr> {
-        let designation = self.env_state().designation();
-        let env = self.env_state().env();
-
-        let table = <&mut SymbolTable>::try_from(env.node_structure(designation)).unwrap();
-        let node = table.lookup(name)?;
-        Ok(node.into())
     }
 
     // TODO This needs to be merged with list_fmt. Struggling to make generic
@@ -272,7 +238,7 @@ impl AmlangAgent {
                 Procedure::Application(proc_node, arg_nodes) => {
                     let mut args = Vec::with_capacity(arg_nodes.len());
                     for node in arg_nodes {
-                        let structure = self.designate(Primitive::Node(*node))?;
+                        let structure = self.env_state().designate(Primitive::Node(*node))?;
                         let arg = if let Ok(node) = <NodeId>::try_from(&structure) {
                             cont.get(&node).unwrap().clone()
                         } else {
@@ -281,7 +247,7 @@ impl AmlangAgent {
                         args.push(arg);
                     }
 
-                    match self.designate(Primitive::Node(*proc_node))? {
+                    match self.env_state().designate(Primitive::Node(*proc_node))? {
                         Sexp::Primitive(Primitive::BuiltIn(builtin)) => builtin.call(&args),
                         // TODO(func) Allow for abstraction outside of
                         // application (e.g. returning a lambda).
@@ -301,7 +267,7 @@ impl AmlangAgent {
                                 // representation (including popping off).
                                 cont.insert(*node, args[i].clone());
                             }
-                            let body = self.designate(Primitive::Node(body_node))?;
+                            let body = self.env_state().designate(Primitive::Node(body_node))?;
                             self.exec(&body, cont)
                         }
                         _ => panic!(),
@@ -347,7 +313,7 @@ macro_rules! insert_builtins {
             $(
                 {
                     let fun = HeapSexp::new(BuiltIn::new(stringify!($x), $x).into());
-                    $self.env_insert_node(&$n.to_symbol_or_panic(), Some(fun)).unwrap();
+                    $self.env_state().def_node($n.to_symbol_or_panic(), Some(fun)).unwrap();
                 }
             )*
         }
@@ -407,26 +373,6 @@ impl Agent for AmlangAgent {
     }
 }
 
-impl Designation for AmlangAgent {
-    fn designate(&mut self, designator: Primitive) -> Ret {
-        match designator {
-            // Symbol -> Node
-            Primitive::Symbol(symbol) => Ok(self.resolve(&symbol)?.into()),
-            // Node -> Structure
-            Primitive::Node(node) => {
-                if let Some(structure) = self.env_state().env().node_structure(node) {
-                    Ok(structure.clone())
-                } else {
-                    // Atoms are self-designating.
-                    Ok(node.into())
-                }
-            }
-            // Base case for self-designating.
-            _ => Ok(designator.clone().into()),
-        }
-    }
-}
-
 impl Eval for AmlangAgent {
     fn eval(&mut self, structure: HeapSexp) -> Ret {
         match *structure {
@@ -436,7 +382,7 @@ impl Eval for AmlangAgent {
                         return Ok(node.into());
                     }
                 }
-                return self.designate(primitive);
+                return self.env_state().designate(primitive);
             }
 
             Sexp::Cons(cons) => {
