@@ -50,6 +50,62 @@ impl Sexp {
         }
         panic!("Expected {:?} to be Cons", self);
     }
+
+    // TODO This needs to be merged with list_fmt. Struggling to make generic
+    // over io:: and fmt::Write led to this duplication.
+    pub fn print_list<F>(&self, depth: usize, print_primitive: &mut F)
+    where
+        F: FnMut(&Primitive, usize),
+    {
+        // Any list longer than this will simply be suffixed with "..." after these
+        // many elements.
+        const MAX_DISPLAY_LENGTH: usize = 64;
+        const MAX_DISPLAY_DEPTH: usize = 32;
+
+        if let Sexp::Primitive(primitive) = self {
+            print_primitive(primitive, depth);
+            return;
+        };
+
+        if depth >= MAX_DISPLAY_DEPTH {
+            return print!("(..)");
+        }
+
+        let mut pos: usize = 0;
+        let mut outer_quote = false;
+        for val in self.cons().iter() {
+            if pos == 0 {
+                if let Ok(symbol) = <&Symbol>::try_from(val) {
+                    if symbol.as_str() == "quote" {
+                        outer_quote = true;
+                        print!("'");
+                        pos += 1;
+                        continue;
+                    }
+                }
+                print!("(");
+            }
+
+            if pos >= MAX_DISPLAY_LENGTH {
+                print!("...");
+                break;
+            }
+
+            if pos > 0 && !outer_quote {
+                print!(" ");
+            }
+            val.print_list(depth + 1, print_primitive);
+
+            pos += 1;
+        }
+
+        if pos == 0 {
+            print!("(");
+        }
+        if !outer_quote {
+            print!(")");
+        }
+    }
 }
 
 impl Cons {

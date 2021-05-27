@@ -161,74 +161,30 @@ impl AmlangAgent {
         }
     }
 
-    // TODO This needs to be merged with list_fmt. Struggling to make generic
-    // over io:: and fmt::Write led to this duplication.
-    fn print_list(&mut self, sexp: &Sexp, depth: usize) {
-        // Any list longer than this will simply be suffixed with "..." after these
-        // many elements.
-        const MAX_DISPLAY_LENGTH: usize = 64;
-        const MAX_DISPLAY_DEPTH: usize = 32;
+    fn print_list(&mut self, structure: &Sexp, depth: usize) {
+        structure.print_list(depth, &mut |primitive, depth| {
+            self.print_primitive(primitive, depth)
+        });
+    }
 
-        if let Sexp::Primitive(primitive) = sexp {
-            match primitive {
-                Primitive::Symbol(symbol) => print!("[Symbol_\"{}\"]", symbol),
-                Primitive::Node(node) => {
-                    // Print Nodes as their designators if possible.
-                    if let Some(designator) = self.env_state().node_designator(*node) {
-                        print!("{}", designator);
+    fn print_primitive(&mut self, primitive: &Primitive, depth: usize) {
+        match primitive {
+            Primitive::Symbol(symbol) => print!("[Symbol_\"{}\"]", symbol),
+            Primitive::Node(node) => {
+                // Print Nodes as their designators if possible.
+                if let Some(designator) = self.env_state().node_designator(*node) {
+                    print!("{}", designator);
+                } else {
+                    let s = if let Some(structure) = self.env_state().env().node_structure(*node) {
+                        structure.clone()
                     } else {
-                        let s =
-                            if let Some(structure) = self.env_state().env().node_structure(*node) {
-                                structure.clone()
-                            } else {
-                                print!("{}", node);
-                                return;
-                            };
-                        self.print_list(&s, depth + 1);
-                    }
+                        print!("{}", node);
+                        return;
+                    };
+                    self.print_list(&s, depth + 1);
                 }
-                _ => print!("{}", primitive),
             }
-            return;
-        };
-
-        if depth >= MAX_DISPLAY_DEPTH {
-            return print!("(..)");
-        }
-
-        let mut pos: usize = 0;
-        let mut outer_quote = false;
-        for val in sexp.cons().iter() {
-            if pos == 0 {
-                if let Ok(symbol) = <&Symbol>::try_from(val) {
-                    if symbol.as_str() == "quote" {
-                        outer_quote = true;
-                        print!("'");
-                        pos += 1;
-                        continue;
-                    }
-                }
-                print!("(");
-            }
-
-            if pos >= MAX_DISPLAY_LENGTH {
-                print!("...");
-                break;
-            }
-
-            if pos > 0 && !outer_quote {
-                print!(" ");
-            }
-            self.print_list(val, depth + 1);
-
-            pos += 1;
-        }
-
-        if pos == 0 {
-            print!("(");
-        }
-        if !outer_quote {
-            print!(")");
+            _ => print!("{}", primitive),
         }
     }
 
