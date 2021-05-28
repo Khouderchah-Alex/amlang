@@ -53,9 +53,15 @@ impl Sexp {
 
     // TODO This needs to be merged with list_fmt. Struggling to make generic
     // over io:: and fmt::Write led to this duplication.
-    pub fn print_list<F>(&self, depth: usize, print_primitive: &mut F)
+    pub fn write_list<W, F>(
+        &self,
+        w: &mut W,
+        depth: usize,
+        write_primitive: &mut F,
+    ) -> std::io::Result<()>
     where
-        F: FnMut(&Primitive, usize),
+        W: std::io::Write,
+        F: FnMut(&mut W, &Primitive, usize) -> std::io::Result<()>,
     {
         // Any list longer than this will simply be suffixed with "..." after these
         // many elements.
@@ -63,12 +69,11 @@ impl Sexp {
         const MAX_DISPLAY_DEPTH: usize = 32;
 
         if let Sexp::Primitive(primitive) = self {
-            print_primitive(primitive, depth);
-            return;
+            return write_primitive(w, primitive, depth);
         };
 
         if depth >= MAX_DISPLAY_DEPTH {
-            return print!("(..)");
+            return write!(w, "(..)");
         }
 
         let mut pos: usize = 0;
@@ -78,33 +83,34 @@ impl Sexp {
                 if let Ok(symbol) = <&Symbol>::try_from(val) {
                     if symbol.as_str() == "quote" {
                         outer_quote = true;
-                        print!("'");
+                        write!(w, "'")?;
                         pos += 1;
                         continue;
                     }
                 }
-                print!("(");
+                write!(w, "(")?;
             }
 
             if pos >= MAX_DISPLAY_LENGTH {
-                print!("...");
+                write!(w, "...")?;
                 break;
             }
 
             if pos > 0 && !outer_quote {
-                print!(" ");
+                write!(w, " ")?;
             }
-            val.print_list(depth + 1, print_primitive);
+            val.write_list(w, depth + 1, write_primitive)?;
 
             pos += 1;
         }
 
         if pos == 0 {
-            print!("(");
+            write!(w, "(")?;
         }
         if !outer_quote {
-            print!(")");
+            write!(w, ")")?;
         }
+        Ok(())
     }
 }
 

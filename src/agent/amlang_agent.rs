@@ -1,5 +1,6 @@
 use std::borrow::Cow;
 use std::convert::TryFrom;
+use std::io::{stdout, BufWriter};
 
 use super::agent::Agent;
 use super::amlang_wrappers::*;
@@ -116,7 +117,7 @@ impl AmlangAgent {
         for triple in self.env_state().env().match_all() {
             print!("    ");
             let structure = self.env_state().triple_structure(triple);
-            self.print_list(&structure, 0);
+            self.print_list(&structure);
             println!("");
         }
 
@@ -145,7 +146,7 @@ impl AmlangAgent {
     fn print_curr_nodes(&mut self) {
         let nodes = self.env_state().env().all_nodes();
         for node in nodes {
-            self.print_list(&node.into(), 0);
+            self.print_list(&node.into());
             println!("");
         }
     }
@@ -156,35 +157,51 @@ impl AmlangAgent {
         for triple in triples {
             print!("    ");
             let structure = self.env_state().triple_structure(triple);
-            self.print_list(&structure, 0);
+            self.print_list(&structure);
             println!("");
         }
     }
 
-    fn print_list(&mut self, structure: &Sexp, depth: usize) {
-        structure.print_list(depth, &mut |primitive, depth| {
-            self.print_primitive(primitive, depth)
-        });
+    fn print_list(&mut self, structure: &Sexp) {
+        let mut writer = BufWriter::new(stdout());
+        if let Err(err) = self.print_list_internal(&mut writer, structure, 0) {
+            println!("print_list error: {:?}", err);
+        }
     }
 
-    fn print_primitive(&mut self, primitive: &Primitive, depth: usize) {
+    fn print_list_internal<W: std::io::Write>(
+        &mut self,
+        w: &mut W,
+        structure: &Sexp,
+        depth: usize,
+    ) -> std::io::Result<()> {
+        structure.write_list(w, depth, &mut |writer, primitive, depth| {
+            self.write_primitive(writer, primitive, depth)
+        })
+    }
+
+    fn write_primitive<W: std::io::Write>(
+        &mut self,
+        w: &mut W,
+        primitive: &Primitive,
+        depth: usize,
+    ) -> std::io::Result<()> {
         match primitive {
-            Primitive::Symbol(symbol) => print!("[Symbol_\"{}\"]", symbol),
+            Primitive::Symbol(symbol) => write!(w, "[Symbol_\"{}\"]", symbol),
             Primitive::Node(node) => {
                 // Print Nodes as their designators if possible.
                 if let Some(designator) = self.env_state().node_designator(*node) {
-                    print!("{}", designator);
+                    write!(w, "{}", designator)
                 } else {
                     let s = if let Some(structure) = self.env_state().env().node_structure(*node) {
                         structure.clone()
                     } else {
-                        print!("{}", node);
-                        return;
+                        return write!(w, "{}", node);
                     };
-                    self.print_list(&s, depth + 1);
+                    self.print_list_internal(w, &s, depth + 1)
                 }
             }
-            _ => print!("{}", primitive),
+            _ => write!(w, "{}", primitive),
         }
     }
 
@@ -309,7 +326,7 @@ impl Agent for AmlangAgent {
             match self.exec(&meaning, &mut cont) {
                 Ok(val) => {
                     print!("-> ");
-                    self.print_list(&val, 0);
+                    self.print_list(&val);
                     println!("");
                 }
                 Err(err) => {
