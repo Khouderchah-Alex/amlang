@@ -265,7 +265,12 @@ impl AmlangAgent {
                 let mut args = Vec::<NodeId>::with_capacity(cons.iter().count());
                 for structure in cons.into_iter() {
                     let val = self.eval(structure)?;
-                    args.push(self.env_state().env().insert_structure(val));
+                    // Don't create new node for paramater nodes.
+                    if let Ok(node) = <NodeId>::try_from(&val) {
+                        args.push(node.into());
+                    } else {
+                        args.push(self.env_state().env().insert_structure(val));
+                    }
                 }
                 Ok(args)
             }
