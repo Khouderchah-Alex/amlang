@@ -139,12 +139,12 @@ impl EnvState {
             panic!("Env designation isn't a symbol table");
         }
 
+        let name_node = self.env().insert_structure(name.clone().into());
         let node = if let Some(sexp) = structure {
             self.env().insert_structure(*sexp)
         } else {
             self.env().insert_atom()
         };
-        let name_node = self.env().insert_structure(name.clone().into());
 
         if let Ok(table) = <&mut SymbolTable>::try_from(self.env().node_structure(designation)) {
             table.insert(name.clone(), node);

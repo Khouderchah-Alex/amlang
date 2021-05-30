@@ -40,5 +40,10 @@ fn main() -> Result<(), String> {
 
 fn interactive_agent() -> Result<(), String> {
     let mut user_agent = agent::amlang_agent::AmlangAgent::new();
-    user_agent.run()
+    user_agent.run()?;
+    let mut serializer = agent::env_serializer::EnvSerializer::from_env(user_agent.extract_env());
+    if let Err(err) = serializer.serialize("./test.env") {
+        return Err(err.to_string());
+    }
+    Ok(())
 }

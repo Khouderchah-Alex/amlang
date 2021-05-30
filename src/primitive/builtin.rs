@@ -18,6 +18,10 @@ impl BuiltIn {
     pub fn new(name: &'static str, fun: fn(Args) -> Ret) -> BuiltIn {
         BuiltIn { name, fun }
     }
+
+    pub fn name(&self) -> &'static str {
+        self.name
+    }
 }
 
 

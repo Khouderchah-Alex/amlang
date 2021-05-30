@@ -35,6 +35,10 @@ impl AmlangAgent {
         }
     }
 
+    pub fn extract_env(self) -> EnvState {
+        self.env_state
+    }
+
     fn make_procedure(&mut self, params: Vec<Symbol>, body: Sexp) -> Result<Procedure, EvalErr> {
         let mut surface = Vec::new();
         for symbol in params {
