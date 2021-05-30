@@ -4,6 +4,7 @@ use std::convert::TryFrom;
 use std::fmt;
 use std::str::FromStr;
 
+use crate::cons_list::ConsList;
 use crate::parser::{parse_sexp, ParseError};
 use crate::primitive::{BuiltIn, NodeId, Number, Primitive, Procedure, Symbol, SymbolTable};
 use crate::token::string_stream::StringStream;
@@ -327,6 +328,26 @@ impl FromStr for Sexp {
     }
 }
 
+impl<T: Into<Sexp>> From<Vec<T>> for Sexp {
+    fn from(vec: Vec<T>) -> Self {
+        let mut list = ConsList::new();
+        for value in vec {
+            list.append(Box::new(value.into()));
+        }
+        *list.release()
+    }
+}
+
+impl<'a, T: Into<Sexp> + Clone> From<&'a Vec<T>> for Sexp {
+    fn from(vec: &'a Vec<T>) -> Self {
+        let mut list = ConsList::new();
+        for value in vec {
+            list.append(Box::new(value.clone().into()));
+        }
+        *list.release()
+    }
+}
+
 
 impl From<HeapSexp> for Sexp {
     fn from(sexp: HeapSexp) -> Self {
@@ -384,3 +405,8 @@ impl From<NodeId> for Sexp {
         Sexp::Primitive(Primitive::Node(node))
     }
 }
+
+
+#[cfg(test)]
+#[path = "./sexp_test.rs"]
+mod sexp_test;
