@@ -5,8 +5,10 @@
 use std::convert::TryFrom;
 use std::fmt;
 
+use crate::agent::env_state::EnvState;
+use crate::model::Model;
 use crate::primitive::Primitive;
-use crate::sexp::Sexp;
+use crate::sexp::{cons, HeapSexp, Sexp};
 
 
 pub type LocalId = u64;
@@ -35,6 +37,24 @@ impl TripleId {
 
     pub fn node(&self) -> NodeId {
         self.0
+    }
+}
+
+
+impl Model for TripleId {
+    fn generate_structure(&self, env_state: &mut EnvState) -> HeapSexp {
+        let env = env_state.env();
+        let s = env.triple_subject(*self);
+        let p = env.triple_predicate(*self);
+        let o = env.triple_object(*self);
+        cons(
+            Some(Box::new(s.into())),
+            cons(
+                Some(Box::new(p.into())),
+                cons(Some(Box::new(o.into())), None),
+            ),
+        )
+        .unwrap()
     }
 }
 

@@ -1,3 +1,4 @@
+use crate::agent::env_state::EnvState;
 use crate::function::Ret;
 use crate::sexp::HeapSexp;
 
@@ -9,5 +10,5 @@ pub trait Eval {
 
 pub trait Model {
     /// Model structure according to (possibly implicit) metamodel.
-    fn generate_structure(&self) -> HeapSexp;
+    fn generate_structure(&self, env_state: &mut EnvState) -> HeapSexp;
 }

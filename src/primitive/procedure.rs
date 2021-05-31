@@ -1,6 +1,7 @@
 use std::convert::TryFrom;
 
 use super::{NodeId, Primitive, ToSymbol};
+use crate::agent::env_state::EnvState;
 use crate::model::Model;
 use crate::sexp::{cons, HeapSexp, Sexp};
 
@@ -22,7 +23,7 @@ pub struct Branch {
 
 
 impl Model for Procedure {
-    fn generate_structure(&self) -> HeapSexp {
+    fn generate_structure(&self, _env_state: &mut EnvState) -> HeapSexp {
         match self {
             Procedure::Application(func, args) => cons(
                 Some(HeapSexp::new((*func).into())),

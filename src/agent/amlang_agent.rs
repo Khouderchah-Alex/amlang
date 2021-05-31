@@ -10,7 +10,7 @@ use crate::function::{
     EvalErr::{self, *},
     ExpectedCount, Func, Ret,
 };
-use crate::model::Eval;
+use crate::model::{Eval, Model};
 use crate::parser::parse_sexp;
 use crate::primitive::procedure::Procedure;
 use crate::primitive::{BuiltIn, NodeId, Primitive, Symbol, SymbolTable, ToSymbol};
@@ -120,7 +120,7 @@ impl AmlangAgent {
 
         for triple in self.env_state().env().match_all() {
             print!("    ");
-            let structure = self.env_state().triple_structure(triple);
+            let structure = triple.generate_structure(self.env_state());
             self.print_list(&structure);
             println!("");
         }
@@ -139,12 +139,12 @@ impl AmlangAgent {
 
         if let Some(triple) = env.match_triple(s, p, o).iter().next() {
             return Err(EvalErr::DuplicateTriple(
-                self.env_state().triple_structure(*triple).into(),
+                *triple.generate_structure(self.env_state()),
             ));
         }
 
         let triple = env.insert_triple(s, p, o);
-        Ok(self.env_state().triple_structure(triple).into())
+        Ok(*triple.generate_structure(self.env_state()))
     }
 
     fn print_curr_nodes(&mut self) {
@@ -160,7 +160,7 @@ impl AmlangAgent {
         let triples = self.env_state().env().match_any(node);
         for triple in triples {
             print!("    ");
-            let structure = self.env_state().triple_structure(triple);
+            let structure = triple.generate_structure(self.env_state());
             self.print_list(&structure);
             println!("");
         }

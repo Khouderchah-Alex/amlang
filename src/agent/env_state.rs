@@ -3,10 +3,10 @@ use std::convert::TryFrom;
 use crate::environment::environment::{EnvObject, Environment};
 use crate::environment::mem_environment::MemEnvironment;
 use crate::environment::meta_environment::{MetaEnvStructure, MetaEnvironment};
-use crate::environment::{NodeId, TripleId};
+use crate::environment::NodeId;
 use crate::function::EvalErr::{self, *};
 use crate::primitive::{Primitive, Symbol, SymbolTable, ToSymbol};
-use crate::sexp::{cons, HeapSexp, Sexp};
+use crate::sexp::{HeapSexp, Sexp};
 
 
 pub struct EnvState {
@@ -80,21 +80,6 @@ impl EnvState {
             return Some(HeapSexp::new(env.node_structure(name).cloned().unwrap()));
         }
         None
-    }
-
-    pub fn triple_structure(&mut self, triple: TripleId) -> HeapSexp {
-        let env = self.env();
-        let s = env.triple_subject(triple);
-        let p = env.triple_predicate(triple);
-        let o = env.triple_object(triple);
-        cons(
-            Some(Box::new(s.into())),
-            cons(
-                Some(Box::new(p.into())),
-                cons(Some(Box::new(o.into())), None),
-            ),
-        )
-        .unwrap()
     }
 
     pub fn resolve(&mut self, name: &Symbol) -> Result<NodeId, EvalErr> {

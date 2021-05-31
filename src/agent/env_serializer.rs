@@ -42,7 +42,7 @@ impl EnvSerializer {
         write!(&mut w, "(triples")?;
         for triple in self.env_state().env().match_all() {
             write!(&mut w, "\n    ")?;
-            let s = self.env_state().triple_structure(triple);
+            let s = triple.generate_structure(self.env_state());
             self.serialize_list_internal(&mut w, &s, 1)?;
         }
         writeln!(&mut w, "\n)")?;
@@ -77,7 +77,8 @@ impl EnvSerializer {
             }
             Primitive::BuiltIn(builtin) => write!(w, "(__builtin {})", builtin.name()),
             Primitive::Procedure(proc) => {
-                self.serialize_list_internal(w, &proc.generate_structure(), depth + 1)
+                let proc_sexp = proc.generate_structure(self.env_state());
+                self.serialize_list_internal(w, &proc_sexp, depth + 1)
             }
             Primitive::Node(node) => {
                 let s = self.env_state().env().node_structure(*node).cloned();
