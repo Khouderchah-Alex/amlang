@@ -5,9 +5,8 @@ use std::path::Path;
 use super::agent::Agent;
 use super::env_state::EnvState;
 use crate::function::Ret;
-use crate::model::Eval;
+use crate::model::{Eval, Model};
 // use crate::parser::parse_sexp;
-use crate::primitive::procedure::Procedure;
 use crate::primitive::Primitive;
 use crate::sexp::{HeapSexp, Sexp};
 
@@ -68,31 +67,21 @@ impl EnvSerializer {
         depth: usize,
     ) -> std::io::Result<()> {
         match primitive {
-            Primitive::Symbol(symbol) => write!(w, "(__symbol {})", symbol),
+            Primitive::Symbol(symbol) => {
+                // TODO(func) Rm this hack once lambda is a node.
+                if symbol.as_str() == "lambda" {
+                    write!(w, "{}", symbol)
+                } else {
+                    write!(w, "(__symbol {})", symbol)
+                }
+            }
             Primitive::BuiltIn(builtin) => write!(w, "(__builtin {})", builtin.name()),
-            Primitive::Procedure(proc) => match proc {
-                Procedure::Application(func, args) => {
-                    write!(w, "(")?;
-                    self.serialize_list_internal(w, &(*func).into(), depth + 1)?;
-                    for arg in args {
-                        write!(w, " ")?;
-                        self.serialize_list_internal(w, &(*arg).into(), depth + 1)?;
-                    }
-                    write!(w, ")")
-                }
-                Procedure::Abstraction(params, body) => {
-                    write!(w, "(lambda ")?;
-                    let sparams = <Sexp>::from(params);
-                    self.serialize_list_internal(w, &sparams, depth + 1)?;
-                    write!(w, " ")?;
-                    self.serialize_list_internal(w, &(*body).into(), depth + 1)?;
-                    write!(w, ")")
-                }
-                _ => panic!(),
-            },
+            Primitive::Procedure(proc) => {
+                self.serialize_list_internal(w, &proc.generate_structure(), depth + 1)
+            }
             Primitive::Node(node) => {
                 let s = self.env_state().env().node_structure(*node).cloned();
-                let print_structure = depth == 0
+                let write_structure = depth == 0
                     && match &s {
                         Some(sexp) => match sexp {
                             Sexp::Primitive(Primitive::SymbolTable(_)) => false,
@@ -100,18 +89,18 @@ impl EnvSerializer {
                         },
                         _ => false,
                     };
-                if print_structure {
+                if write_structure {
                     write!(w, "(")?;
                 }
 
-                // Print Nodes as their designators if possible.
+                // Output Nodes as their designators if possible.
                 if let Some(designator) = self.env_state().node_designator(*node) {
                     write!(w, "{}", designator)?;
                 } else {
                     write!(w, "^{}", node.id())?;
                 }
 
-                if print_structure {
+                if write_structure {
                     write!(w, "\t")?;
                     self.serialize_list_internal(w, &s.unwrap(), depth + 1)?;
                     write!(w, ")")?;

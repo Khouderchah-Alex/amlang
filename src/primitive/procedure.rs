@@ -1,7 +1,8 @@
 use std::convert::TryFrom;
 
-use super::{NodeId, Primitive};
-use crate::sexp::Sexp;
+use super::{NodeId, Primitive, ToSymbol};
+use crate::model::Model;
+use crate::sexp::{cons, HeapSexp, Sexp};
 
 
 #[derive(Clone, Debug, PartialEq)]
@@ -17,6 +18,31 @@ pub struct Branch {
     cond: NodeId,
     a: NodeId,
     b: NodeId,
+}
+
+
+impl Model for Procedure {
+    fn generate_structure(&self) -> HeapSexp {
+        match self {
+            Procedure::Application(func, args) => cons(
+                Some(HeapSexp::new((*func).into())),
+                Some(HeapSexp::new(args.into())),
+            )
+            .unwrap(),
+            Procedure::Abstraction(params, body) => {
+                let sparams = HeapSexp::new(<Sexp>::from(params));
+                cons(
+                    Some(HeapSexp::new("lambda".to_symbol_or_panic().into())),
+                    cons(
+                        Some(sparams),
+                        cons(Some(HeapSexp::new((*body).into())), None),
+                    ),
+                )
+                .unwrap()
+            }
+            _ => panic!(),
+        }
+    }
 }
 
 
