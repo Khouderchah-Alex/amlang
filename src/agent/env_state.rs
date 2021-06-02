@@ -18,8 +18,7 @@ pub struct EnvState {
     meta: MetaEnvironment,
 }
 
-const META_DESIGNATION: &str = "__designatedBy";
-
+pub const AMLANG_DESIGNATION: &str = "__designatedBy";
 
 impl EnvState {
     pub fn new() -> Self {
@@ -33,11 +32,10 @@ impl EnvState {
         let designation = env_obj.insert_structure(SymbolTable::default().into());
 
         if let Ok(table) = <&mut SymbolTable>::try_from(env_obj.node_structure(designation)) {
-            table.insert(META_DESIGNATION.to_symbol_or_panic(), designation);
+            table.insert(AMLANG_DESIGNATION.to_symbol_or_panic(), designation);
         } else {
             panic!("Env designation isn't a symbol table");
         }
-        env_obj.insert_triple(designation, designation, designation);
 
         Self {
             env,
@@ -70,7 +68,9 @@ impl EnvState {
     pub fn node_designator(&mut self, node: NodeId) -> Option<HeapSexp> {
         let designation = self.designation();
         if node == designation {
-            return Some(HeapSexp::new(META_DESIGNATION.to_symbol_or_panic().into()));
+            return Some(HeapSexp::new(
+                AMLANG_DESIGNATION.to_symbol_or_panic().into(),
+            ));
         }
 
         let env = self.env();

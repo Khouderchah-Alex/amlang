@@ -5,7 +5,6 @@ use std::io::{stdout, BufWriter};
 use super::agent::Agent;
 use super::amlang_wrappers::*;
 use super::env_state::EnvState;
-use crate::builtins::{add, div, mul, sub};
 use crate::function::{
     EvalErr::{self, *},
     ExpectedCount, Func, Ret,
@@ -13,7 +12,7 @@ use crate::function::{
 use crate::model::{Eval, Model};
 use crate::parser::parse_sexp;
 use crate::primitive::procedure::Procedure;
-use crate::primitive::{BuiltIn, NodeId, Primitive, Symbol, SymbolTable, ToSymbol};
+use crate::primitive::{NodeId, Primitive, Symbol, SymbolTable};
 use crate::sexp::{Cons, HeapSexp, Sexp};
 use crate::token::interactive_stream::InteractiveStream;
 
@@ -28,6 +27,11 @@ pub struct AmlangAgent {
 impl AmlangAgent {
     pub fn new() -> Self {
         let env_state = EnvState::new();
+        Self::from_env(env_state)
+    }
+
+    // TODO(func) Only using this until we have shared env functionality.
+    pub fn from_env(env_state: EnvState) -> Self {
         let eval_symbols = SymbolTable::default();
         Self {
             env_state,
@@ -35,6 +39,7 @@ impl AmlangAgent {
         }
     }
 
+    // TODO(func) Only using this until we have shared env functionality.
     pub fn extract_env(self) -> EnvState {
         self.env_state
     }
@@ -289,26 +294,8 @@ impl Default for AmlangAgent {
     }
 }
 
-macro_rules! insert_builtins {
-    [$self:ident, $($n:tt : $x:expr),*] => {
-        {
-            $(
-                {
-                    let fun = HeapSexp::new(BuiltIn::new(stringify!($x), $x).into());
-                    $self.env_state().def_node($n.to_symbol_or_panic(), Some(fun)).unwrap();
-                }
-            )*
-        }
-    };
-    [$($n:tt : $x:expr),+ ,] => {
-        builtins![$($n : $x),*]
-    };
-}
-
 impl Agent for AmlangAgent {
     fn run(&mut self) -> Result<(), String> {
-        insert_builtins![self, "+": add, "-": sub, "*": mul, "/": div];
-
         let stream = InteractiveStream::new();
         let mut peekable = stream.peekable();
 

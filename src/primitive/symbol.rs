@@ -3,7 +3,7 @@ use std::convert::TryFrom;
 use std::fmt;
 
 use super::Primitive;
-use crate::sexp::Sexp;
+use crate::sexp::{HeapSexp, Sexp};
 
 
 /// String which can be used as an identifier (amlang designator).
@@ -25,20 +25,29 @@ pub type SymbolResult = Result<Symbol, SymbolError>;
 #[derive(Debug)]
 pub enum SymbolError {
     NonAlphabetic(String),
+    EmptyString,
 }
 
 impl Symbol {
     pub fn new<S: AsRef<str>>(sym: S) -> SymbolResult {
-        match sym.as_ref() {
+        let s = sym.as_ref();
+        if s.len() == 0 {
+            return Err(SymbolError::EmptyString);
+        }
+
+        match s {
             "+" | "-" | "*" | "/" => {}
             _ => {
-                if !sym.as_ref().chars().all(|c| c.is_alphabetic() || c == '_') {
-                    return Err(SymbolError::NonAlphabetic(sym.as_ref().to_string()));
+                if !s.chars().all(|c| c.is_alphabetic() || c == '_')
+                    && !(s.as_bytes()[0] == ('^' as u8)
+                        && s.chars().skip(1).all(|c| c.is_ascii_digit()))
+                {
+                    return Err(SymbolError::NonAlphabetic(s.to_string()));
                 }
             }
         }
 
-        Ok(Symbol(sym.as_ref().to_string()))
+        Ok(Symbol(s.to_string()))
     }
 
     pub fn as_str(&self) -> &str {
@@ -110,6 +119,19 @@ impl<'a> TryFrom<Option<&'a Sexp>> for &'a Symbol {
         } else {
             Err(())
         }
+    }
+}
+
+impl TryFrom<Option<HeapSexp>> for Symbol {
+    type Error = ();
+
+    fn try_from(value: Option<HeapSexp>) -> Result<Self, Self::Error> {
+        if let Some(heap) = value {
+            if let Sexp::Primitive(Primitive::Symbol(symbol)) = *heap {
+                return Ok(symbol);
+            }
+        }
+        Err(())
     }
 }
 
