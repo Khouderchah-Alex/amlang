@@ -95,6 +95,19 @@ impl<'a> TryFrom<&'a Sexp> for NodeId {
     }
 }
 
+// Prefer not to use this but need consistency for sexp_conversion.
+impl<'a> TryFrom<&'a Sexp> for &'a NodeId {
+    type Error = ();
+
+    fn try_from(value: &'a Sexp) -> Result<Self, Self::Error> {
+        if let Sexp::Primitive(Primitive::Node(node)) = value {
+            Ok(node)
+        } else {
+            Err(())
+        }
+    }
+}
+
 impl<'a> TryFrom<Option<&'a Sexp>> for NodeId {
     type Error = ();
 
