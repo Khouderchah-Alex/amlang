@@ -22,6 +22,21 @@ fn lambda_sexp() {
 }
 
 #[test]
+fn list_sexp() {
+    let original = "(a b c)".parse::<Sexp>().unwrap();
+    let (a, r) = break_by_types!(original, Symbol; remainder).unwrap();
+    assert_eq!(a.as_str(), "a");
+
+    let (b, r2) = break_by_types!(r.unwrap(), Symbol; remainder).unwrap();
+    assert_eq!(b.as_str(), "b");
+
+    let (c, r3) = break_by_types!(r2.unwrap(), Symbol; remainder).unwrap();
+    assert_eq!(c.as_str(), "c");
+
+    assert_eq!(r3, None);
+}
+
+#[test]
 fn wrong_type() {
     let original = "(lambda (a b) ing)".parse::<Sexp>().unwrap();
     if let Err(EvalErr::InvalidArgument { .. }) = break_by_types!(original, NodeId, Sexp, Symbol) {

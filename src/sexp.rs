@@ -196,6 +196,12 @@ impl Cons {
     }
 }
 
+impl SexpIntoIter {
+    pub fn consume(self) -> Option<Sexp> {
+        self.current.map(|c| Sexp::Cons(c))
+    }
+}
+
 
 impl<'a> Iterator for SexpIter<'a> {
     type Item = &'a Sexp;
