@@ -5,6 +5,7 @@ use std::fmt;
 use std::str::FromStr;
 
 use crate::cons_list::ConsList;
+use crate::function::{EvalErr, ExpectedCount};
 use crate::parser::{parse_sexp, ParseError};
 use crate::primitive::{BuiltIn, NodeId, Number, Primitive, Procedure, Symbol, SymbolTable};
 use crate::token::string_stream::StringStream;
@@ -386,6 +387,23 @@ impl<'a, E> TryFrom<&'a Result<Sexp, E>> for &'a Cons {
             Ok(cons)
         } else {
             Err(())
+        }
+    }
+}
+
+impl TryFrom<Option<HeapSexp>> for SexpIntoIter {
+    type Error = EvalErr;
+
+    fn try_from(value: Option<HeapSexp>) -> Result<Self, Self::Error> {
+        match value {
+            Some(sexp) => match *sexp {
+                Sexp::Primitive(primitive) => Err(EvalErr::InvalidSexp(primitive.clone().into())),
+                Sexp::Cons(cons) => Ok(cons.into_iter()),
+            },
+            None => Err(EvalErr::WrongArgumentCount {
+                given: 0,
+                expected: ExpectedCount::AtLeast(1),
+            }),
         }
     }
 }

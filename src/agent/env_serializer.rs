@@ -8,11 +8,11 @@ use super::agent::Agent;
 use super::amlang_wrappers::quote_wrapper;
 use super::env_state::{EnvState, AMLANG_DESIGNATION};
 use crate::builtins::generate_builtin_map;
-use crate::function::Ret;
+use crate::function::{self, Ret};
 use crate::model::{Eval, Model};
 use crate::parser::{self, parse_sexp};
 use crate::primitive::{BuiltIn, Primitive, Symbol, SymbolTable};
-use crate::sexp::{HeapSexp, Sexp};
+use crate::sexp::{Cons, HeapSexp, Sexp, SexpIntoIter};
 use crate::token::file_stream::{self, FileStream};
 
 use DeserializeError::*;
@@ -29,12 +29,10 @@ pub enum DeserializeError {
     MissingNodeSection,
     MissingTripleSection,
     ExtraneousSection,
-    InvalidSexp(Sexp),
     UnexpectedCommand(Sexp),
-    MissingCommand,
     ExpectedSymbol,
-    ExtraneousNodeInfo,
     UnrecognizedBuiltIn(Symbol),
+    EvalErr(function::EvalErr),
 }
 
 impl EnvSerializer {
@@ -80,26 +78,13 @@ impl EnvSerializer {
     fn deserialize_nodes(&mut self, structure: HeapSexp) -> Result<SymbolTable, DeserializeError> {
         let builtins = generate_builtin_map();
         let mut node_table = SymbolTable::default();
-        let cons = match *structure {
-            Sexp::Primitive(primitive) => {
-                return Err(InvalidSexp(primitive.clone().into()));
-            }
-            Sexp::Cons(cons) => cons,
-        };
-
-        let mut iter = cons.into_iter();
-        match iter.next() {
-            Some(hsexp) => match *hsexp {
-                Sexp::Primitive(Primitive::Symbol(symbol)) => {
-                    if symbol.as_str() != "nodes" {
-                        return Err(UnexpectedCommand(symbol.clone().into()));
-                    }
-                }
-                s => return Err(UnexpectedCommand(s.clone())),
-            },
-            _ => return Err(MissingCommand),
+        let (command, remainder) =
+            break_by_types!(*structure, Symbol; remainder).map_err(|e| EvalErr(e))?;
+        if command.as_str() != "nodes" {
+            return Err(UnexpectedCommand(command.into()));
         }
 
+        let iter = SexpIntoIter::try_from(remainder).map_err(|e| EvalErr(e))?;
         for entry in iter.skip(1) {
             match *entry {
                 Sexp::Primitive(primitive) => {
@@ -115,25 +100,10 @@ impl EnvSerializer {
                     }
                 }
                 Sexp::Cons(cons) => {
-                    let mut iter = cons.into_iter();
-                    let sym = if let Ok(symbol) = <Symbol>::try_from(iter.next()) {
-                        symbol
-                    } else {
-                        return Err(ExpectedSymbol);
-                    };
-
-                    let command = if let Some(sexp) = iter.next() {
-                        sexp
-                    } else {
-                        return Err(MissingCommand);
-                    };
-
-                    if let Some(_) = iter.next() {
-                        return Err(ExtraneousNodeInfo);
-                    }
-
+                    let (name, command) =
+                        break_by_types!(cons.into(), Symbol, Sexp).map_err(|e| EvalErr(e))?;
                     let structure = self.eval_structure(command, &builtins)?;
-                    node_table.insert(sym, self.env_state().env().insert_structure(structure));
+                    node_table.insert(name, self.env_state().env().insert_structure(structure));
                 }
             }
         }
@@ -142,27 +112,16 @@ impl EnvSerializer {
 
     fn eval_structure(
         &mut self,
-        structure: HeapSexp,
+        structure: Sexp,
         builtins: &HashMap<&'static str, BuiltIn>,
     ) -> Result<Sexp, DeserializeError> {
-        let cons = match *structure {
-            Sexp::Primitive(primitive) => {
-                return Err(InvalidSexp(primitive.clone().into()));
-            }
-            Sexp::Cons(cons) => cons,
-        };
-        let (car, cdr) = cons.consume();
-        let command = if let Ok(sym) = <Symbol>::try_from(car) {
-            sym
-        } else {
-            return Err(ExpectedSymbol);
-        };
+        let (command, cdr) =
+            break_by_types!(structure, Symbol; remainder).map_err(|e| EvalErr(e))?;
 
         match command.as_str() {
-            // TODO unwraps.
-            "quote" => Ok(quote_wrapper(cdr).unwrap()),
+            "quote" => Ok(quote_wrapper(cdr).map_err(|e| EvalErr(e))?),
             "__builtin" => {
-                if let Ok(sym) = <Symbol>::try_from(quote_wrapper(cdr).unwrap()) {
+                if let Ok(sym) = <Symbol>::try_from(quote_wrapper(cdr).map_err(|e| EvalErr(e))?) {
                     if let Some(builtin) = builtins.get(sym.as_str()) {
                         Ok(builtin.clone().into())
                     } else {
@@ -182,50 +141,20 @@ impl EnvSerializer {
         structure: HeapSexp,
         node_table: SymbolTable,
     ) -> Result<(), DeserializeError> {
-        let cons = match *structure {
-            Sexp::Primitive(primitive) => {
-                return Err(InvalidSexp(primitive.clone().into()));
-            }
-            Sexp::Cons(cons) => cons,
-        };
-
-        let mut iter = cons.into_iter();
-        match iter.next() {
-            Some(hsexp) => match *hsexp {
-                Sexp::Primitive(Primitive::Symbol(symbol)) => {
-                    if symbol.as_str() != "triples" {
-                        return Err(UnexpectedCommand(symbol.clone().into()));
-                    }
-                }
-                s => return Err(UnexpectedCommand(s.clone())),
-            },
-            _ => return Err(MissingCommand),
+        let (command, remainder) =
+            break_by_types!(*structure, Symbol; remainder).map_err(|e| EvalErr(e))?;
+        if command.as_str() != "triples" {
+            return Err(UnexpectedCommand(command.into()));
         }
 
+        let iter = SexpIntoIter::try_from(remainder).map_err(|e| EvalErr(e))?;
         for entry in iter {
-            let cons = match *entry {
-                Sexp::Primitive(primitive) => {
-                    return Err(InvalidSexp(primitive.clone().into()));
-                }
-                Sexp::Cons(cons) => cons,
-            };
-            let mut iter = cons.into_iter();
-            // TODO unwraps
-            let subject = if let Ok(symbol) = <Symbol>::try_from(iter.next()) {
-                node_table.lookup(&symbol).unwrap()
-            } else {
-                return Err(ExpectedSymbol);
-            };
-            let predicate = if let Ok(symbol) = <Symbol>::try_from(iter.next()) {
-                node_table.lookup(&symbol).unwrap()
-            } else {
-                return Err(ExpectedSymbol);
-            };
-            let object = if let Ok(symbol) = <Symbol>::try_from(iter.next()) {
-                node_table.lookup(&symbol).unwrap()
-            } else {
-                return Err(ExpectedSymbol);
-            };
+            let (s, p, o) =
+                break_by_types!(*entry, Symbol, Symbol, Symbol).map_err(|e| EvalErr(e))?;
+
+            let subject = node_table.lookup(&s).map_err(|e| EvalErr(e))?;
+            let predicate = node_table.lookup(&p).map_err(|e| EvalErr(e))?;
+            let object = node_table.lookup(&o).map_err(|e| EvalErr(e))?;
             self.env_state()
                 .env()
                 .insert_triple(subject, predicate, object);
