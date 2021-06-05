@@ -197,8 +197,8 @@ impl Cons {
 }
 
 impl SexpIntoIter {
-    pub fn consume(self) -> Option<Sexp> {
-        self.current.map(|c| Sexp::Cons(c))
+    pub fn consume(self) -> Option<HeapSexp> {
+        self.current.map(|c| HeapSexp::new(Sexp::Cons(c)))
     }
 }
 

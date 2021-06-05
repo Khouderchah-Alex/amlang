@@ -2,7 +2,7 @@
 /// component types implement TryFrom<Sexp>.
 ///
 /// Optional remainder at end is an arbitrary identifier and cannot accept
-/// repetitions. Will return as final tuple element of type Option<Sexp>.
+/// repetitions. Will return as final tuple element of type Option<HeapSexp>.
 macro_rules! break_by_types {
     ($sexp:expr, $($type:ident),+ $(;$remainder:tt),*) => {
         {
