@@ -26,8 +26,11 @@ impl Model for Procedure {
     fn generate_structure(&self, _env_state: &mut EnvState) -> HeapSexp {
         match self {
             Procedure::Application(func, args) => cons(
-                Some(HeapSexp::new((*func).into())),
-                Some(HeapSexp::new(args.into())),
+                Some(HeapSexp::new("apply".to_symbol_or_panic().into())),
+                cons(
+                    Some(HeapSexp::new((*func).into())),
+                    cons(Some(HeapSexp::new(args.into())), None),
+                ),
             )
             .unwrap(),
             Procedure::Abstraction(params, body) => {

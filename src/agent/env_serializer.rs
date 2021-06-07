@@ -11,7 +11,7 @@ use crate::builtins::generate_builtin_map;
 use crate::function::{self, Ret};
 use crate::model::{Eval, Model};
 use crate::parser::{self, parse_sexp};
-use crate::primitive::{BuiltIn, Primitive, Symbol, SymbolTable};
+use crate::primitive::{BuiltIn, Primitive, Procedure, Symbol, SymbolTable};
 use crate::sexp::{Cons, HeapSexp, Sexp, SexpIntoIter};
 use crate::token::file_stream::{self, FileStream};
 
@@ -102,7 +102,7 @@ impl EnvSerializer {
                 Sexp::Cons(cons) => {
                     let (name, command) =
                         break_by_types!(cons.into(), Symbol, Sexp).map_err(|e| EvalErr(e))?;
-                    let structure = self.eval_structure(command, &builtins)?;
+                    let structure = self.eval_structure(command, &builtins, &node_table)?;
                     node_table.insert(name, self.env_state().env().insert_structure(structure));
                 }
             }
@@ -114,6 +114,7 @@ impl EnvSerializer {
         &mut self,
         structure: Sexp,
         builtins: &HashMap<&'static str, BuiltIn>,
+        node_table: &SymbolTable,
     ) -> Result<Sexp, DeserializeError> {
         let (command, cdr) =
             break_by_types!(structure, Symbol; remainder).map_err(|e| EvalErr(e))?;
@@ -131,7 +132,48 @@ impl EnvSerializer {
                     Err(ExpectedSymbol)
                 }
             }
-            "apply" | "lambda" => Ok(Sexp::default()),
+            "apply" => {
+                if cdr.is_none() {
+                    return Err(EvalErr(function::EvalErr::WrongArgumentCount {
+                        given: 0,
+                        expected: function::ExpectedCount::Exactly(2),
+                    }));
+                }
+
+                let (func, args) =
+                    break_by_types!(*cdr.unwrap(), Symbol, Cons).map_err(|e| EvalErr(e))?;
+                let fnode = node_table.lookup(&func).map_err(|e| EvalErr(e))?;
+                let mut arg_nodes = Vec::with_capacity(args.iter().count());
+                for arg in args {
+                    if let Ok(sym) = <&Symbol>::try_from(&*arg) {
+                        arg_nodes.push(node_table.lookup(sym).map_err(|e| EvalErr(e))?);
+                    } else {
+                        return Err(EvalErr(function::EvalErr::InvalidSexp(*arg)));
+                    }
+                }
+                Ok(Procedure::Application(fnode, arg_nodes).into())
+            }
+            "lambda" => {
+                if cdr.is_none() {
+                    return Err(EvalErr(function::EvalErr::WrongArgumentCount {
+                        given: 0,
+                        expected: function::ExpectedCount::AtLeast(2),
+                    }));
+                }
+
+                let (params, body) =
+                    break_by_types!(*cdr.unwrap(), Cons, Symbol).map_err(|e| EvalErr(e))?;
+                let mut param_nodes = Vec::with_capacity(params.iter().count());
+                for param in params {
+                    if let Ok(sym) = <&Symbol>::try_from(&*param) {
+                        param_nodes.push(node_table.lookup(sym).map_err(|e| EvalErr(e))?);
+                    } else {
+                        return Err(EvalErr(function::EvalErr::InvalidSexp(*param)));
+                    }
+                }
+                let body_node = node_table.lookup(&body).map_err(|e| EvalErr(e))?;
+                Ok(Procedure::Abstraction(param_nodes, body_node).into())
+            }
             _ => panic!("{}", command),
         }
     }
@@ -221,8 +263,8 @@ impl EnvSerializer {
     ) -> std::io::Result<()> {
         match primitive {
             Primitive::Symbol(symbol) => {
-                // TODO(func) Rm this hack once lambda is a node.
-                if symbol.as_str() == "lambda" {
+                // TODO(func) Rm this hack once these exceptions are nodes.
+                if symbol.as_str() == "lambda" || symbol.as_str() == "apply" {
                     write!(w, "{}", symbol)
                 } else {
                     write!(w, "'{}", symbol)
