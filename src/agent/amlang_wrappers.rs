@@ -17,27 +17,8 @@ pub fn quote_wrapper(args: Option<HeapSexp>) -> Ret {
         });
     }
 
-    match *args.unwrap() {
-        Sexp::Primitive(primitive) => {
-            return Err(InvalidSexp(primitive.clone().into()));
-        }
-
-        Sexp::Cons(cons) => {
-            let length = cons.iter().count();
-            if length != 1 {
-                return Err(WrongArgumentCount {
-                    given: length,
-                    expected: ExpectedCount::Exactly(1),
-                });
-            }
-
-            let ret = cons.car();
-            return match ret {
-                None => Ok(Cons::default().into()),
-                Some(val) => Ok(val.clone()),
-            };
-        }
-    }
+    let (val,) = break_by_types!(*args.unwrap(), Sexp)?;
+    Ok(val)
 }
 
 pub fn make_procedure_wrapper(args: Option<HeapSexp>) -> Result<(Vec<Symbol>, Sexp), EvalErr> {
@@ -48,47 +29,23 @@ pub fn make_procedure_wrapper(args: Option<HeapSexp>) -> Result<(Vec<Symbol>, Se
         });
     }
 
-    let cons = match *args.unwrap() {
-        Sexp::Primitive(primitive) => {
-            return Err(InvalidSexp(primitive.clone().into()));
-        }
-        Sexp::Cons(cons) => cons,
-    };
-
-    let (car, cdr) = cons.consume();
+    let (param_sexp, body) = break_by_types!(*args.unwrap(), Cons; remainder)?;
     // Pull params into a list of symbols.
-    let params = if let Some(params) = car {
-        let cons = match *params {
-            Sexp::Primitive(primitive) => {
+    let mut params = Vec::<Symbol>::with_capacity(param_sexp.iter().count());
+    for param in param_sexp {
+        let name = match *param {
+            Sexp::Primitive(Primitive::Symbol(symbol)) => symbol,
+            _ => {
                 return Err(InvalidArgument {
-                    given: primitive.clone().into(),
-                    expected: Cow::Borrowed("params list"),
+                    given: param.clone().into(),
+                    expected: Cow::Borrowed("symbol"),
                 });
             }
-            Sexp::Cons(cons) => cons,
         };
-        let mut vec = Vec::<Symbol>::with_capacity(cons.iter().count());
-        for param in cons {
-            let name = match *param {
-                Sexp::Primitive(Primitive::Symbol(symbol)) => symbol,
-                _ => {
-                    return Err(InvalidArgument {
-                        given: param.clone().into(),
-                        expected: Cow::Borrowed("symbol"),
-                    });
-                }
-            };
-            vec.push(name);
-        }
-        vec
-    } else {
-        return Err(InvalidArgument {
-            given: Sexp::default(),
-            expected: Cow::Borrowed("params list"),
-        });
-    };
+        params.push(name);
+    }
 
-    return match cdr {
+    return match body {
         Some(hsexp) => match *hsexp {
             Sexp::Cons(cons) => Ok((params, cons.into())),
             Sexp::Primitive(primitive) => Err(InvalidArgument {
@@ -103,6 +60,7 @@ pub fn make_procedure_wrapper(args: Option<HeapSexp>) -> Result<(Vec<Symbol>, Se
     };
 }
 
+/*
 pub fn env_insert_triple_wrapper(
     args: Option<&Sexp>,
 ) -> Result<(&Symbol, &Symbol, &Symbol), EvalErr> {
@@ -191,3 +149,4 @@ pub fn env_insert_node_wrapper(args: Option<&Sexp>) -> Result<(&Symbol, Option<&
 
     Ok((name, structure))
 }
+*/

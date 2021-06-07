@@ -87,29 +87,8 @@ impl AmlangAgent {
             });
         }
 
-        let cons = match *args.unwrap() {
-            Sexp::Primitive(primitive) => {
-                return Err(InvalidSexp(primitive.clone().into()));
-            }
-            Sexp::Cons(cons) => cons,
-        };
-
-        let mut iter = cons.iter();
-        let node = if let Ok(symbol) = <&Symbol>::try_from(iter.next()) {
-            self.env_state().resolve(symbol)?
-        } else {
-            return Err(InvalidArgument {
-                given: cons.clone().into(),
-                expected: Cow::Borrowed("node"),
-            });
-        };
-
-        if iter.next().is_some() {
-            return Err(WrongArgumentCount {
-                given: iter.count() + 2,
-                expected: ExpectedCount::Exactly(1),
-            });
-        }
+        let (node_name,) = break_by_types!(*args.unwrap(), Symbol)?;
+        let node = self.env_state().resolve(&node_name)?;
 
         self.env_state().jump(node);
         self.print_curr_triples();
