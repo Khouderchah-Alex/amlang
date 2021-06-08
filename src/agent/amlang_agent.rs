@@ -25,11 +25,6 @@ pub struct AmlangAgent {
 }
 
 impl AmlangAgent {
-    pub fn new() -> Self {
-        let env_state = EnvState::new();
-        Self::from_env(env_state)
-    }
-
     // TODO(func) Only using this until we have shared env functionality.
     pub fn from_env(env_state: EnvState) -> Self {
         let eval_symbols = SymbolTable::default();
@@ -266,12 +261,6 @@ impl AmlangAgent {
     }
 }
 
-
-impl Default for AmlangAgent {
-    fn default() -> Self {
-        Self::new()
-    }
-}
 
 impl Agent for AmlangAgent {
     fn run(&mut self) -> Result<(), String> {

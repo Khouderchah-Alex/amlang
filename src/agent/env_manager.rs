@@ -3,22 +3,27 @@ use std::convert::TryFrom;
 use std::fs::File;
 use std::io::{BufWriter, Write};
 use std::path::Path;
+use std::sync::Arc;
 
 use super::agent::Agent;
+use super::amlang_context::AmlangContext;
 use super::amlang_wrappers::quote_wrapper;
 use super::env_state::{EnvState, AMLANG_DESIGNATION};
 use crate::builtins::generate_builtin_map;
+use crate::environment::environment::Environment;
+use crate::environment::mem_environment::MemEnvironment;
+use crate::environment::meta_environment::{MetaEnvStructure, MetaEnvironment};
 use crate::function::{self, Ret};
 use crate::model::{Eval, Model};
 use crate::parser::{self, parse_sexp};
-use crate::primitive::{BuiltIn, Primitive, Procedure, Symbol, SymbolTable};
+use crate::primitive::{BuiltIn, Primitive, Procedure, Symbol, SymbolTable, ToSymbol};
 use crate::sexp::{Cons, HeapSexp, Sexp, SexpIntoIter};
 use crate::token::file_stream::{self, FileStream};
 
 use DeserializeError::*;
 
 
-pub struct EnvSerializer {
+pub struct EnvManager {
     env_state: EnvState,
 }
 
@@ -35,10 +40,27 @@ pub enum DeserializeError {
     EvalErr(function::EvalErr),
 }
 
-impl EnvSerializer {
-    pub fn new() -> Self {
-        let env_state = EnvState::new();
-        Self { env_state }
+impl EnvManager {
+    pub fn bootstrap<P: AsRef<Path>>(base_path: P) -> Result<Self, DeserializeError> {
+        let mut meta = MetaEnvironment::new();
+        let base_env_node =
+            meta.insert_structure(MetaEnvStructure::Env(Box::new(MemEnvironment::new())));
+        let base_env = meta.access_env(base_env_node);
+
+        let pos = base_env.self_node();
+        let designation = base_env.insert_structure(SymbolTable::default().into());
+
+        if let Ok(table) = <&mut SymbolTable>::try_from(base_env.node_structure(designation)) {
+            table.insert(AMLANG_DESIGNATION.to_symbol_or_panic(), designation);
+        } else {
+            panic!("Env designation isn't a symbol table");
+        }
+
+        let context = Arc::new(AmlangContext::new(meta, base_env_node, designation));
+        let env_state = EnvState::new(context, pos);
+        let mut manager = Self { env_state };
+        manager.deserialize(base_path)?;
+        Ok(manager)
     }
 
     // TODO(func) Only using this until we have shared env functionality.
@@ -308,7 +330,7 @@ impl EnvSerializer {
     }
 }
 
-impl Agent for EnvSerializer {
+impl Agent for EnvManager {
     fn run(&mut self) -> Result<(), String> {
         Ok(())
     }
@@ -318,7 +340,7 @@ impl Agent for EnvSerializer {
     }
 }
 
-impl Eval for EnvSerializer {
+impl Eval for EnvManager {
     fn eval(&mut self, _structure: HeapSexp) -> Ret {
         Ok(Sexp::default())
     }

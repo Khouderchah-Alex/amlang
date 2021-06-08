@@ -2,12 +2,12 @@
 
 use std::fmt;
 
-use super::environment::{BaseEnvObject, EnvObject};
+use super::environment::EnvObject;
 use super::mem_environment::MemEnvironment;
+use crate::environment::environment::Environment;
+use crate::primitive::NodeId;
 use crate::sexp::Sexp;
 
-
-pub type MetaEnvObject = BaseEnvObject<MetaEnvStructure>;
 
 pub enum MetaEnvStructure {
     Sexp(Sexp),
@@ -15,6 +15,16 @@ pub enum MetaEnvStructure {
 }
 
 pub type MetaEnvironment = MemEnvironment<MetaEnvStructure>;
+
+
+impl MetaEnvironment {
+    pub fn access_env(&mut self, node: NodeId) -> &mut EnvObject {
+        match self.node_structure(node).unwrap() {
+            MetaEnvStructure::Env(env) => env.as_mut(),
+            _ => panic!(),
+        }
+    }
+}
 
 
 impl fmt::Debug for MetaEnvStructure {

@@ -1,8 +1,8 @@
 use std::convert::TryFrom;
+use std::sync::Arc;
 
-use crate::environment::environment::{EnvObject, Environment};
-use crate::environment::mem_environment::MemEnvironment;
-use crate::environment::meta_environment::{MetaEnvStructure, MetaEnvironment};
+use super::amlang_context::AmlangContext;
+use crate::environment::environment::EnvObject;
 use crate::environment::NodeId;
 use crate::function::EvalErr::{self, *};
 use crate::primitive::{Primitive, Symbol, SymbolTable, ToSymbol};
@@ -13,35 +13,17 @@ pub struct EnvState {
     env: NodeId,
     pos: NodeId,
 
-    // TODO(func) Move to central location.
-    designation: NodeId,
-    meta: MetaEnvironment,
+    context: Arc<AmlangContext>,
 }
 
 pub const AMLANG_DESIGNATION: &str = "__designatedBy";
 
 impl EnvState {
-    pub fn new() -> Self {
-        // TODO(func) Move to central location.
-        let mut meta = MetaEnvironment::new();
-        let env = meta.insert_structure(MetaEnvStructure::Env(Box::new(MemEnvironment::new())));
-
-        let env_obj = EnvState::access_env(&mut meta, env);
-        let pos = env_obj.self_node();
-
-        let designation = env_obj.insert_structure(SymbolTable::default().into());
-
-        if let Ok(table) = <&mut SymbolTable>::try_from(env_obj.node_structure(designation)) {
-            table.insert(AMLANG_DESIGNATION.to_symbol_or_panic(), designation);
-        } else {
-            panic!("Env designation isn't a symbol table");
-        }
-
+    pub fn new(context: Arc<AmlangContext>, pos: NodeId) -> Self {
         Self {
-            env,
+            env: context.base_env(),
             pos,
-            designation,
-            meta,
+            context,
         }
     }
 
@@ -50,7 +32,7 @@ impl EnvState {
     }
 
     pub fn designation(&self) -> NodeId {
-        self.designation
+        self.context.designation()
     }
 
     pub fn jump(&mut self, node: NodeId) {
@@ -62,7 +44,8 @@ impl EnvState {
     // pub fn teleport(&mut self, portal: Portal)
 
     pub fn env(&mut self) -> &mut EnvObject {
-        EnvState::access_env(&mut self.meta, self.env)
+        let meta = self.context.meta();
+        meta.access_env(self.env)
     }
 
     pub fn node_designator(&mut self, node: NodeId) -> Option<HeapSexp> {
@@ -139,13 +122,5 @@ impl EnvState {
 
         self.env().insert_triple(node, designation, name_node);
         Ok(node)
-    }
-
-    // TODO(func) Move to same central location as above.
-    fn access_env(meta: &mut MetaEnvironment, node: NodeId) -> &mut EnvObject {
-        match meta.node_structure(node).unwrap() {
-            MetaEnvStructure::Env(env) => env.as_mut(),
-            _ => panic!(),
-        }
     }
 }

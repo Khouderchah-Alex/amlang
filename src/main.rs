@@ -42,15 +42,15 @@ fn main() -> Result<(), String> {
 }
 
 fn interactive_agent() -> Result<(), String> {
-    let mut serializer = agent::env_serializer::EnvSerializer::new();
-    if let Err(err) = serializer.deserialize("./test.env") {
-        return Err(format!("{:?}", err));
-    }
-    let mut user_agent = agent::amlang_agent::AmlangAgent::from_env(serializer.extract_env());
+    let manager = match agent::env_manager::EnvManager::bootstrap("test.env") {
+        Ok(val) => val,
+        Err(err) => return Err(format!("{:?}", err)),
+    };
+    let mut user_agent = agent::amlang_agent::AmlangAgent::from_env(manager.extract_env());
     user_agent.run()?;
 
-    let mut serializer = agent::env_serializer::EnvSerializer::from_env(user_agent.extract_env());
-    if let Err(err) = serializer.serialize("./testt.env") {
+    let mut manager = agent::env_manager::EnvManager::from_env(user_agent.extract_env());
+    if let Err(err) = manager.serialize("./testt.env") {
         return Err(err.to_string());
     }
 
