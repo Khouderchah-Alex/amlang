@@ -9,6 +9,7 @@ use crate::primitive::{Primitive, Symbol, SymbolTable, ToSymbol};
 use crate::sexp::{HeapSexp, Sexp};
 
 
+#[derive(Clone)]
 pub struct EnvState {
     env: NodeId,
     pos: NodeId,

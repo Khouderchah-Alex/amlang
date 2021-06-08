@@ -63,16 +63,6 @@ impl EnvManager {
         Ok(manager)
     }
 
-    // TODO(func) Only using this until we have shared env functionality.
-    pub fn from_env(env_state: EnvState) -> Self {
-        Self { env_state }
-    }
-
-    // TODO(func) Only using this until we have shared env functionality.
-    pub fn extract_env(self) -> EnvState {
-        self.env_state
-    }
-
     pub fn deserialize<P: AsRef<Path>>(&mut self, in_path: P) -> Result<(), DeserializeError> {
         let stream = match FileStream::new(in_path) {
             Ok(stream) => stream,

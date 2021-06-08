@@ -42,14 +42,14 @@ fn main() -> Result<(), String> {
 }
 
 fn interactive_agent() -> Result<(), String> {
-    let manager = match agent::env_manager::EnvManager::bootstrap("test.env") {
+    let mut manager = match agent::env_manager::EnvManager::bootstrap("test.env") {
         Ok(val) => val,
         Err(err) => return Err(format!("{:?}", err)),
     };
-    let mut user_agent = agent::amlang_agent::AmlangAgent::from_env(manager.extract_env());
+
+    let mut user_agent = agent::amlang_agent::AmlangAgent::from_env(manager.env_state().clone());
     user_agent.run()?;
 
-    let mut manager = agent::env_manager::EnvManager::from_env(user_agent.extract_env());
     if let Err(err) = manager.serialize("./testt.env") {
         return Err(err.to_string());
     }

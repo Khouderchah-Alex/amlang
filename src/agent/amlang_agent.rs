@@ -25,18 +25,12 @@ pub struct AmlangAgent {
 }
 
 impl AmlangAgent {
-    // TODO(func) Only using this until we have shared env functionality.
     pub fn from_env(env_state: EnvState) -> Self {
         let eval_symbols = SymbolTable::default();
         Self {
             env_state,
             eval_symbols,
         }
-    }
-
-    // TODO(func) Only using this until we have shared env functionality.
-    pub fn extract_env(self) -> EnvState {
-        self.env_state
     }
 
     fn make_procedure(&mut self, params: Vec<Symbol>, body: Sexp) -> Result<Procedure, EvalErr> {
