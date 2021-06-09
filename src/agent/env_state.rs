@@ -32,6 +32,10 @@ impl EnvState {
         self.pos
     }
 
+    pub fn context(&self) -> &AmlangContext {
+        &*self.context
+    }
+
     pub fn designation(&self) -> NodeId {
         self.context.designation()
     }

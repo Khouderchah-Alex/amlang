@@ -16,7 +16,7 @@ use crate::environment::meta_environment::{MetaEnvStructure, MetaEnvironment};
 use crate::function::{self, Ret};
 use crate::model::{Eval, Model};
 use crate::parser::{self, parse_sexp};
-use crate::primitive::{BuiltIn, Primitive, Procedure, Symbol, SymbolTable, ToSymbol};
+use crate::primitive::{BuiltIn, NodeId, Primitive, Procedure, Symbol, SymbolTable, ToSymbol};
 use crate::sexp::{Cons, HeapSexp, Sexp, SexpIntoIter};
 use crate::token::file_stream::{self, FileStream};
 
@@ -56,11 +56,38 @@ impl EnvManager {
             panic!("Env designation isn't a symbol table");
         }
 
-        let context = Arc::new(AmlangContext::new(meta, base_env_node, designation));
-        let env_state = EnvState::new(context, pos);
-        let mut manager = Self { env_state };
-        manager.deserialize(base_path)?;
-        Ok(manager)
+        let mut context = Arc::new(AmlangContext::new(meta, base_env_node, designation));
+        let env_state = EnvState::new(context.clone(), pos);
+
+        let (quote, lambda) = {
+            let mut manager = Self { env_state };
+            manager.deserialize(base_path)?;
+
+            let table = if let Ok(table) =
+                <&mut SymbolTable>::try_from(manager.env_state().env().node_structure(designation))
+            {
+                table
+            } else {
+                panic!("Env designation isn't a symbol table");
+            };
+            let lookup = |s: &str| -> Result<NodeId, DeserializeError> {
+                Ok(table
+                    .lookup(&s.to_symbol_or_panic())
+                    .map_err(|e| EvalErr(e))?
+                    .clone())
+            };
+
+            (lookup("quote")?, lookup("lambda")?)
+        };
+
+        // Fill in placeholder'd context nodes.
+        let c = Arc::get_mut(&mut context).unwrap();
+        c.quote = quote;
+        c.lambda = lambda;
+
+        Ok(Self {
+            env_state: EnvState::new(context, pos),
+        })
     }
 
     pub fn deserialize<P: AsRef<Path>>(&mut self, in_path: P) -> Result<(), DeserializeError> {

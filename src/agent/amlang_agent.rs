@@ -323,40 +323,39 @@ impl Eval for AmlangAgent {
                     None => return Err(InvalidSexp(Cons::new(car, cdr).into())),
                 };
 
-                if let Ok(first) = <&Symbol>::try_from(&*car) {
-                    match first.as_str() {
-                        "quote" => {
-                            return quote_wrapper(cdr);
-                        }
-                        "lambda" => {
+                /*
+                       "def" => {
+                           let (name, structure) = env_insert_node_wrapper(cons.cdr())?;
+                           return Ok(self.env_insert_node(name, structure)?.into());
+                       }
+                       "tell" => {
+                           let (s, p, o) = env_insert_triple_wrapper(cons.cdr())?;
+                           return self.env_insert_triple(s, p, o);
+                       }
+                       "curr" => {
+                           return self.curr_wrapper(cons.cdr());
+                       }
+                       "jump" => {
+                           return self.jump_wrapper(cons.cdr());
+                       }
+                */
+
+
+                let eval_car = self.eval(car)?;
+                if let Ok(node) = <NodeId>::try_from(&eval_car) {
+                    let context = self.env_state().context();
+                    match node {
+                        _ if node == context.quote => return quote_wrapper(cdr),
+                        _ if node == context.lambda => {
                             let (params, body) = make_procedure_wrapper(cdr)?;
                             let proc = self.make_procedure(params, body)?;
                             return Ok(self.env_state().env().insert_structure(proc.into()).into());
                         }
-                        /*
-                        "def" => {
-                            let (name, structure) = env_insert_node_wrapper(cons.cdr())?;
-                            return Ok(self.env_insert_node(name, structure)?.into());
+                        _ => {
+                            let args = self.evlis(cdr)?;
+                            return Ok(Procedure::Application(node, args).into());
                         }
-                        "tell" => {
-                            let (s, p, o) = env_insert_triple_wrapper(cons.cdr())?;
-                            return self.env_insert_triple(s, p, o);
-                        }
-                        "curr" => {
-                            return self.curr_wrapper(cons.cdr());
-                        }
-                        "jump" => {
-                            return self.jump_wrapper(cons.cdr());
-                        }
-                         */
-                        _ => { /* Fallthrough */ }
                     }
-                }
-
-                let eval_car = self.eval(car.clone())?;
-                if let Ok(node) = <NodeId>::try_from(&eval_car) {
-                    let args = self.evlis(cdr)?;
-                    return Ok(Procedure::Application(node, args).into());
                 }
                 return Err(InvalidArgument {
                     given: Cons::new(Some(Box::new(eval_car)), cdr).into(),

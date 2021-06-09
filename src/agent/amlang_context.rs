@@ -9,6 +9,9 @@ pub struct AmlangContext {
 
     base_env: NodeId,
     designation: NodeId,
+
+    pub quote: NodeId,
+    pub lambda: NodeId,
 }
 
 
@@ -17,7 +20,11 @@ impl AmlangContext {
         Self {
             meta: UnsafeCell::new(meta),
             base_env,
-            designation,
+            designation: designation.clone(),
+            // This is delicate; putting placeholders here, but not used until
+            // after EnvManager is bootstrapped.
+            quote: designation.clone(),
+            lambda: designation.clone(),
         }
     }
 
