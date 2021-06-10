@@ -350,7 +350,7 @@ impl EnvManager {
                 }
                 Ok(())
             }
-            _ => write!(w, "{}", primitive),
+            _ => write!(w, "'{}", primitive),
         }
     }
 }
