@@ -5,7 +5,7 @@ use crate::function::{
     EvalErr::{self, *},
     ExpectedCount, Ret,
 };
-use crate::primitive::{Primitive, Symbol};
+use crate::primitive::{NodeId, Primitive, Symbol};
 use crate::sexp::{Cons, HeapSexp, Sexp};
 
 
@@ -60,93 +60,34 @@ pub fn make_procedure_wrapper(args: Option<HeapSexp>) -> Result<(Vec<Symbol>, Se
     };
 }
 
-/*
-pub fn env_insert_triple_wrapper(
-    args: Option<&Sexp>,
-) -> Result<(&Symbol, &Symbol, &Symbol), EvalErr> {
-    if args.is_none() {
+pub fn env_insert_triple_wrapper(args: &Vec<NodeId>) -> Result<(NodeId, NodeId, NodeId), EvalErr> {
+    if args.len() != 3 {
         return Err(WrongArgumentCount {
-            given: 0,
+            given: args.len(),
             expected: ExpectedCount::Exactly(3),
         });
     }
 
-    let cons = match args.unwrap() {
-        Sexp::Primitive(primitive) => {
-            return Err(InvalidSexp(primitive.clone().into()));
-        }
-        Sexp::Cons(cons) => cons,
-    };
-
-    fn extract_symbol<'a, I: Iterator<Item = &'a Sexp>>(
-        i: usize,
-        iter: &mut I,
-    ) -> Result<&'a Symbol, EvalErr> {
-        if let Some(elem) = iter.next() {
-            if let Ok(symbol) = <&Symbol>::try_from(elem) {
-                Ok(symbol)
-            } else {
-                Err(InvalidArgument {
-                    given: elem.clone().into(),
-                    expected: Cow::Borrowed("symbol"),
-                })
-            }
-        } else {
-            Err(WrongArgumentCount {
-                given: i,
-                expected: ExpectedCount::Exactly(3),
-            })
-        }
-    }
-
-    let mut iter = cons.iter();
-    let subject = extract_symbol(0, &mut iter)?;
-    let predicate = extract_symbol(1, &mut iter)?;
-    let object = extract_symbol(2, &mut iter)?;
-
-    if let Some(_) = iter.next() {
-        return Err(WrongArgumentCount {
-            given: cons.iter().count(),
-            expected: ExpectedCount::Exactly(3),
-        });
-    }
-
+    let subject = args[0];
+    let predicate = args[1];
+    let object = args[2];
     Ok((subject, predicate, object))
 }
 
-pub fn env_insert_node_wrapper(args: Option<&Sexp>) -> Result<(&Symbol, Option<&Sexp>), EvalErr> {
-    if args.is_none() {
+pub fn env_insert_node_wrapper(args: &Vec<NodeId>) -> Result<(NodeId, Option<NodeId>), EvalErr> {
+    if args.len() < 1 {
         return Err(WrongArgumentCount {
-            given: 0,
+            given: args.len(),
             expected: ExpectedCount::AtLeast(1),
         });
-    }
-
-    let cons = match args.unwrap() {
-        Sexp::Primitive(primitive) => {
-            return Err(InvalidSexp(primitive.clone().into()));
-        }
-        Sexp::Cons(cons) => cons,
-    };
-
-    let mut iter = cons.iter();
-    let name = if let Ok(symbol) = <&Symbol>::try_from(iter.next()) {
-        symbol
-    } else {
-        return Err(InvalidArgument {
-            given: cons.clone().into(),
-            expected: Cow::Borrowed("symbol"),
-        });
-    };
-
-    let structure = iter.next();
-    if structure.is_some() && iter.next().is_some() {
+    } else if args.len() > 2 {
         return Err(WrongArgumentCount {
-            given: iter.count() + 3,
+            given: args.len(),
             expected: ExpectedCount::AtMost(2),
         });
     }
 
+    let name = args[0];
+    let structure = if args.len() == 2 { Some(args[1]) } else { None };
     Ok((name, structure))
 }
-*/

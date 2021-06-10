@@ -59,7 +59,7 @@ impl EnvManager {
         let mut context = Arc::new(AmlangContext::new(meta, base_env_node, designation));
         let env_state = EnvState::new(context.clone(), pos);
 
-        let (quote, lambda) = {
+        let (quote, lambda, def, tell) = {
             let mut manager = Self { env_state };
             manager.deserialize(base_path)?;
 
@@ -77,13 +77,20 @@ impl EnvManager {
                     .clone())
             };
 
-            (lookup("quote")?, lookup("lambda")?)
+            (
+                lookup("quote")?,
+                lookup("lambda")?,
+                lookup("def")?,
+                lookup("tell")?,
+            )
         };
 
         // Fill in placeholder'd context nodes.
         let c = Arc::get_mut(&mut context).unwrap();
         c.quote = quote;
         c.lambda = lambda;
+        c.def = def;
+        c.tell = tell;
 
         Ok(Self {
             env_state: EnvState::new(context, pos),

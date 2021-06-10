@@ -12,6 +12,8 @@ pub struct AmlangContext {
 
     pub quote: NodeId,
     pub lambda: NodeId,
+    pub def: NodeId,
+    pub tell: NodeId,
 }
 
 
@@ -25,6 +27,8 @@ impl AmlangContext {
             // after EnvManager is bootstrapped.
             quote: designation.clone(),
             lambda: designation.clone(),
+            def: designation.clone(),
+            tell: designation.clone(),
         }
     }
 

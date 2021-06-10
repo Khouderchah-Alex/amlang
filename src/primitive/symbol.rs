@@ -122,6 +122,18 @@ impl<'a> TryFrom<Option<&'a Sexp>> for &'a Symbol {
     }
 }
 
+impl TryFrom<Option<Sexp>> for Symbol {
+    type Error = ();
+
+    fn try_from(value: Option<Sexp>) -> Result<Self, Self::Error> {
+        if let Some(Sexp::Primitive(Primitive::Symbol(symbol))) = value {
+            Ok(symbol)
+        } else {
+            Err(())
+        }
+    }
+}
+
 impl TryFrom<Option<HeapSexp>> for Symbol {
     type Error = ();
 

@@ -17,7 +17,7 @@ use crate::sexp::{Cons, HeapSexp, Sexp};
 use crate::token::interactive_stream::InteractiveStream;
 
 
-pub type Continuation = std::collections::HashMap<NodeId, Sexp>;
+pub type Continuation = std::collections::HashMap<NodeId, NodeId>;
 
 pub struct AmlangAgent {
     env_state: EnvState,
@@ -86,8 +86,8 @@ impl AmlangAgent {
 
     fn env_insert_node(
         &mut self,
-        name: Symbol,
-        structure: Option<HeapSexp>,
+        name: NodeId,
+        structure: Option<NodeId>,
     ) -> Result<NodeId, EvalErr> {
         let ret = self.env_state().def_node(name, structure)?;
 
@@ -101,22 +101,16 @@ impl AmlangAgent {
         Ok(ret)
     }
 
-    fn env_insert_triple(&mut self, subject: &Symbol, predicate: &Symbol, object: &Symbol) -> Ret {
-        let designation = self.env_state().designation();
+    fn env_insert_triple(&mut self, subject: NodeId, predicate: NodeId, object: NodeId) -> Ret {
         let env = self.env_state().env();
-        let table = <&mut SymbolTable>::try_from(env.node_structure(designation)).unwrap();
 
-        let s = table.lookup(subject)?;
-        let p = table.lookup(predicate)?;
-        let o = table.lookup(object)?;
-
-        if let Some(triple) = env.match_triple(s, p, o).iter().next() {
+        if let Some(triple) = env.match_triple(subject, predicate, object).iter().next() {
             return Err(EvalErr::DuplicateTriple(
                 *triple.generate_structure(self.env_state()),
             ));
         }
 
-        let triple = env.insert_triple(s, p, o);
+        let triple = env.insert_triple(subject, predicate, object);
         Ok(*triple.generate_structure(self.env_state()))
     }
 
@@ -186,37 +180,78 @@ impl AmlangAgent {
         match meaning {
             Sexp::Primitive(Primitive::Procedure(proc)) => match proc {
                 Procedure::Application(proc_node, arg_nodes) => {
-                    let mut args = Vec::with_capacity(arg_nodes.len());
-                    for node in arg_nodes {
-                        let structure = self.env_state().designate(Primitive::Node(*node))?;
-                        let arg = if let Ok(node) = <NodeId>::try_from(&structure) {
-                            cont.get(&node).unwrap().clone()
-                        } else {
-                            self.exec(&structure, cont)?
-                        };
-                        args.push(arg);
-                    }
+                    let final_nodes = arg_nodes
+                        .iter()
+                        .map(|node| {
+                            if let Some(new_node) = cont.get(&node) {
+                                new_node
+                            } else {
+                                node
+                            }
+                            .clone()
+                        })
+                        .collect::<Vec<_>>();
 
                     match self.env_state().designate(Primitive::Node(*proc_node))? {
-                        Sexp::Primitive(Primitive::BuiltIn(builtin)) => builtin.call(&args),
+                        Sexp::Primitive(Primitive::Node(node)) => {
+                            let context = self.env_state().context();
+                            match node {
+                                _ if context.tell == node => {
+                                    let (a, b, c) = env_insert_triple_wrapper(&final_nodes)?;
+                                    return self.env_insert_triple(a, b, c);
+                                }
+                                _ if context.def == node => {
+                                    let (name, structure) = env_insert_node_wrapper(&final_nodes)?;
+                                    self.env_state().designate(Primitive::Node(name))?;
+                                    return Ok(self.env_insert_node(name, structure)?.into());
+                                }
+                                _ => panic!(),
+                            }
+                        }
+                        Sexp::Primitive(Primitive::BuiltIn(builtin)) => {
+                            let mut args = Vec::with_capacity(arg_nodes.len());
+                            for node in final_nodes {
+                                let structure =
+                                    self.env_state().designate(Primitive::Node(node))?;
+                                let arg = if let Ok(node) = <NodeId>::try_from(&structure) {
+                                    node.into()
+                                } else {
+                                    self.exec(&structure, cont)?
+                                };
+                                args.push(arg);
+                            }
+                            builtin.call(&args)
+                        }
                         // TODO(func) Allow for abstraction outside of
                         // application (e.g. returning a lambda).
                         Sexp::Primitive(Primitive::Procedure(Procedure::Abstraction(
                             params,
                             body_node,
                         ))) => {
-                            if args.len() != params.len() {
+                            if arg_nodes.len() != params.len() {
                                 return Err(WrongArgumentCount {
-                                    given: args.len(),
+                                    given: arg_nodes.len(),
                                     // TODO(func) support variable arity.
                                     expected: ExpectedCount::Exactly(params.len()),
                                 });
                             }
-                            for (i, node) in params.iter().enumerate() {
+
+                            let mut args = Vec::with_capacity(arg_nodes.len());
+                            for (i, node) in final_nodes.into_iter().enumerate() {
+                                let structure =
+                                    self.env_state().designate(Primitive::Node(node))?;
+                                let arg = if let Ok(node) = <NodeId>::try_from(&structure) {
+                                    node.into()
+                                } else {
+                                    self.exec(&structure, cont)?
+                                };
+                                args.push(arg);
+
                                 // TODO(func) Use actual deep continuation
                                 // representation (including popping off).
-                                cont.insert(*node, args[i].clone());
+                                cont.insert(params[i], node);
                             }
+
                             let body = self.env_state().designate(Primitive::Node(body_node))?;
                             self.exec(&body, cont)
                         }
@@ -242,7 +277,7 @@ impl AmlangAgent {
                 let mut args = Vec::<NodeId>::with_capacity(cons.iter().count());
                 for structure in cons.into_iter() {
                     let val = self.eval(structure)?;
-                    // Don't create new node for paramater nodes.
+                    // Don't recreate existing Nodes.
                     if let Ok(node) = <NodeId>::try_from(&val) {
                         args.push(node.into());
                     } else {
@@ -324,14 +359,6 @@ impl Eval for AmlangAgent {
                 };
 
                 /*
-                       "def" => {
-                           let (name, structure) = env_insert_node_wrapper(cons.cdr())?;
-                           return Ok(self.env_insert_node(name, structure)?.into());
-                       }
-                       "tell" => {
-                           let (s, p, o) = env_insert_triple_wrapper(cons.cdr())?;
-                           return self.env_insert_triple(s, p, o);
-                       }
                        "curr" => {
                            return self.curr_wrapper(cons.cdr());
                        }
@@ -345,8 +372,8 @@ impl Eval for AmlangAgent {
                 if let Ok(node) = <NodeId>::try_from(&eval_car) {
                     let context = self.env_state().context();
                     match node {
-                        _ if node == context.quote => return quote_wrapper(cdr),
-                        _ if node == context.lambda => {
+                        _ if context.quote == node => return quote_wrapper(cdr),
+                        _ if context.lambda == node => {
                             let (params, body) = make_procedure_wrapper(cdr)?;
                             let proc = self.make_procedure(params, body)?;
                             return Ok(self.env_state().env().insert_structure(proc.into()).into());

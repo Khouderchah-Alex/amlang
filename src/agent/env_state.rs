@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::convert::TryFrom;
 use std::sync::Arc;
 
@@ -97,35 +98,43 @@ impl EnvState {
         }
     }
 
-    pub fn def_node(
-        &mut self,
-        name: Symbol,
-        structure: Option<HeapSexp>,
-    ) -> Result<NodeId, EvalErr> {
-        let designation = self.designation();
+    pub fn def_node(&mut self, name: NodeId, structure: Option<NodeId>) -> Result<NodeId, EvalErr> {
+        let name_sexp = self.env().node_structure(name);
+        let symbol = if let Ok(symbol) = <Symbol>::try_from(name_sexp.cloned()) {
+            symbol
+        } else {
+            return Err(InvalidArgument {
+                given: self
+                    .env()
+                    .node_structure(name)
+                    .cloned()
+                    .unwrap_or(Sexp::default()),
+                expected: Cow::Borrowed("Node abstracting Symbol"),
+            });
+        };
 
+        let designation = self.designation();
         if let Ok(table) = <&mut SymbolTable>::try_from(self.env().node_structure(designation)) {
-            if table.contains_key(&name) {
-                return Err(AlreadyBoundSymbol(name));
+            if table.contains_key(&symbol) {
+                return Err(AlreadyBoundSymbol(symbol));
             }
         } else {
             panic!("Env designation isn't a symbol table");
         }
 
-        let name_node = self.env().insert_structure(name.clone().into());
-        let node = if let Some(sexp) = structure {
-            self.env().insert_structure(*sexp)
+        let node = if let Some(node) = structure {
+            node
         } else {
             self.env().insert_atom()
         };
 
         if let Ok(table) = <&mut SymbolTable>::try_from(self.env().node_structure(designation)) {
-            table.insert(name.clone(), node);
+            table.insert(symbol, node);
         } else {
             panic!("Env designation isn't a symbol table");
         }
 
-        self.env().insert_triple(node, designation, name_node);
+        self.env().insert_triple(node, designation, name);
         Ok(node)
     }
 }
