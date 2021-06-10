@@ -84,23 +84,6 @@ impl AmlangAgent {
         Ok(self.env_state().pos().into())
     }
 
-    fn env_insert_node(
-        &mut self,
-        name: NodeId,
-        structure: Option<NodeId>,
-    ) -> Result<NodeId, EvalErr> {
-        let ret = self.env_state().def_node(name, structure)?;
-
-        for triple in self.env_state().env().match_all() {
-            print!("    ");
-            let structure = triple.generate_structure(self.env_state());
-            self.print_list(&structure);
-            println!("");
-        }
-
-        Ok(ret)
-    }
-
     fn env_insert_triple(&mut self, subject: NodeId, predicate: NodeId, object: NodeId) -> Ret {
         let env = self.env_state().env();
 
@@ -203,7 +186,7 @@ impl AmlangAgent {
                                 _ if context.def == node => {
                                     let (name, structure) = env_insert_node_wrapper(&final_nodes)?;
                                     self.env_state().designate(Primitive::Node(name))?;
-                                    return Ok(self.env_insert_node(name, structure)?.into());
+                                    return Ok(self.env_state().def_node(name, structure)?.into());
                                 }
                                 _ => panic!(),
                             }
@@ -328,8 +311,6 @@ impl Agent for AmlangAgent {
                 }
             };
 
-            println!();
-            self.print_curr_nodes();
             println!();
         }
     }
