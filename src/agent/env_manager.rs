@@ -303,10 +303,10 @@ impl EnvManager {
         match primitive {
             Primitive::Symbol(symbol) => {
                 // TODO(func) Rm this hack once these exceptions are nodes.
-                if symbol.as_str() == "lambda" || symbol.as_str() == "apply" {
-                    write!(w, "{}", symbol)
+                if depth > 1 && symbol.as_str() == "lambda" || symbol.as_str() == "apply" {
+                    write!(w, "{}", symbol.as_str())
                 } else {
-                    write!(w, "'{}", symbol)
+                    write!(w, "'{}", symbol.as_str())
                 }
             }
             Primitive::BuiltIn(builtin) => write!(w, "(__builtin {})", builtin.name()),
@@ -329,8 +329,9 @@ impl EnvManager {
                 }
 
                 // Output Nodes as their designators if possible.
-                if let Some(designator) = self.env_state().node_designator(*node) {
-                    write!(w, "{}", designator)?;
+                if let Ok(designator) = <Symbol>::try_from(self.env_state().node_designator(*node))
+                {
+                    write!(w, "{}", designator.as_str())?;
                 } else {
                     write!(w, "^{}", node.id())?;
                 }
