@@ -145,7 +145,11 @@ impl AmlangAgent {
             Primitive::Node(node) => {
                 // Print Nodes as their designators if possible.
                 if let Some(designator) = self.env_state().node_designator(*node) {
-                    write!(w, "{}", designator)
+                    if let Ok(sym) = <&Symbol>::try_from(&*designator) {
+                        write!(w, "{}", sym.as_str())
+                    } else {
+                        write!(w, "{}", designator)
+                    }
                 } else {
                     let s = if let Some(structure) = self.env_state().env().node_structure(*node) {
                         structure.clone()
@@ -302,7 +306,12 @@ impl Agent for AmlangAgent {
             match self.exec(&meaning, &mut cont) {
                 Ok(val) => {
                     print!("-> ");
-                    self.print_list(&val);
+                    if let Ok(node) = <NodeId>::try_from(&val) {
+                        let designated = self.env_state().designate(Primitive::Node(node)).unwrap();
+                        self.print_list(&designated);
+                    } else {
+                        self.print_list(&val);
+                    }
                     println!("");
                 }
                 Err(err) => {
