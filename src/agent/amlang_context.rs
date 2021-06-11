@@ -14,6 +14,8 @@ pub struct AmlangContext {
     pub lambda: NodeId,
     pub def: NodeId,
     pub tell: NodeId,
+    pub curr: NodeId,
+    pub jump: NodeId,
 }
 
 
@@ -29,6 +31,8 @@ impl AmlangContext {
             lambda: designation.clone(),
             def: designation.clone(),
             tell: designation.clone(),
+            curr: designation.clone(),
+            jump: designation.clone(),
         }
     }
 

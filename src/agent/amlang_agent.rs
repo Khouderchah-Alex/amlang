@@ -54,36 +54,6 @@ impl AmlangAgent {
         Ok(Procedure::Abstraction(surface, body_node))
     }
 
-    fn curr_wrapper(&mut self, args: Option<HeapSexp>) -> Ret {
-        if let Some(arg) = args {
-            return match *arg {
-                Sexp::Primitive(primitive) => Err(InvalidSexp(primitive.clone().into())),
-                Sexp::Cons(cons) => Err(WrongArgumentCount {
-                    given: cons.iter().count(),
-                    expected: ExpectedCount::Exactly(0),
-                }),
-            };
-        }
-        self.print_curr_triples();
-        Ok(self.env_state().pos().into())
-    }
-
-    fn jump_wrapper(&mut self, args: Option<HeapSexp>) -> Ret {
-        if args.is_none() {
-            return Err(WrongArgumentCount {
-                given: 0,
-                expected: ExpectedCount::Exactly(1),
-            });
-        }
-
-        let (node_name,) = break_by_types!(*args.unwrap(), Symbol)?;
-        let node = self.env_state().resolve(&node_name)?;
-
-        self.env_state().jump(node);
-        self.print_curr_triples();
-        Ok(self.env_state().pos().into())
-    }
-
     fn env_insert_triple(&mut self, subject: NodeId, predicate: NodeId, object: NodeId) -> Ret {
         let env = self.env_state().env();
 
@@ -141,7 +111,6 @@ impl AmlangAgent {
         depth: usize,
     ) -> std::io::Result<()> {
         match primitive {
-            Primitive::Symbol(symbol) => write!(w, "[Symbol_\"{}\"]", symbol),
             Primitive::Node(node) => {
                 // Print Nodes as their designators if possible.
                 if let Some(designator) = self.env_state().node_designator(*node) {
@@ -191,6 +160,27 @@ impl AmlangAgent {
                                     let (name, structure) = env_insert_node_wrapper(&final_nodes)?;
                                     self.env_state().designate(Primitive::Node(name))?;
                                     return Ok(self.env_state().def_node(name, structure)?.into());
+                                }
+                                _ if context.curr == node => {
+                                    if final_nodes.len() > 0 {
+                                        return Err(WrongArgumentCount {
+                                            given: final_nodes.len(),
+                                            expected: ExpectedCount::Exactly(0),
+                                        });
+                                    }
+                                    self.print_curr_triples();
+                                    return Ok(self.env_state().pos().into());
+                                }
+                                _ if context.jump == node => {
+                                    if final_nodes.len() != 1 {
+                                        return Err(WrongArgumentCount {
+                                            given: final_nodes.len(),
+                                            expected: ExpectedCount::Exactly(1),
+                                        });
+                                    }
+                                    self.env_state().jump(final_nodes[0]);
+                                    self.print_curr_triples();
+                                    return Ok(self.env_state().pos().into());
                                 }
                                 _ => panic!(),
                             }
@@ -347,16 +337,6 @@ impl Eval for AmlangAgent {
                     Some(car) => car,
                     None => return Err(InvalidSexp(Cons::new(car, cdr).into())),
                 };
-
-                /*
-                       "curr" => {
-                           return self.curr_wrapper(cons.cdr());
-                       }
-                       "jump" => {
-                           return self.jump_wrapper(cons.cdr());
-                       }
-                */
-
 
                 let eval_car = self.eval(car)?;
                 if let Ok(node) = <NodeId>::try_from(&eval_car) {
