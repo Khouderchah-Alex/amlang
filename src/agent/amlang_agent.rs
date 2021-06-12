@@ -54,25 +54,25 @@ impl AmlangAgent {
         Ok(Procedure::Abstraction(surface, body_node))
     }
 
-    fn exec(&mut self, meaning: &Sexp, cont: &mut Continuation) -> Ret {
+    fn exec(&mut self, meaning: Sexp, cont: &mut Continuation) -> Ret {
         match meaning {
             Sexp::Primitive(Primitive::Procedure(proc)) => match proc {
                 Procedure::Application(proc_node, arg_nodes) => {
                     let concretize = |node| {
-                        if let Some(new_node) = cont.get(node) {
-                            new_node
+                        if let Some(new_node) = cont.get(&node) {
+                            new_node.clone()
                         } else {
                             node
                         }
-                        .clone()
                     };
 
-                    let final_nodes = arg_nodes.iter().map(concretize).collect::<Vec<_>>();
+                    let final_nodes = arg_nodes.into_iter().map(concretize).collect::<Vec<_>>();
                     self.apply(concretize(proc_node), final_nodes, cont)
                 }
+                lambda @ Procedure::Abstraction(..) => Ok(lambda.into()),
                 _ => panic!("Unsupported procedure type: {:?}", proc),
             },
-            _ => Ok(meaning.clone()),
+            _ => Ok(meaning),
         }
     }
 
@@ -118,10 +118,10 @@ impl AmlangAgent {
                 let mut args = Vec::with_capacity(arg_nodes.len());
                 for node in arg_nodes {
                     let structure = self.env_state().designate(Primitive::Node(node))?;
-                    let arg = if let Ok(node) = <NodeId>::try_from(&structure) {
-                        node.into()
+                    let arg = if let Ok(_) = <NodeId>::try_from(&structure) {
+                        structure
                     } else {
-                        self.exec(&structure, cont)?
+                        self.exec(structure, cont)?
                     };
                     args.push(arg);
                 }
@@ -141,10 +141,10 @@ impl AmlangAgent {
                 let mut args = Vec::with_capacity(arg_nodes.len());
                 for (i, node) in arg_nodes.into_iter().enumerate() {
                     let structure = self.env_state().designate(Primitive::Node(node))?;
-                    let arg = if let Ok(node) = <NodeId>::try_from(&structure) {
-                        node.into()
+                    let arg = if let Ok(_) = <NodeId>::try_from(&structure) {
+                        structure
                     } else {
-                        self.exec(&structure, cont)?
+                        self.exec(structure, cont)?
                     };
                     args.push(arg);
 
@@ -154,7 +154,7 @@ impl AmlangAgent {
                 }
 
                 let body = self.env_state().designate(Primitive::Node(body_node))?;
-                self.exec(&body, cont)
+                self.exec(body, cont)
             }
             not_proc @ _ => Err(InvalidArgument {
                 given: not_proc.clone(),
@@ -215,7 +215,12 @@ impl Agent for AmlangAgent {
             };
 
             let mut cont = Continuation::default();
-            match self.exec(&meaning, &mut cont) {
+            let meaning_node = self.env_state().env().insert_structure(meaning);
+            let meaning = self
+                .env_state()
+                .designate(Primitive::Node(meaning_node))
+                .unwrap();
+            match self.exec(meaning, &mut cont) {
                 Ok(val) => {
                     print!("-> ");
                     if let Ok(node) = <NodeId>::try_from(&val) {
