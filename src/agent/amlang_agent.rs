@@ -136,108 +136,108 @@ impl AmlangAgent {
         match meaning {
             Sexp::Primitive(Primitive::Procedure(proc)) => match proc {
                 Procedure::Application(proc_node, arg_nodes) => {
-                    let final_nodes = arg_nodes
-                        .iter()
-                        .map(|node| {
-                            if let Some(new_node) = cont.get(&node) {
-                                new_node
-                            } else {
-                                node
-                            }
-                            .clone()
-                        })
-                        .collect::<Vec<_>>();
-
-                    match self.env_state().designate(Primitive::Node(*proc_node))? {
-                        Sexp::Primitive(Primitive::Node(node)) => {
-                            let context = self.env_state().context();
-                            match node {
-                                _ if context.tell == node => {
-                                    let (a, b, c) = env_insert_triple_wrapper(&final_nodes)?;
-                                    return self.env_insert_triple(a, b, c);
-                                }
-                                _ if context.def == node => {
-                                    let (name, structure) = env_insert_node_wrapper(&final_nodes)?;
-                                    self.env_state().designate(Primitive::Node(name))?;
-                                    return Ok(self.env_state().def_node(name, structure)?.into());
-                                }
-                                _ if context.curr == node => {
-                                    if final_nodes.len() > 0 {
-                                        return Err(WrongArgumentCount {
-                                            given: final_nodes.len(),
-                                            expected: ExpectedCount::Exactly(0),
-                                        });
-                                    }
-                                    self.print_curr_triples();
-                                    return Ok(self.env_state().pos().into());
-                                }
-                                _ if context.jump == node => {
-                                    if final_nodes.len() != 1 {
-                                        return Err(WrongArgumentCount {
-                                            given: final_nodes.len(),
-                                            expected: ExpectedCount::Exactly(1),
-                                        });
-                                    }
-                                    self.env_state().jump(final_nodes[0]);
-                                    self.print_curr_triples();
-                                    return Ok(self.env_state().pos().into());
-                                }
-                                _ => panic!(),
-                            }
+                    let concretize = |node| {
+                        if let Some(new_node) = cont.get(node) {
+                            new_node
+                        } else {
+                            node
                         }
-                        Sexp::Primitive(Primitive::BuiltIn(builtin)) => {
-                            let mut args = Vec::with_capacity(arg_nodes.len());
-                            for node in final_nodes {
-                                let structure =
-                                    self.env_state().designate(Primitive::Node(node))?;
-                                let arg = if let Ok(node) = <NodeId>::try_from(&structure) {
-                                    node.into()
-                                } else {
-                                    self.exec(&structure, cont)?
-                                };
-                                args.push(arg);
-                            }
-                            builtin.call(&args)
-                        }
-                        // TODO(func) Allow for abstraction outside of
-                        // application (e.g. returning a lambda).
-                        Sexp::Primitive(Primitive::Procedure(Procedure::Abstraction(
-                            params,
-                            body_node,
-                        ))) => {
-                            if arg_nodes.len() != params.len() {
-                                return Err(WrongArgumentCount {
-                                    given: arg_nodes.len(),
-                                    // TODO(func) support variable arity.
-                                    expected: ExpectedCount::Exactly(params.len()),
-                                });
-                            }
+                        .clone()
+                    };
 
-                            let mut args = Vec::with_capacity(arg_nodes.len());
-                            for (i, node) in final_nodes.into_iter().enumerate() {
-                                let structure =
-                                    self.env_state().designate(Primitive::Node(node))?;
-                                let arg = if let Ok(node) = <NodeId>::try_from(&structure) {
-                                    node.into()
-                                } else {
-                                    self.exec(&structure, cont)?
-                                };
-                                args.push(arg);
-
-                                // TODO(func) Use actual deep continuation
-                                // representation (including popping off).
-                                cont.insert(params[i], node);
-                            }
-
-                            let body = self.env_state().designate(Primitive::Node(body_node))?;
-                            self.exec(&body, cont)
-                        }
-                        _ => panic!(),
-                    }
+                    let final_nodes = arg_nodes.iter().map(concretize).collect::<Vec<_>>();
+                    self.apply(concretize(proc_node), final_nodes, cont)
                 }
                 _ => panic!("Unsupported procedure type: {:?}", proc),
             },
             _ => Ok(meaning.clone()),
+        }
+    }
+
+    fn apply(&mut self, proc_node: NodeId, arg_nodes: Vec<NodeId>, cont: &mut Continuation) -> Ret {
+        match self.env_state().designate(Primitive::Node(proc_node))? {
+            Sexp::Primitive(Primitive::Node(node)) => {
+                let context = self.env_state().context();
+                match node {
+                    _ if context.tell == node => {
+                        let (a, b, c) = env_insert_triple_wrapper(&arg_nodes)?;
+                        return self.env_insert_triple(a, b, c);
+                    }
+                    _ if context.def == node => {
+                        let (name, structure) = env_insert_node_wrapper(&arg_nodes)?;
+                        self.env_state().designate(Primitive::Node(name))?;
+                        return Ok(self.env_state().def_node(name, structure)?.into());
+                    }
+                    _ if context.curr == node => {
+                        if arg_nodes.len() > 0 {
+                            return Err(WrongArgumentCount {
+                                given: arg_nodes.len(),
+                                expected: ExpectedCount::Exactly(0),
+                            });
+                        }
+                        self.print_curr_triples();
+                        return Ok(self.env_state().pos().into());
+                    }
+                    _ if context.jump == node => {
+                        if arg_nodes.len() != 1 {
+                            return Err(WrongArgumentCount {
+                                given: arg_nodes.len(),
+                                expected: ExpectedCount::Exactly(1),
+                            });
+                        }
+                        self.env_state().jump(arg_nodes[0]);
+                        self.print_curr_triples();
+                        return Ok(self.env_state().pos().into());
+                    }
+                    _ => panic!(),
+                }
+            }
+            Sexp::Primitive(Primitive::BuiltIn(builtin)) => {
+                let mut args = Vec::with_capacity(arg_nodes.len());
+                for node in arg_nodes {
+                    let structure = self.env_state().designate(Primitive::Node(node))?;
+                    let arg = if let Ok(node) = <NodeId>::try_from(&structure) {
+                        node.into()
+                    } else {
+                        self.exec(&structure, cont)?
+                    };
+                    args.push(arg);
+                }
+                builtin.call(&args)
+            }
+            // TODO(func) Allow for abstraction outside of
+            // application (e.g. returning a lambda).
+            Sexp::Primitive(Primitive::Procedure(Procedure::Abstraction(params, body_node))) => {
+                if arg_nodes.len() != params.len() {
+                    return Err(WrongArgumentCount {
+                        given: arg_nodes.len(),
+                        // TODO(func) support variable arity.
+                        expected: ExpectedCount::Exactly(params.len()),
+                    });
+                }
+
+                let mut args = Vec::with_capacity(arg_nodes.len());
+                for (i, node) in arg_nodes.into_iter().enumerate() {
+                    let structure = self.env_state().designate(Primitive::Node(node))?;
+                    let arg = if let Ok(node) = <NodeId>::try_from(&structure) {
+                        node.into()
+                    } else {
+                        self.exec(&structure, cont)?
+                    };
+                    args.push(arg);
+
+                    // TODO(func) Use actual deep continuation
+                    // representation (including popping off).
+                    cont.insert(params[i], node);
+                }
+
+                let body = self.env_state().designate(Primitive::Node(body_node))?;
+                self.exec(&body, cont)
+            }
+            not_proc @ _ => Err(InvalidArgument {
+                given: not_proc.clone(),
+                expected: Cow::Borrowed("Procedure"),
+            }),
         }
     }
 
