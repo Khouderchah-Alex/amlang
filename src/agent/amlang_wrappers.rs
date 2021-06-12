@@ -60,7 +60,7 @@ pub fn make_procedure_wrapper(args: Option<HeapSexp>) -> Result<(Vec<Symbol>, Se
     };
 }
 
-pub fn env_insert_triple_wrapper(args: &Vec<NodeId>) -> Result<(NodeId, NodeId, NodeId), EvalErr> {
+pub fn tell_wrapper(args: &Vec<NodeId>) -> Result<(NodeId, NodeId, NodeId), EvalErr> {
     if args.len() != 3 {
         return Err(WrongArgumentCount {
             given: args.len(),
@@ -74,7 +74,7 @@ pub fn env_insert_triple_wrapper(args: &Vec<NodeId>) -> Result<(NodeId, NodeId, 
     Ok((subject, predicate, object))
 }
 
-pub fn env_insert_node_wrapper(args: &Vec<NodeId>) -> Result<(NodeId, Option<NodeId>), EvalErr> {
+pub fn def_wrapper(args: &Vec<NodeId>) -> Result<(NodeId, Option<NodeId>), EvalErr> {
     if args.len() < 1 {
         return Err(WrongArgumentCount {
             given: args.len(),

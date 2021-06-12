@@ -54,19 +54,6 @@ impl AmlangAgent {
         Ok(Procedure::Abstraction(surface, body_node))
     }
 
-    fn env_insert_triple(&mut self, subject: NodeId, predicate: NodeId, object: NodeId) -> Ret {
-        let env = self.env_state().env();
-
-        if let Some(triple) = env.match_triple(subject, predicate, object).iter().next() {
-            return Err(EvalErr::DuplicateTriple(
-                *triple.generate_structure(self.env_state()),
-            ));
-        }
-
-        let triple = env.insert_triple(subject, predicate, object);
-        Ok(*triple.generate_structure(self.env_state()))
-    }
-
     fn exec(&mut self, meaning: &Sexp, cont: &mut Continuation) -> Ret {
         match meaning {
             Sexp::Primitive(Primitive::Procedure(proc)) => match proc {
@@ -95,11 +82,11 @@ impl AmlangAgent {
                 let context = self.env_state().context();
                 match node {
                     _ if context.tell == node => {
-                        let (a, b, c) = env_insert_triple_wrapper(&arg_nodes)?;
-                        return self.env_insert_triple(a, b, c);
+                        let (s, p, o) = tell_wrapper(&arg_nodes)?;
+                        return self.env_state().tell(s, p, o);
                     }
                     _ if context.def == node => {
-                        let (name, structure) = env_insert_node_wrapper(&arg_nodes)?;
+                        let (name, structure) = def_wrapper(&arg_nodes)?;
                         self.env_state().designate(Primitive::Node(name))?;
                         return Ok(self.env_state().def_node(name, structure)?.into());
                     }

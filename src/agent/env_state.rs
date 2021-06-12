@@ -6,6 +6,7 @@ use super::amlang_context::AmlangContext;
 use crate::environment::environment::EnvObject;
 use crate::environment::NodeId;
 use crate::function::EvalErr::{self, *};
+use crate::model::Model;
 use crate::primitive::{Primitive, Symbol, SymbolTable, ToSymbol};
 use crate::sexp::{HeapSexp, Sexp};
 
@@ -136,5 +137,24 @@ impl EnvState {
 
         self.env().insert_triple(node, designation, name);
         Ok(node)
+    }
+
+    pub fn tell(
+        &mut self,
+        subject: NodeId,
+        predicate: NodeId,
+        object: NodeId,
+    ) -> Result<Sexp, EvalErr> {
+        if let Some(triple) = self
+            .env()
+            .match_triple(subject, predicate, object)
+            .iter()
+            .next()
+        {
+            return Err(EvalErr::DuplicateTriple(*triple.generate_structure(self)));
+        }
+
+        let triple = self.env().insert_triple(subject, predicate, object);
+        Ok(*triple.generate_structure(self))
     }
 }
