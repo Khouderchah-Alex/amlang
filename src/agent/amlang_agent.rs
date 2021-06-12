@@ -67,71 +67,6 @@ impl AmlangAgent {
         Ok(*triple.generate_structure(self.env_state()))
     }
 
-    fn print_curr_nodes(&mut self) {
-        let nodes = self.env_state().env().all_nodes();
-        for node in nodes {
-            self.print_list(&node.into());
-            println!("");
-        }
-    }
-
-    fn print_curr_triples(&mut self) {
-        let node = self.env_state().pos();
-        let triples = self.env_state().env().match_any(node);
-        for triple in triples {
-            print!("    ");
-            let structure = triple.generate_structure(self.env_state());
-            self.print_list(&structure);
-            println!("");
-        }
-    }
-
-    fn print_list(&mut self, structure: &Sexp) {
-        let mut writer = BufWriter::new(stdout());
-        if let Err(err) = self.print_list_internal(&mut writer, structure, 0) {
-            println!("print_list error: {:?}", err);
-        }
-    }
-
-    fn print_list_internal<W: std::io::Write>(
-        &mut self,
-        w: &mut W,
-        structure: &Sexp,
-        depth: usize,
-    ) -> std::io::Result<()> {
-        structure.write_list(w, depth, &mut |writer, primitive, depth| {
-            self.write_primitive(writer, primitive, depth)
-        })
-    }
-
-    fn write_primitive<W: std::io::Write>(
-        &mut self,
-        w: &mut W,
-        primitive: &Primitive,
-        depth: usize,
-    ) -> std::io::Result<()> {
-        match primitive {
-            Primitive::Node(node) => {
-                // Print Nodes as their designators if possible.
-                if let Some(designator) = self.env_state().node_designator(*node) {
-                    if let Ok(sym) = <&Symbol>::try_from(&*designator) {
-                        write!(w, "{}", sym.as_str())
-                    } else {
-                        write!(w, "{}", designator)
-                    }
-                } else {
-                    let s = if let Some(structure) = self.env_state().env().node_structure(*node) {
-                        structure.clone()
-                    } else {
-                        return write!(w, "{}", node);
-                    };
-                    self.print_list_internal(w, &s, depth + 1)
-                }
-            }
-            _ => write!(w, "{}", primitive),
-        }
-    }
-
     fn exec(&mut self, meaning: &Sexp, cont: &mut Continuation) -> Ret {
         match meaning {
             Sexp::Primitive(Primitive::Procedure(proc)) => match proc {
@@ -359,6 +294,74 @@ impl Eval for AmlangAgent {
                     expected: Cow::Borrowed("special form or functional application"),
                 });
             }
+        }
+    }
+}
+
+
+impl AmlangAgent {
+    fn print_curr_nodes(&mut self) {
+        let nodes = self.env_state().env().all_nodes();
+        for node in nodes {
+            self.print_list(&node.into());
+            println!("");
+        }
+    }
+
+    fn print_curr_triples(&mut self) {
+        let node = self.env_state().pos();
+        let triples = self.env_state().env().match_any(node);
+        for triple in triples {
+            print!("    ");
+            let structure = triple.generate_structure(self.env_state());
+            self.print_list(&structure);
+            println!("");
+        }
+    }
+
+    fn print_list(&mut self, structure: &Sexp) {
+        let mut writer = BufWriter::new(stdout());
+        if let Err(err) = self.print_list_internal(&mut writer, structure, 0) {
+            println!("print_list error: {:?}", err);
+        }
+    }
+
+    fn print_list_internal<W: std::io::Write>(
+        &mut self,
+        w: &mut W,
+        structure: &Sexp,
+        depth: usize,
+    ) -> std::io::Result<()> {
+        structure.write_list(w, depth, &mut |writer, primitive, depth| {
+            self.write_primitive(writer, primitive, depth)
+        })
+    }
+
+    fn write_primitive<W: std::io::Write>(
+        &mut self,
+        w: &mut W,
+        primitive: &Primitive,
+        depth: usize,
+    ) -> std::io::Result<()> {
+        match primitive {
+            Primitive::Node(node) => {
+                // Print Nodes as their designators if possible.
+                if let Some(designator) = self.env_state().node_designator(*node) {
+                    if let Ok(sym) = <&Symbol>::try_from(&*designator) {
+                        write!(w, "{}", sym.as_str())
+                    } else {
+                        write!(w, "{}", designator)
+                    }
+                } else {
+                    let s = if let Some(structure) = self.env_state().env().node_structure(*node) {
+                        structure.clone()
+                    } else {
+                        return write!(w, "{}", node);
+                    };
+                    self.print_list_internal(w, &s, depth + 1)
+                }
+            }
+            _ => write!(w, "{}", primitive),
         }
     }
 }
