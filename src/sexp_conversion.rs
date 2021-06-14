@@ -1,11 +1,11 @@
 /// Breaks a Sexp into Result<tuple of component types, EvalErr>, assuming all
 /// component types implement TryFrom<Sexp>.
 ///
-/// Optional remainder at end is an arbitrary identifier and cannot accept
-/// repetitions. Will return as final tuple element of type Option<HeapSexp>.
+/// Optional remainder accepts an arbitrary identifier and append an
+/// Option<HeapSexp> to the end of the result tuple.
 macro_rules! break_by_types {
     (@ignore $_ignored:ident) => {};
-    ($sexp:expr, $($type:ident),+ $(;$remainder:tt),*) => {
+    ($sexp:expr, $($type:ident),+ $(;$remainder:tt)?) => {
         {
             match $sexp {
                 Sexp::Primitive(primitive) => {
