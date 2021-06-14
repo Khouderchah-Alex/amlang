@@ -1,9 +1,9 @@
 use std::borrow::Cow;
 use std::collections::HashMap;
-use std::convert::TryFrom;
 
 use crate::function::{Args, EvalErr, ExpectedCount, Ret};
-use crate::primitive::{BuiltIn, Number};
+use crate::primitive::{BuiltIn, Number, Primitive};
+use crate::sexp::Sexp;
 
 
 macro_rules! builtins {
@@ -33,11 +33,11 @@ pub fn generate_builtin_map() -> HashMap<&'static str, BuiltIn> {
 pub fn add(args: Args) -> Ret {
     let mut curr = Number::default();
     for arg in args {
-        if let Ok(num) = <&Number>::try_from(arg) {
-            curr += *num;
+        if let Sexp::Primitive(Primitive::Number(num)) = arg {
+            curr += num;
         } else {
             return Err(EvalErr::InvalidArgument {
-                given: (*arg).clone(),
+                given: arg.clone(),
                 expected: Cow::Borrowed("a Number"),
             });
         }
@@ -57,16 +57,16 @@ pub fn sub(args: Args) -> Ret {
     let mut curr = Number::default();
     let mut first = true;
     for arg in args {
-        if let Ok(num) = <&Number>::try_from(arg) {
+        if let Sexp::Primitive(Primitive::Number(num)) = arg {
             if first {
-                curr = *num;
+                curr = num;
                 first = false;
             } else {
-                curr -= *num;
+                curr -= num;
             }
         } else {
             return Err(EvalErr::InvalidArgument {
-                given: (*arg).clone(),
+                given: arg.clone(),
                 expected: Cow::Borrowed("a Number"),
             });
         }
@@ -78,11 +78,11 @@ pub fn sub(args: Args) -> Ret {
 pub fn mul(args: Args) -> Ret {
     let mut curr = Number::Integer(1);
     for arg in args {
-        if let Ok(num) = <&Number>::try_from(arg) {
-            curr *= *num;
+        if let Sexp::Primitive(Primitive::Number(num)) = arg {
+            curr *= num;
         } else {
             return Err(EvalErr::InvalidArgument {
-                given: (*arg).clone(),
+                given: arg.clone(),
                 expected: Cow::Borrowed("a Number"),
             });
         }
@@ -102,16 +102,16 @@ pub fn div(args: Args) -> Ret {
     let mut curr = Number::default();
     let mut first = true;
     for arg in args {
-        if let Ok(num) = <&Number>::try_from(arg) {
+        if let Sexp::Primitive(Primitive::Number(num)) = arg {
             if first {
-                curr = *num;
+                curr = num;
                 first = false;
             } else {
-                curr /= *num;
+                curr /= num;
             }
         } else {
             return Err(EvalErr::InvalidArgument {
-                given: (*arg).clone(),
+                given: arg.clone(),
                 expected: Cow::Borrowed("a Number"),
             });
         }

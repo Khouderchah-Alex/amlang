@@ -9,7 +9,7 @@ use crate::primitive::Symbol;
 use crate::sexp::Sexp;
 
 
-pub type Args<'a> = &'a Vec<Sexp>;
+pub type Args = Vec<Sexp>;
 pub type Ret = Result<Sexp, EvalErr>;
 
 pub trait Func {
