@@ -4,6 +4,7 @@
 /// Optional remainder at end is an arbitrary identifier and cannot accept
 /// repetitions. Will return as final tuple element of type Option<HeapSexp>.
 macro_rules! break_by_types {
+    (@ignore $_ignored:ident) => {};
     ($sexp:expr, $($type:ident),+ $(;$remainder:tt),*) => {
         {
             match $sexp {
@@ -15,7 +16,7 @@ macro_rules! break_by_types {
                     let tuple = || {
                         let mut expected: usize = 0;
                         $(
-                            ignore!($type);
+                            break_by_types!(@ignore $type);
                             expected += 1;
                         )+
                         let mut i: usize = 0;
@@ -47,14 +48,14 @@ macro_rules! break_by_types {
                             )+
                             $(
                                 {
-                                    ignore!($remainder);
+                                    break_by_types!(@ignore $remainder);
                                     iter.consume()
                                 }
                             )*
                         ));
 
                         $(
-                            ignore!($remainder);
+                            break_by_types!(@ignore $remainder);
                             iter = Cons::default().into_iter();
                         )*
                         if let Some(_) = iter.next() {
@@ -71,11 +72,7 @@ macro_rules! break_by_types {
             }
 
         }
-    }
-}
-
-macro_rules! ignore {
-    ($ignored:ident) => {};
+    };
 }
 
 
