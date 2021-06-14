@@ -55,19 +55,20 @@ impl AmlangAgent {
     }
 
     fn exec(&mut self, meaning: Sexp, cont: &mut Continuation) -> Ret {
+        let concretize = |node| {
+            if let Some(new_node) = cont.get(&node) {
+                new_node.clone()
+            } else {
+                node
+            }
+        };
+
         match meaning {
             Sexp::Primitive(Primitive::Procedure(proc)) => match proc {
                 Procedure::Application(proc_node, arg_nodes) => {
-                    let concretize = |node| {
-                        if let Some(new_node) = cont.get(&node) {
-                            new_node.clone()
-                        } else {
-                            node
-                        }
-                    };
-
-                    let final_nodes = arg_nodes.into_iter().map(concretize).collect::<Vec<_>>();
-                    self.apply(concretize(proc_node), final_nodes, cont)
+                    let concretized_nodes =
+                        arg_nodes.into_iter().map(concretize).collect::<Vec<_>>();
+                    self.apply(concretize(proc_node), concretized_nodes, cont)
                 }
                 lambda @ Procedure::Abstraction(..) => Ok(lambda.into()),
                 _ => panic!("Unsupported procedure type: {:?}", proc),
@@ -127,8 +128,6 @@ impl AmlangAgent {
                 }
                 builtin.call(&args)
             }
-            // TODO(func) Allow for abstraction outside of
-            // application (e.g. returning a lambda).
             Sexp::Primitive(Primitive::Procedure(Procedure::Abstraction(params, body_node))) => {
                 if arg_nodes.len() != params.len() {
                     return Err(WrongArgumentCount {
@@ -154,7 +153,19 @@ impl AmlangAgent {
                 }
 
                 let body = self.env_state().designate(Primitive::Node(body_node))?;
-                self.exec(body, cont)
+                let result = self.exec(body, cont)?;
+                if let Ok(node) = <NodeId>::try_from(&result) {
+                    let concretize = |node| {
+                        if let Some(new_node) = cont.get(&node) {
+                            new_node.clone()
+                        } else {
+                            node
+                        }
+                    };
+                    Ok(concretize(node).into())
+                } else {
+                    Ok(result)
+                }
             }
             not_proc @ _ => Err(InvalidArgument {
                 given: not_proc.clone(),
