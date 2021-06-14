@@ -1,3 +1,4 @@
+use log::debug;
 use std::borrow::Cow;
 use std::convert::TryFrom;
 use std::io::{stdout, BufWriter};
@@ -57,6 +58,7 @@ impl AmlangAgent {
     fn exec(&mut self, meaning: Sexp, cont: &mut Continuation) -> Ret {
         let concretize = |node| {
             if let Some(new_node) = cont.get(&node) {
+                debug!("concretizing: {} -> {}", node, new_node);
                 new_node.clone()
             } else {
                 node
@@ -150,6 +152,7 @@ impl AmlangAgent {
                     // TODO(func) Use actual deep continuation
                     // representation (including popping off).
                     cont.insert(params[i], node);
+                    debug!("cont insert  {} -> {}", params[i], node);
                 }
 
                 let body = self.env_state().designate(Primitive::Node(body_node))?;
@@ -157,6 +160,7 @@ impl AmlangAgent {
                 if let Ok(node) = <NodeId>::try_from(&result) {
                     let concretize = |node| {
                         if let Some(new_node) = cont.get(&node) {
+                            debug!("concretizing: {} -> {}", node, new_node);
                             new_node.clone()
                         } else {
                             node
