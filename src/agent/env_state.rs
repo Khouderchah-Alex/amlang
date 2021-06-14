@@ -3,7 +3,7 @@ use std::convert::TryFrom;
 use std::sync::Arc;
 
 use super::amlang_context::AmlangContext;
-use crate::environment::environment::EnvObject;
+use crate::environment::environment::{EnvObject, TripleSet};
 use crate::environment::NodeId;
 use crate::function::EvalErr::{self, *};
 use crate::model::Model;
@@ -156,5 +156,51 @@ impl EnvState {
 
         let triple = self.env().insert_triple(subject, predicate, object);
         Ok(*triple.generate_structure(self))
+    }
+
+    pub fn ask(
+        &mut self,
+        subject: NodeId,
+        predicate: NodeId,
+        object: NodeId,
+    ) -> Result<Sexp, EvalErr> {
+        let res = if subject == self.context.placeholder {
+            if predicate == self.context.placeholder {
+                if object == self.context.placeholder {
+                    self.env().match_all()
+                } else {
+                    self.env().match_object(object)
+                }
+            } else {
+                if object == self.context.placeholder {
+                    self.env().match_predicate(predicate)
+                } else {
+                    self.env().match_but_subject(predicate, object)
+                }
+            }
+        } else {
+            if predicate == self.context.placeholder {
+                if object == self.context.placeholder {
+                    self.env().match_subject(subject)
+                } else {
+                    self.env().match_but_predicate(subject, object)
+                }
+            } else {
+                if object == self.context.placeholder {
+                    self.env().match_but_object(subject, predicate)
+                } else {
+                    let mut set = TripleSet::new();
+                    if let Some(triple) = self.env().match_triple(subject, predicate, object) {
+                        set.insert(triple);
+                    }
+                    set
+                }
+            }
+        }
+        .into_iter()
+        .map(|t| t.generate_structure(self))
+        .collect::<Vec<_>>();
+
+        Ok(res.into())
     }
 }

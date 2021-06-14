@@ -114,6 +114,11 @@ impl AmlangAgent {
                         self.print_curr_triples();
                         return Ok(self.env_state().pos().into());
                     }
+                    _ if context.ask == node => {
+                        let (s, p, o) = tell_wrapper(&arg_nodes)?;
+                        return self.env_state().ask(s, p, o);
+                    }
+                    // TODO fail gracefully
                     _ => panic!(),
                 }
             }
