@@ -46,6 +46,14 @@ pub enum FromStrError {
 
 
 impl Sexp {
+    pub fn is_none(&self) -> bool {
+        if let Sexp::Cons(c) = self {
+            c.car == None && c.cdr == None
+        } else {
+            false
+        }
+    }
+
     pub fn cons(&self) -> &Cons {
         if let Sexp::Cons(c) = self {
             return c;
@@ -445,6 +453,16 @@ impl<'a, T: Into<Sexp> + Clone> From<&'a Vec<T>> for Sexp {
     }
 }
 
+
+impl From<Sexp> for Option<HeapSexp> {
+    fn from(sexp: Sexp) -> Self {
+        if sexp.is_none() {
+            None
+        } else {
+            Some(HeapSexp::new(sexp))
+        }
+    }
+}
 
 impl From<HeapSexp> for Sexp {
     fn from(sexp: HeapSexp) -> Self {

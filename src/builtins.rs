@@ -3,7 +3,7 @@ use std::collections::HashMap;
 
 use crate::function::{Args, EvalErr, ExpectedCount, Ret};
 use crate::primitive::{BuiltIn, Number, Primitive};
-use crate::sexp::Sexp;
+use crate::sexp::{self, Sexp};
 
 
 macro_rules! builtins {
@@ -26,7 +26,7 @@ macro_rules! builtins {
 
 // Used for bootstrapping and auxiliary purposes, not as an environment.
 pub fn generate_builtin_map() -> HashMap<&'static str, BuiltIn> {
-    builtins![add, sub, mul, div]
+    builtins![add, sub, mul, div, car, cdr, cons]
 }
 
 
@@ -118,4 +118,63 @@ pub fn div(args: Args) -> Ret {
     }
 
     Ok(curr.into())
+}
+
+pub fn car(mut args: Args) -> Ret {
+    if args.len() != 1 {
+        return Err(EvalErr::WrongArgumentCount {
+            given: args.len(),
+            expected: ExpectedCount::Exactly(1),
+        });
+    }
+
+    let first = args.pop().unwrap();
+    if let Sexp::Cons(cons) = first {
+        if let Some(val) = cons.consume().0 {
+            Ok(*val)
+        } else {
+            Ok(Sexp::default())
+        }
+    } else {
+        Err(EvalErr::InvalidArgument {
+            given: first,
+            expected: Cow::Borrowed("Cons"),
+        })
+    }
+}
+
+pub fn cdr(mut args: Args) -> Ret {
+    if args.len() != 1 {
+        return Err(EvalErr::WrongArgumentCount {
+            given: args.len(),
+            expected: ExpectedCount::Exactly(1),
+        });
+    }
+
+    let first = args.pop().unwrap();
+    if let Sexp::Cons(cons) = first {
+        if let Some(val) = cons.consume().1 {
+            Ok(*val)
+        } else {
+            Ok(Sexp::default())
+        }
+    } else {
+        Err(EvalErr::InvalidArgument {
+            given: first,
+            expected: Cow::Borrowed("Cons"),
+        })
+    }
+}
+
+pub fn cons(mut args: Args) -> Ret {
+    if args.len() != 2 {
+        return Err(EvalErr::WrongArgumentCount {
+            given: args.len(),
+            expected: ExpectedCount::Exactly(2),
+        });
+    }
+
+    let cdr = args.pop().unwrap().into();
+    let car = args.pop().unwrap().into();
+    Ok(*sexp::cons(car, cdr).unwrap())
 }

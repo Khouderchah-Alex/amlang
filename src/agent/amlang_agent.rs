@@ -235,6 +235,7 @@ impl Agent for AmlangAgent {
             };
 
             let mut cont = Continuation::default();
+            // TODO(func) Make this behavior configurable?
             let meaning_node = self.env_state().env().insert_structure(meaning);
             let meaning = self
                 .env_state()
