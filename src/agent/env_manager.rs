@@ -170,6 +170,10 @@ impl EnvManager {
         builtins: &HashMap<&'static str, BuiltIn>,
         node_table: &SymbolTable,
     ) -> Result<Sexp, DeserializeError> {
+        if let Ok(sym) = <&Symbol>::try_from(&structure) {
+            return Ok(node_table.lookup(sym).map_err(|e| EvalErr(e))?.into());
+        }
+
         let (command, cdr) =
             break_by_types!(structure, Symbol; remainder).map_err(|e| EvalErr(e))?;
 
