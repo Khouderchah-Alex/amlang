@@ -1,6 +1,6 @@
 use std::convert::TryFrom;
 
-use super::{NodeId, Primitive, ToSymbol};
+use super::{NodeId, Primitive};
 use crate::agent::env_state::EnvState;
 use crate::model::Model;
 use crate::sexp::{cons, HeapSexp, Sexp};
@@ -23,10 +23,10 @@ pub struct Branch {
 
 
 impl Model for Procedure {
-    fn generate_structure(&self, _env_state: &mut EnvState) -> HeapSexp {
+    fn generate_structure(&self, env_state: &mut EnvState) -> HeapSexp {
         match self {
             Procedure::Application(func, args) => cons(
-                Some(HeapSexp::new("apply".to_symbol_or_panic().into())),
+                Some(HeapSexp::new(env_state.context().apply.into())),
                 cons(
                     Some(HeapSexp::new((*func).into())),
                     cons(Some(HeapSexp::new(args.into())), None),
@@ -36,7 +36,7 @@ impl Model for Procedure {
             Procedure::Abstraction(params, body) => {
                 let sparams = HeapSexp::new(<Sexp>::from(params));
                 cons(
-                    Some(HeapSexp::new("lambda".to_symbol_or_panic().into())),
+                    Some(HeapSexp::new(env_state.context().lambda.into())),
                     cons(
                         Some(sparams),
                         cons(Some(HeapSexp::new((*body).into())), None),

@@ -323,12 +323,7 @@ impl EnvManager {
     ) -> std::io::Result<()> {
         match primitive {
             Primitive::Symbol(symbol) => {
-                // TODO(func) Rm this hack once these exceptions are nodes.
-                if depth > 1 && symbol.as_str() == "lambda" || symbol.as_str() == "apply" {
-                    write!(w, "{}", symbol.as_str())
-                } else {
-                    write!(w, "'{}", symbol.as_str())
-                }
+                write!(w, "'{}", symbol.as_str())
             }
             Primitive::BuiltIn(builtin) => write!(w, "(__builtin {})", builtin.name()),
             Primitive::Procedure(proc) => {
