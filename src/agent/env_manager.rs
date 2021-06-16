@@ -59,7 +59,7 @@ impl EnvManager {
         let mut context = Arc::new(AmlangContext::new(meta, base_env_node, designation));
         let env_state = EnvState::new(context.clone(), pos);
 
-        let (quote, lambda, def, tell, curr, jump, ask, placeholder, apply) = {
+        let (quote, lambda, def, tell, curr, jump, ask, placeholder, apply, eval) = {
             let mut manager = Self { env_state };
             manager.deserialize(base_path)?;
 
@@ -87,6 +87,7 @@ impl EnvManager {
                 lookup("ask")?,
                 lookup("_")?,
                 lookup("apply")?,
+                lookup("eval")?,
             )
         };
 
@@ -101,6 +102,7 @@ impl EnvManager {
         c.ask = ask;
         c.placeholder = placeholder;
         c.apply = apply;
+        c.eval = eval;
 
         Ok(Self {
             env_state: EnvState::new(context, pos),

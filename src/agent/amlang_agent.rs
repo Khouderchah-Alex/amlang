@@ -134,6 +134,19 @@ impl AmlangAgent {
                         }
                         return self.apply(proc_node, args, cont);
                     }
+                    _ if context.eval == node => {
+                        if arg_nodes.len() != 1 {
+                            return Err(WrongArgumentCount {
+                                given: arg_nodes.len(),
+                                expected: ExpectedCount::Exactly(1),
+                            });
+                        }
+                        let arg = self.env_state().designate(Primitive::Node(arg_nodes[0]))?;
+                        let structure = self.exec(arg, cont)?;
+                        debug!("applying (eval {})", structure);
+                        let meaning = self.eval(HeapSexp::new(structure))?;
+                        self.exec(meaning, cont)
+                    }
                     // TODO fail gracefully
                     _ => panic!(),
                 }
