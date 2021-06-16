@@ -290,7 +290,32 @@ impl EnvManager {
         write!(&mut w, "(nodes")?;
         for node in self.env_state().env().all_nodes() {
             write!(&mut w, "\n    ")?;
+
+            let s = self.env_state().env().node_structure(node).cloned();
+            let (write_structure, add_quote) = match &s {
+                Some(sexp) => match sexp {
+                    Sexp::Primitive(Primitive::SymbolTable(_)) => (false, false),
+                    // Don't quote structures with special deserialize ops.
+                    Sexp::Primitive(Primitive::BuiltIn(_)) => (true, false),
+                    Sexp::Primitive(Primitive::Procedure(_)) => (true, false),
+                    Sexp::Primitive(Primitive::Node(_)) => (true, false),
+                    _ => (true, true),
+                },
+                _ => (false, false),
+            };
+
+            if write_structure {
+                write!(&mut w, "(")?;
+            }
             self.serialize_list_internal(&mut w, &node.into(), 0)?;
+            if write_structure {
+                write!(&mut w, "\t")?;
+                if add_quote {
+                    write!(&mut w, "'")?;
+                }
+                self.serialize_list_internal(&mut w, &s.unwrap(), 1)?;
+                write!(&mut w, ")")?;
+            }
         }
         write!(&mut w, "\n)\n\n")?;
 
@@ -323,7 +348,7 @@ impl EnvManager {
     ) -> std::io::Result<()> {
         match primitive {
             Primitive::Symbol(symbol) => {
-                write!(w, "'{}", symbol.as_str())
+                write!(w, "{}", symbol.as_str())
             }
             Primitive::BuiltIn(builtin) => write!(w, "(__builtin {})", builtin.name()),
             Primitive::Procedure(proc) => {
@@ -331,19 +356,6 @@ impl EnvManager {
                 self.serialize_list_internal(w, &proc_sexp, depth + 1)
             }
             Primitive::Node(node) => {
-                let s = self.env_state().env().node_structure(*node).cloned();
-                let write_structure = depth == 0
-                    && match &s {
-                        Some(sexp) => match sexp {
-                            Sexp::Primitive(Primitive::SymbolTable(_)) => false,
-                            _ => true,
-                        },
-                        _ => false,
-                    };
-                if write_structure {
-                    write!(w, "(")?;
-                }
-
                 // Output Nodes as their designators if possible.
                 if let Ok(designator) = <Symbol>::try_from(self.env_state().node_designator(*node))
                 {
@@ -352,14 +364,9 @@ impl EnvManager {
                     write!(w, "^{}", node.id())?;
                 }
 
-                if write_structure {
-                    write!(w, "\t")?;
-                    self.serialize_list_internal(w, &s.unwrap(), depth + 1)?;
-                    write!(w, ")")?;
-                }
                 Ok(())
             }
-            _ => write!(w, "'{}", primitive),
+            _ => write!(w, "{}", primitive),
         }
     }
 }
