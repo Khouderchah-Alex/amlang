@@ -18,6 +18,7 @@ pub struct AmlangContext {
     pub jump: NodeId,
     pub ask: NodeId,
     pub placeholder: NodeId,
+    pub apply: NodeId,
 }
 
 
@@ -37,6 +38,7 @@ impl AmlangContext {
             jump: designation.clone(),
             ask: designation.clone(),
             placeholder: designation.clone(),
+            apply: designation.clone(),
         }
     }
 

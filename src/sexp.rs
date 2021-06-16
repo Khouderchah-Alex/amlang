@@ -399,6 +399,17 @@ impl<'a, E> TryFrom<&'a Result<Sexp, E>> for &'a Cons {
     }
 }
 
+impl TryFrom<Sexp> for SexpIntoIter {
+    type Error = EvalErr;
+
+    fn try_from(value: Sexp) -> Result<Self, Self::Error> {
+        match value {
+            Sexp::Primitive(primitive) => Err(EvalErr::InvalidSexp(primitive.clone().into())),
+            Sexp::Cons(cons) => Ok(cons.into_iter()),
+        }
+    }
+}
+
 impl TryFrom<Option<HeapSexp>> for SexpIntoIter {
     type Error = EvalErr;
 

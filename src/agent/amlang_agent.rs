@@ -14,7 +14,7 @@ use crate::model::{Eval, Model};
 use crate::parser::parse_sexp;
 use crate::primitive::procedure::Procedure;
 use crate::primitive::{NodeId, Primitive, Symbol, SymbolTable};
-use crate::sexp::{Cons, HeapSexp, Sexp};
+use crate::sexp::{Cons, HeapSexp, Sexp, SexpIntoIter};
 use crate::token::interactive_stream::InteractiveStream;
 
 
@@ -117,6 +117,22 @@ impl AmlangAgent {
                     _ if context.ask == node => {
                         let (s, p, o) = tell_wrapper(&arg_nodes)?;
                         return self.env_state().ask(s, p, o);
+                    }
+                    _ if context.apply == node => {
+                        let (proc_node, args_node) = apply_wrapper(&arg_nodes)?;
+                        let args_meaning =
+                            self.env_state().designate(Primitive::Node(args_node))?;
+                        let args_sexp = self.exec(args_meaning, cont)?;
+                        debug!("applying (apply {} '{})", proc_node, args_sexp);
+                        let mut args = Vec::new();
+                        for arg in SexpIntoIter::try_from(args_sexp)? {
+                            if let Ok(node) = NodeId::try_from(&*arg) {
+                                args.push(node);
+                            } else {
+                                args.push(self.env_state().env().insert_structure(arg.into()));
+                            }
+                        }
+                        return self.apply(proc_node, args, cont);
                     }
                     // TODO fail gracefully
                     _ => panic!(),

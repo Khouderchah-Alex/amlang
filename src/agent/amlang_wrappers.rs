@@ -91,3 +91,16 @@ pub fn def_wrapper(args: &Vec<NodeId>) -> Result<(NodeId, Option<NodeId>), EvalE
     let structure = if args.len() == 2 { Some(args[1]) } else { None };
     Ok((name, structure))
 }
+
+pub fn apply_wrapper(args: &Vec<NodeId>) -> Result<(NodeId, NodeId), EvalErr> {
+    if args.len() != 2 {
+        return Err(WrongArgumentCount {
+            given: args.len(),
+            expected: ExpectedCount::Exactly(2),
+        });
+    }
+
+    let proc_node = args[0];
+    let args_node = args[1];
+    Ok((proc_node, args_node))
+}
