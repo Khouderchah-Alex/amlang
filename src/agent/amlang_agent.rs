@@ -120,10 +120,19 @@ impl AmlangAgent {
                     }
                     _ if context.apply == node => {
                         let (proc_node, args_node) = apply_wrapper(&arg_nodes)?;
+                        let proc_meaning =
+                            self.env_state().designate(Primitive::Node(proc_node))?;
+                        let proc_sexp = self.exec(proc_meaning, cont)?;
                         let args_meaning =
                             self.env_state().designate(Primitive::Node(args_node))?;
                         let args_sexp = self.exec(args_meaning, cont)?;
-                        debug!("applying (apply {} '{})", proc_node, args_sexp);
+                        debug!("applying (apply {} '{})", proc_sexp, args_sexp);
+
+                        let proc = if let Ok(node) = NodeId::try_from(&proc_sexp) {
+                            node
+                        } else {
+                            self.env_state().env().insert_structure(proc_sexp)
+                        };
                         let mut args = Vec::new();
                         for arg in SexpIntoIter::try_from(args_sexp)? {
                             if let Ok(node) = NodeId::try_from(&*arg) {
@@ -132,7 +141,8 @@ impl AmlangAgent {
                                 args.push(self.env_state().env().insert_structure(arg.into()));
                             }
                         }
-                        return self.apply(proc_node, args, cont);
+
+                        return self.apply(proc, args, cont);
                     }
                     _ if context.eval == node => {
                         if arg_nodes.len() != 1 {
