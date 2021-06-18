@@ -157,8 +157,10 @@ impl AmlangAgent {
                         let meaning = self.eval(HeapSexp::new(structure))?;
                         self.exec(meaning, cont)
                     }
-                    // TODO fail gracefully
-                    _ => panic!(),
+                    _ => Err(InvalidArgument {
+                        given: node.into(),
+                        expected: Cow::Borrowed("Procedure or special Node"),
+                    }),
                 }
             }
             Sexp::Primitive(Primitive::BuiltIn(builtin)) => {
