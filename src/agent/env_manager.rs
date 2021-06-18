@@ -40,6 +40,47 @@ pub enum DeserializeError {
     EvalErr(function::EvalErr),
 }
 
+// Consumes manager and replaces placeholder'd context nodes through
+// AmlangDesignation lookups.
+macro_rules! bootstrap_context {
+    (
+        $manager:expr,
+        $context:expr,
+        $($node:ident : $query:expr),+
+        $(,)?
+    ) => {
+        let ($($node,)+) = {
+            let table = if let Ok(table) =
+                <&mut SymbolTable>::try_from(
+                    $manager.env_state().env().node_structure($context.designation())
+                ) {
+                table
+            } else {
+                panic!("Env designation isn't a symbol table");
+            };
+            let lookup = |s: &str| -> Result<NodeId, DeserializeError> {
+                Ok(table
+                    .lookup(&s.to_symbol_or_panic())
+                    .map_err(|e| EvalErr(e))?
+                    .clone())
+            };
+
+            (
+                $(lookup($query)?,)+
+            )
+        };
+
+        // To gain mutable access to context.
+        ::std::mem::drop($manager);
+
+        // Fill in placeholder'd context nodes.
+        let c = Arc::get_mut(&mut $context).unwrap();
+        {
+            $(c.$node = $node;)+
+        }
+    };
+}
+
 impl EnvManager {
     pub fn bootstrap<P: AsRef<Path>>(base_path: P) -> Result<Self, DeserializeError> {
         let mut meta = MetaEnvironment::new();
@@ -59,50 +100,21 @@ impl EnvManager {
         let mut context = Arc::new(AmlangContext::new(meta, base_env_node, designation));
         let env_state = EnvState::new(context.clone(), pos);
 
-        let (quote, lambda, def, tell, curr, jump, ask, placeholder, apply, eval) = {
-            let mut manager = Self { env_state };
-            manager.deserialize(base_path)?;
+        let mut manager = Self { env_state };
+        manager.deserialize(base_path)?;
 
-            let table = if let Ok(table) =
-                <&mut SymbolTable>::try_from(manager.env_state().env().node_structure(designation))
-            {
-                table
-            } else {
-                panic!("Env designation isn't a symbol table");
-            };
-            let lookup = |s: &str| -> Result<NodeId, DeserializeError> {
-                Ok(table
-                    .lookup(&s.to_symbol_or_panic())
-                    .map_err(|e| EvalErr(e))?
-                    .clone())
-            };
-
-            (
-                lookup("quote")?,
-                lookup("lambda")?,
-                lookup("def")?,
-                lookup("tell")?,
-                lookup("curr")?,
-                lookup("jump")?,
-                lookup("ask")?,
-                lookup("_")?,
-                lookup("apply")?,
-                lookup("eval")?,
-            )
-        };
-
-        // Fill in placeholder'd context nodes.
-        let c = Arc::get_mut(&mut context).unwrap();
-        c.quote = quote;
-        c.lambda = lambda;
-        c.def = def;
-        c.tell = tell;
-        c.curr = curr;
-        c.jump = jump;
-        c.ask = ask;
-        c.placeholder = placeholder;
-        c.apply = apply;
-        c.eval = eval;
+        bootstrap_context!(manager, context,
+                           quote: "quote",
+                           lambda: "lambda",
+                           def: "def",
+                           tell: "tell",
+                           curr: "curr",
+                           jump: "jump",
+                           ask: "ask",
+                           placeholder: "_",
+                           apply: "apply",
+                           eval: "eval",
+        );
 
         Ok(Self {
             env_state: EnvState::new(context, pos),
