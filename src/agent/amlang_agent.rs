@@ -253,7 +253,7 @@ impl AmlangAgent {
 
 impl Agent for AmlangAgent {
     fn run(&mut self) -> Result<(), String> {
-        let stream = InteractiveStream::new();
+        let stream = InteractiveStream::new(self.env_state.clone());
         let mut peekable = stream.peekable();
 
         loop {

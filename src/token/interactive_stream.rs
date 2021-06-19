@@ -1,19 +1,21 @@
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
 
+use super::interactive_helper::InteractiveHelper;
 use super::token::TokenInfo;
 use super::tokenize::{tokenize_line, TokenStore};
+use crate::agent::env_state::EnvState;
 
 
 pub struct InteractiveStream {
-    editor: Editor<()>,
+    editor: Editor<InteractiveHelper>,
     tokens: TokenStore,
 }
 
 impl InteractiveStream {
-    pub fn new() -> InteractiveStream {
-        // TODO: Add completer.
-        let editor = Editor::<()>::new();
+    pub fn new(env_state: EnvState) -> InteractiveStream {
+        let mut editor = Editor::<InteractiveHelper>::new();
+        editor.set_helper(Some(InteractiveHelper::new(env_state)));
 
         InteractiveStream {
             editor,

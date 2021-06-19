@@ -1,9 +1,8 @@
 //! Module for representing symbol tables.
 
 use std::borrow::Borrow;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::convert::TryFrom;
-use std::hash::Hash;
 
 use super::{Primitive, Symbol, ToSymbol};
 use crate::environment::NodeId;
@@ -13,18 +12,18 @@ use crate::sexp::Sexp;
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct SymbolTable {
-    map: HashMap<Symbol, NodeId>,
+    map: BTreeMap<Symbol, NodeId>,
 }
 
 impl SymbolTable {
-    pub fn new(map: HashMap<Symbol, NodeId>) -> SymbolTable {
+    pub fn new(map: BTreeMap<Symbol, NodeId>) -> SymbolTable {
         SymbolTable { map }
     }
 
     pub fn lookup<Q>(&self, k: &Q) -> Result<NodeId, EvalErr>
     where
         Symbol: Borrow<Q>,
-        Q: Hash + Eq + ToSymbol + ?Sized,
+        Q: Ord + Eq + ToSymbol + ?Sized,
     {
         if let Some(node) = self.map.get(k) {
             Ok(*node)
@@ -36,13 +35,17 @@ impl SymbolTable {
     pub fn contains_key<Q>(&self, k: &Q) -> bool
     where
         Symbol: Borrow<Q>,
-        Q: Hash + Eq + ?Sized,
+        Q: Ord + Eq + ?Sized,
     {
         self.map.contains_key(k)
     }
 
     pub fn insert(&mut self, k: Symbol, v: NodeId) -> Option<NodeId> {
         self.map.insert(k, v)
+    }
+
+    pub fn as_map(&self) -> &BTreeMap<Symbol, NodeId> {
+        &self.map
     }
 }
 
