@@ -89,6 +89,8 @@ impl EnvState {
             Primitive::Node(node) => {
                 if let Some(structure) = self.env().node_structure(node) {
                     Ok(structure.clone())
+                } else if let Some(triple) = self.env().node_as_triple(node) {
+                    Ok(*triple.generate_structure(self))
                 } else {
                     // Atoms are self-designating.
                     Ok(node.into())
@@ -155,7 +157,7 @@ impl EnvState {
         }
 
         let triple = self.env().insert_triple(subject, predicate, object);
-        Ok(*triple.generate_structure(self))
+        Ok(triple.node().into())
     }
 
     pub fn ask(
@@ -198,8 +200,8 @@ impl EnvState {
             }
         }
         .into_iter()
-        .map(|t| t.generate_structure(self))
-        .collect::<Vec<_>>();
+        .map(|t| t.node().into())
+        .collect::<Vec<Sexp>>();
 
         Ok(res.into())
     }

@@ -406,6 +406,9 @@ impl AmlangAgent {
                     } else {
                         write!(w, "{}", designator)
                     }
+                } else if let Some(triple) = self.env_state().env().node_as_triple(*node) {
+                    let s = triple.generate_structure(self.env_state());
+                    self.print_list_internal(w, &s, depth + 1)
                 } else {
                     let s = if let Some(structure) = self.env_state().env().node_structure(*node) {
                         structure.clone()
