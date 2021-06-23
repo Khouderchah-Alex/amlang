@@ -50,4 +50,5 @@ pub trait Environment<Structure> {
     fn triple_subject(&self, triple: TripleId) -> NodeId;
     fn triple_predicate(&self, triple: TripleId) -> NodeId;
     fn triple_object(&self, triple: TripleId) -> NodeId;
+    fn triple_index(&self, triple: TripleId) -> usize;
 }

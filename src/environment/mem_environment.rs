@@ -217,6 +217,9 @@ impl<Structure: Debug> Environment<Structure> for MemEnvironment<Structure> {
     fn triple_object(&self, triple: TripleId) -> NodeId {
         self.triple_unchecked(triple.node()).object
     }
+    fn triple_index(&self, triple: TripleId) -> usize {
+        triple_index_unchecked(triple.node().id())
+    }
 }
 
 

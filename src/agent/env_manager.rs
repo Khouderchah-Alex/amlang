@@ -255,7 +255,7 @@ impl EnvManager {
     fn deserialize_triples(
         &mut self,
         structure: HeapSexp,
-        node_table: SymbolTable,
+        mut node_table: SymbolTable,
     ) -> Result<(), DeserializeError> {
         let (command, remainder) =
             break_by_types!(*structure, Symbol; remainder).map_err(|e| EvalErr(e))?;
@@ -271,9 +271,15 @@ impl EnvManager {
             let subject = node_table.lookup(&s).map_err(|e| EvalErr(e))?;
             let predicate = node_table.lookup(&p).map_err(|e| EvalErr(e))?;
             let object = node_table.lookup(&o).map_err(|e| EvalErr(e))?;
-            self.env_state()
+
+            let triple = self
+                .env_state()
                 .env()
                 .insert_triple(subject, predicate, object);
+            node_table.insert(
+                format!("^t{}", self.env_state().env().triple_index(triple)).to_symbol_or_panic(),
+                triple.node(),
+            );
 
             let designation = self.env_state().designation();
             if predicate == designation && object != designation {
@@ -370,6 +376,10 @@ impl EnvManager {
                 self.serialize_list_internal(w, &proc_sexp, depth + 1)
             }
             Primitive::Node(node) => {
+                if let Some(triple) = self.env_state().env().node_as_triple(*node) {
+                    return write!(w, "^t{}", self.env_state().env().triple_index(triple));
+                }
+
                 // Output Nodes as their designators if possible.
                 if let Ok(designator) = <Symbol>::try_from(self.env_state().node_designator(*node))
                 {

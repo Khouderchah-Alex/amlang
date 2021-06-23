@@ -40,7 +40,10 @@ impl Symbol {
             _ => {
                 if !s.chars().all(|c| c.is_alphabetic() || c == '_')
                     && !(s.as_bytes()[0] == ('^' as u8)
-                        && s.chars().skip(1).all(|c| c.is_ascii_digit()))
+                        && (s.chars().skip(1).all(|c| c.is_ascii_digit())
+                            || s.len() > 2
+                                && s.as_bytes()[1] == ('t' as u8)
+                                && s.chars().skip(2).all(|c| c.is_ascii_digit())))
                 {
                     return Err(SymbolError::NonAlphabetic(s.to_string()));
                 }
