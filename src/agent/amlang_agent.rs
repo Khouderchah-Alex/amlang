@@ -84,9 +84,32 @@ impl AmlangAgent {
             Sexp::Primitive(Primitive::Node(node)) => {
                 let context = self.env_state().context();
                 match node {
-                    _ if context.tell == node => {
-                        let (s, p, o) = tell_wrapper(&arg_nodes)?;
-                        return self.env_state().tell(s, p, o);
+                    _ if context.tell == node || context.ask == node => {
+                        let is_tell = context.tell == node;
+                        let (ss, pp, oo) = tell_wrapper(&arg_nodes)?;
+
+                        let mut exec_to_node = |node: NodeId| {
+                            let desig = self.env_state().designate(Primitive::Node(node))?;
+                            let e = self.exec(desig, cont)?;
+                            if let Ok(new_node) = NodeId::try_from(&e) {
+                                Ok(new_node)
+                            } else {
+                                Ok(node)
+                            }
+                        };
+                        let (s, p, o) = (exec_to_node(ss)?, exec_to_node(pp)?, exec_to_node(oo)?);
+                        debug!(
+                            "({} {} {} {})",
+                            if is_tell { "tell" } else { "ask" },
+                            s,
+                            p,
+                            o
+                        );
+                        if is_tell {
+                            self.env_state().tell(s, p, o)
+                        } else {
+                            self.env_state().ask(s, p, o)
+                        }
                     }
                     _ if context.def == node => {
                         let (name, structure) = def_wrapper(&arg_nodes)?;
@@ -113,10 +136,6 @@ impl AmlangAgent {
                         self.env_state().jump(arg_nodes[0]);
                         self.print_curr_triples();
                         return Ok(self.env_state().pos().into());
-                    }
-                    _ if context.ask == node => {
-                        let (s, p, o) = tell_wrapper(&arg_nodes)?;
-                        return self.env_state().ask(s, p, o);
                     }
                     _ if context.apply == node => {
                         let (proc_node, args_node) = apply_wrapper(&arg_nodes)?;
