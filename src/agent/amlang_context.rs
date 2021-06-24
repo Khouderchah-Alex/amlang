@@ -20,6 +20,7 @@ pub struct AmlangContext {
     pub placeholder: NodeId,
     pub apply: NodeId,
     pub eval: NodeId,
+    pub exec: NodeId,
 }
 
 
@@ -41,6 +42,7 @@ impl AmlangContext {
             placeholder: designation.clone(),
             apply: designation.clone(),
             eval: designation.clone(),
+            exec: designation.clone(),
         }
     }
 

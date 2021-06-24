@@ -114,6 +114,7 @@ impl EnvManager {
                            placeholder: "_",
                            apply: "apply",
                            eval: "eval",
+                           exec: "exec",
         );
 
         Ok(Self {
