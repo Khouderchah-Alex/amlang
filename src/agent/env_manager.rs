@@ -98,7 +98,7 @@ impl EnvManager {
         }
 
         let mut context = Arc::new(AmlangContext::new(meta, base_env_node, designation));
-        let env_state = EnvState::new(context.clone(), pos);
+        let env_state = EnvState::new(context.base_env(), pos, context.clone());
 
         let mut manager = Self { env_state };
         manager.deserialize(base_path)?;
@@ -118,7 +118,7 @@ impl EnvManager {
         );
 
         Ok(Self {
-            env_state: EnvState::new(context, pos),
+            env_state: EnvState::new(context.base_env(), pos, context),
         })
     }
 

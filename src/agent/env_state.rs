@@ -22,12 +22,8 @@ pub struct EnvState {
 pub const AMLANG_DESIGNATION: &str = "__designatedBy";
 
 impl EnvState {
-    pub fn new(context: Arc<AmlangContext>, pos: NodeId) -> Self {
-        Self {
-            env: context.base_env(),
-            pos,
-            context,
-        }
+    pub fn new(env: NodeId, pos: NodeId, context: Arc<AmlangContext>) -> Self {
+        Self { env, pos, context }
     }
 
     pub fn pos(&self) -> NodeId {
