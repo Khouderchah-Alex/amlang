@@ -7,7 +7,7 @@ use crate::environment::NodeId;
 pub struct AmlangContext {
     meta: UnsafeCell<MetaEnvironment>,
 
-    base_env: NodeId,
+    lang_env: NodeId,
     designation: NodeId,
 
     pub quote: NodeId,
@@ -25,10 +25,10 @@ pub struct AmlangContext {
 
 
 impl AmlangContext {
-    pub(super) fn new(meta: MetaEnvironment, base_env: NodeId, designation: NodeId) -> Self {
+    pub(super) fn new(meta: MetaEnvironment, lang_env: NodeId, designation: NodeId) -> Self {
         Self {
             meta: UnsafeCell::new(meta),
-            base_env,
+            lang_env,
             designation: designation.clone(),
             // This is delicate; putting placeholders here, but not used until
             // after EnvManager is bootstrapped.
@@ -51,8 +51,8 @@ impl AmlangContext {
         unsafe { &mut *self.meta.get() }
     }
 
-    pub fn base_env(&self) -> NodeId {
-        self.base_env
+    pub fn lang_env(&self) -> NodeId {
+        self.lang_env
     }
 
     pub fn designation(&self) -> NodeId {

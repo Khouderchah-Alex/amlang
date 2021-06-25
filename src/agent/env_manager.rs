@@ -84,21 +84,20 @@ macro_rules! bootstrap_context {
 impl EnvManager {
     pub fn bootstrap<P: AsRef<Path>>(base_path: P) -> Result<Self, DeserializeError> {
         let mut meta = MetaEnvironment::new();
-        let base_env_node =
-            meta.insert_structure(MetaEnvStructure::Env(Box::new(MemEnvironment::new())));
-        let base_env = meta.access_env(base_env_node);
 
-        let pos = base_env.self_node();
-        let designation = base_env.insert_structure(SymbolTable::default().into());
-
-        if let Ok(table) = <&mut SymbolTable>::try_from(base_env.node_structure(designation)) {
+        let lang_env_node = EnvManager::create_env_internal(&mut meta);
+        let lang_env = meta.access_env(lang_env_node);
+        let designation = lang_env.insert_structure(SymbolTable::default().into());
+        if let Ok(table) = <&mut SymbolTable>::try_from(lang_env.node_structure(designation)) {
             table.insert(AMLANG_DESIGNATION.to_symbol_or_panic(), designation);
         } else {
             panic!("Env designation isn't a symbol table");
         }
 
-        let mut context = Arc::new(AmlangContext::new(meta, base_env_node, designation));
-        let env_state = EnvState::new(context.base_env(), pos, context.clone());
+        let pos = lang_env.self_node();
+        let mut context = Arc::new(AmlangContext::new(meta, lang_env_node, designation));
+        // Start in lang env. Ditto for below.
+        let env_state = EnvState::new(context.lang_env(), pos, context.clone());
 
         let mut manager = Self { env_state };
         manager.deserialize(base_path)?;
@@ -118,8 +117,58 @@ impl EnvManager {
         );
 
         Ok(Self {
-            env_state: EnvState::new(context.base_env(), pos, context),
+            env_state: EnvState::new(context.lang_env(), pos, context),
         })
+    }
+
+    pub fn create_env(&mut self) -> NodeId {
+        EnvManager::create_env_internal(self.env_state().context().meta())
+    }
+
+    pub fn serialize<P: AsRef<Path>>(&mut self, out_path: P) -> std::io::Result<()> {
+        let file = File::create(out_path)?;
+        let mut w = BufWriter::new(file);
+
+        write!(&mut w, "(nodes")?;
+        for node in self.env_state().env().all_nodes() {
+            write!(&mut w, "\n    ")?;
+
+            let s = self.env_state().env().node_structure(node).cloned();
+            let (write_structure, add_quote) = match &s {
+                Some(sexp) => match sexp {
+                    Sexp::Primitive(Primitive::SymbolTable(_)) => (false, false),
+                    // Don't quote structures with special deserialize ops.
+                    Sexp::Primitive(Primitive::BuiltIn(_)) => (true, false),
+                    Sexp::Primitive(Primitive::Procedure(_)) => (true, false),
+                    Sexp::Primitive(Primitive::Node(_)) => (true, false),
+                    _ => (true, true),
+                },
+                _ => (false, false),
+            };
+
+            if write_structure {
+                write!(&mut w, "(")?;
+            }
+            self.serialize_list_internal(&mut w, &node.into(), 0)?;
+            if write_structure {
+                write!(&mut w, "\t")?;
+                if add_quote {
+                    write!(&mut w, "'")?;
+                }
+                self.serialize_list_internal(&mut w, &s.unwrap(), 1)?;
+                write!(&mut w, ")")?;
+            }
+        }
+        write!(&mut w, "\n)\n\n")?;
+
+        write!(&mut w, "(triples")?;
+        for triple in self.env_state().env().match_all() {
+            write!(&mut w, "\n    ")?;
+            let s = triple.generate_structure(self.env_state());
+            self.serialize_list_internal(&mut w, &s, 1)?;
+        }
+        writeln!(&mut w, "\n)")?;
+        Ok(())
     }
 
     pub fn deserialize<P: AsRef<Path>>(&mut self, in_path: P) -> Result<(), DeserializeError> {
@@ -144,6 +193,56 @@ impl EnvManager {
             Ok(None) => return Ok(()),
             Err(err) => return Err(ParseError(err)),
         };
+    }
+
+
+    fn create_env_internal(meta: &mut MetaEnvironment) -> NodeId {
+        meta.insert_structure(MetaEnvStructure::Env(Box::new(MemEnvironment::new())))
+    }
+
+    fn serialize_list_internal<W: std::io::Write>(
+        &mut self,
+        w: &mut W,
+        structure: &Sexp,
+        depth: usize,
+    ) -> std::io::Result<()> {
+        structure.write_list(w, depth, &mut |writer, primitive, depth| {
+            self.serialize_primitive(writer, primitive, depth)
+        })
+    }
+
+    fn serialize_primitive<W: std::io::Write>(
+        &mut self,
+        w: &mut W,
+        primitive: &Primitive,
+        depth: usize,
+    ) -> std::io::Result<()> {
+        match primitive {
+            Primitive::Symbol(symbol) => {
+                write!(w, "{}", symbol.as_str())
+            }
+            Primitive::BuiltIn(builtin) => write!(w, "(__builtin {})", builtin.name()),
+            Primitive::Procedure(proc) => {
+                let proc_sexp = proc.generate_structure(self.env_state());
+                self.serialize_list_internal(w, &proc_sexp, depth + 1)
+            }
+            Primitive::Node(node) => {
+                if let Some(triple) = self.env_state().env().node_as_triple(*node) {
+                    return write!(w, "^t{}", self.env_state().env().triple_index(triple));
+                }
+
+                // Output Nodes as their designators if possible.
+                if let Ok(designator) = <Symbol>::try_from(self.env_state().node_designator(*node))
+                {
+                    write!(w, "{}", designator.as_str())?;
+                } else {
+                    write!(w, "^{}", node.id())?;
+                }
+
+                Ok(())
+            }
+            _ => write!(w, "{}", primitive),
+        }
     }
 
     fn deserialize_nodes(&mut self, structure: HeapSexp) -> Result<SymbolTable, DeserializeError> {
@@ -302,97 +401,6 @@ impl EnvManager {
             }
         }
         Ok(())
-    }
-
-    pub fn serialize<P: AsRef<Path>>(&mut self, out_path: P) -> std::io::Result<()> {
-        let file = File::create(out_path)?;
-        let mut w = BufWriter::new(file);
-
-        write!(&mut w, "(nodes")?;
-        for node in self.env_state().env().all_nodes() {
-            write!(&mut w, "\n    ")?;
-
-            let s = self.env_state().env().node_structure(node).cloned();
-            let (write_structure, add_quote) = match &s {
-                Some(sexp) => match sexp {
-                    Sexp::Primitive(Primitive::SymbolTable(_)) => (false, false),
-                    // Don't quote structures with special deserialize ops.
-                    Sexp::Primitive(Primitive::BuiltIn(_)) => (true, false),
-                    Sexp::Primitive(Primitive::Procedure(_)) => (true, false),
-                    Sexp::Primitive(Primitive::Node(_)) => (true, false),
-                    _ => (true, true),
-                },
-                _ => (false, false),
-            };
-
-            if write_structure {
-                write!(&mut w, "(")?;
-            }
-            self.serialize_list_internal(&mut w, &node.into(), 0)?;
-            if write_structure {
-                write!(&mut w, "\t")?;
-                if add_quote {
-                    write!(&mut w, "'")?;
-                }
-                self.serialize_list_internal(&mut w, &s.unwrap(), 1)?;
-                write!(&mut w, ")")?;
-            }
-        }
-        write!(&mut w, "\n)\n\n")?;
-
-        write!(&mut w, "(triples")?;
-        for triple in self.env_state().env().match_all() {
-            write!(&mut w, "\n    ")?;
-            let s = triple.generate_structure(self.env_state());
-            self.serialize_list_internal(&mut w, &s, 1)?;
-        }
-        writeln!(&mut w, "\n)")?;
-        Ok(())
-    }
-
-    fn serialize_list_internal<W: std::io::Write>(
-        &mut self,
-        w: &mut W,
-        structure: &Sexp,
-        depth: usize,
-    ) -> std::io::Result<()> {
-        structure.write_list(w, depth, &mut |writer, primitive, depth| {
-            self.serialize_primitive(writer, primitive, depth)
-        })
-    }
-
-    fn serialize_primitive<W: std::io::Write>(
-        &mut self,
-        w: &mut W,
-        primitive: &Primitive,
-        depth: usize,
-    ) -> std::io::Result<()> {
-        match primitive {
-            Primitive::Symbol(symbol) => {
-                write!(w, "{}", symbol.as_str())
-            }
-            Primitive::BuiltIn(builtin) => write!(w, "(__builtin {})", builtin.name()),
-            Primitive::Procedure(proc) => {
-                let proc_sexp = proc.generate_structure(self.env_state());
-                self.serialize_list_internal(w, &proc_sexp, depth + 1)
-            }
-            Primitive::Node(node) => {
-                if let Some(triple) = self.env_state().env().node_as_triple(*node) {
-                    return write!(w, "^t{}", self.env_state().env().triple_index(triple));
-                }
-
-                // Output Nodes as their designators if possible.
-                if let Ok(designator) = <Symbol>::try_from(self.env_state().node_designator(*node))
-                {
-                    write!(w, "{}", designator.as_str())?;
-                } else {
-                    write!(w, "^{}", node.id())?;
-                }
-
-                Ok(())
-            }
-            _ => write!(w, "{}", primitive),
-        }
     }
 }
 
