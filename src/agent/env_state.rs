@@ -43,8 +43,10 @@ impl EnvState {
         self.pos = node;
     }
 
-    // TODO(func) impl
-    // pub fn teleport(&mut self, portal: Portal)
+    pub fn jump_env(&mut self, node: NodeId) {
+        // TODO(sec) Verify.
+        self.env = node;
+    }
 
     pub fn env(&mut self) -> &mut EnvObject {
         let meta = self.context.meta();

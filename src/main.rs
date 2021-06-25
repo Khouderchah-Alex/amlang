@@ -49,7 +49,8 @@ fn interactive_agent() -> Result<(), String> {
         Err(err) => return Err(format!("{:?}", err)),
     };
 
-    let mut user_agent = agent::amlang_agent::AmlangAgent::from_env(manager.env_state().clone());
+    let lang_state = manager.env_state().clone();
+    let mut user_agent = agent::amlang_agent::AmlangAgent::from_lang(lang_state, &mut manager);
     user_agent.run()?;
 
     if let Err(err) = manager.serialize("./testt.env") {
