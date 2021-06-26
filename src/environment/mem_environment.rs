@@ -5,11 +5,12 @@ use std::fmt::Debug;
 
 use super::environment::{Environment, NodeSet, TripleSet};
 use super::node::{LocalId, NodeId, TripleId};
+use crate::sexp::Sexp;
 
 
 #[derive(Debug)]
-pub struct MemEnvironment<Structure: Debug + 'static> {
-    nodes: Vec<Node<Structure>>,
+pub struct MemEnvironment {
+    nodes: Vec<Node>,
     triples: Vec<Triple>,
 }
 
@@ -22,15 +23,15 @@ struct Edges {
 }
 
 #[derive(Debug)]
-struct Node<Structure: Debug> {
-    kind: NodeKind<Structure>,
+struct Node {
+    kind: NodeKind,
     edges: Edges,
 }
 
 #[derive(Debug)]
-enum NodeKind<Structure: Debug> {
+enum NodeKind {
     Atomic,
-    Structured(Structure),
+    Structured(Sexp),
 }
 
 #[derive(Debug)]
@@ -43,8 +44,8 @@ struct Triple {
 }
 
 
-impl<Structure: Debug> MemEnvironment<Structure> {
-    pub fn new() -> MemEnvironment<Structure> {
+impl MemEnvironment {
+    pub fn new() -> MemEnvironment {
         let mut env = MemEnvironment {
             nodes: vec![],
             triples: vec![],
@@ -72,10 +73,10 @@ impl<Structure: Debug> MemEnvironment<Structure> {
         }
     }
 
-    fn node_unchecked(&self, node: NodeId) -> &Node<Structure> {
+    fn node_unchecked(&self, node: NodeId) -> &Node {
         &self.nodes[node_index_unchecked(node.id())]
     }
-    fn node_mut_unchecked(&mut self, node: NodeId) -> &mut Node<Structure> {
+    fn node_mut_unchecked(&mut self, node: NodeId) -> &mut Node {
         &mut self.nodes[node_index_unchecked(node.id())]
     }
 
@@ -104,7 +105,7 @@ impl<Structure: Debug> MemEnvironment<Structure> {
     }
 }
 
-impl<Structure: Debug> Environment<Structure> for MemEnvironment<Structure> {
+impl Environment for MemEnvironment {
     fn self_node(&self) -> NodeId {
         NodeId::new(0)
     }
@@ -120,7 +121,7 @@ impl<Structure: Debug> Environment<Structure> for MemEnvironment<Structure> {
         self.nodes.push(Node::new(NodeKind::Atomic));
         id
     }
-    fn insert_structure(&mut self, structure: Structure) -> NodeId {
+    fn insert_structure(&mut self, structure: Sexp) -> NodeId {
         let id = self.next_node_id();
         self.nodes.push(Node::new(NodeKind::Structured(structure)));
         id
@@ -190,7 +191,7 @@ impl<Structure: Debug> Environment<Structure> for MemEnvironment<Structure> {
     }
 
 
-    fn node_structure(&mut self, node: NodeId) -> Option<&mut Structure> {
+    fn node_structure(&mut self, node: NodeId) -> Option<&mut Sexp> {
         if is_triple_id(node.id()) {
             return None;
         }
@@ -223,14 +224,14 @@ impl<Structure: Debug> Environment<Structure> for MemEnvironment<Structure> {
 }
 
 // We need this for dyn Environment to be cloneable. Just return a new env.
-impl<Structure: Debug> Clone for MemEnvironment<Structure> {
+impl Clone for MemEnvironment {
     fn clone(&self) -> Self {
         MemEnvironment::new()
     }
 }
 
-impl<Structure: Debug> Node<Structure> {
-    fn new(kind: NodeKind<Structure>) -> Node<Structure> {
+impl Node {
+    fn new(kind: NodeKind) -> Node {
         Node {
             kind,
             edges: Edges::default(),

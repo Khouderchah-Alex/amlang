@@ -1,11 +1,11 @@
 use std::cell::UnsafeCell;
 
-use crate::environment::meta_environment::MetaEnvironment;
+use crate::environment::mem_environment::MemEnvironment;
 use crate::environment::NodeId;
 
 
 pub struct AmlangContext {
-    meta: UnsafeCell<MetaEnvironment>,
+    meta: UnsafeCell<MemEnvironment>,
 
     lang_env: NodeId,
     designation: NodeId,
@@ -25,7 +25,7 @@ pub struct AmlangContext {
 
 
 impl AmlangContext {
-    pub(super) fn new(meta: MetaEnvironment, lang_env: NodeId, designation: NodeId) -> Self {
+    pub(super) fn new(meta: MemEnvironment, lang_env: NodeId, designation: NodeId) -> Self {
         Self {
             meta: UnsafeCell::new(meta),
             lang_env,
@@ -46,7 +46,7 @@ impl AmlangContext {
         }
     }
 
-    pub fn meta(&self) -> &mut MetaEnvironment {
+    pub fn meta(&self) -> &mut MemEnvironment {
         // TODO(func) Need to develop SharedEnv to do this safely long-term.
         unsafe { &mut *self.meta.get() }
     }

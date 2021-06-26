@@ -12,7 +12,6 @@ use super::env_state::{EnvState, AMLANG_DESIGNATION};
 use crate::builtins::generate_builtin_map;
 use crate::environment::environment::Environment;
 use crate::environment::mem_environment::MemEnvironment;
-use crate::environment::meta_environment::{MetaEnvStructure, MetaEnvironment};
 use crate::function::{self, Ret};
 use crate::model::{Eval, Model};
 use crate::parser::{self, parse_sexp};
@@ -83,10 +82,17 @@ macro_rules! bootstrap_context {
 
 impl EnvManager {
     pub fn bootstrap<P: AsRef<Path>>(base_path: P) -> Result<Self, DeserializeError> {
-        let mut meta = MetaEnvironment::new();
+        let mut meta = MemEnvironment::new();
 
         let lang_env_node = EnvManager::create_env_internal(&mut meta);
-        let lang_env = meta.access_env(lang_env_node);
+        let lang_env = if let Some(Sexp::Primitive(Primitive::Env(env))) =
+            meta.node_structure(lang_env_node)
+        {
+            env
+        } else {
+            panic!()
+        };
+
         let designation = lang_env.insert_structure(SymbolTable::default().into());
         if let Ok(table) = <&mut SymbolTable>::try_from(lang_env.node_structure(designation)) {
             table.insert(AMLANG_DESIGNATION.to_symbol_or_panic(), designation);
@@ -196,8 +202,8 @@ impl EnvManager {
     }
 
 
-    fn create_env_internal(meta: &mut MetaEnvironment) -> NodeId {
-        meta.insert_structure(MetaEnvStructure::Env(Box::new(MemEnvironment::new())))
+    fn create_env_internal(meta: &mut MemEnvironment) -> NodeId {
+        meta.insert_structure(Box::new(MemEnvironment::new()).into())
     }
 
     fn serialize_list_internal<W: std::io::Write>(

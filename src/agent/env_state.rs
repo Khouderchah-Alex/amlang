@@ -3,7 +3,7 @@ use std::convert::TryFrom;
 use std::sync::Arc;
 
 use super::amlang_context::AmlangContext;
-use crate::environment::environment::{EnvObject, TripleSet};
+use crate::environment::environment::{EnvObject, Environment, TripleSet};
 use crate::environment::NodeId;
 use crate::function::EvalErr::{self, *};
 use crate::model::Model;
@@ -48,9 +48,18 @@ impl EnvState {
         self.env = node;
     }
 
-    pub fn env(&mut self) -> &mut EnvObject {
+    pub fn access_env(&mut self, meta_node: NodeId) -> Option<&mut EnvObject> {
         let meta = self.context.meta();
-        meta.access_env(self.env)
+        if let Some(Sexp::Primitive(Primitive::Env(env))) = meta.node_structure(meta_node) {
+            Some(env.as_mut())
+        } else {
+            None
+        }
+    }
+
+    pub fn env(&mut self) -> &mut EnvObject {
+        // TODO(sec) Verify.
+        self.access_env(self.env).unwrap()
     }
 
     pub fn node_designator(&mut self, node: NodeId) -> Option<HeapSexp> {

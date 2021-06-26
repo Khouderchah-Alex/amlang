@@ -5,11 +5,10 @@ use std::fmt;
 use std::str::FromStr;
 
 use crate::cons_list::ConsList;
+use crate::environment::Environment;
 use crate::function::{EvalErr, ExpectedCount};
 use crate::parser::{parse_sexp, ParseError};
-use crate::primitive::{
-    BuiltIn, EnvObject, NodeId, Number, Primitive, Procedure, Symbol, SymbolTable,
-};
+use crate::primitive::{BuiltIn, NodeId, Number, Primitive, Procedure, Symbol, SymbolTable};
 use crate::token::string_stream::StringStream;
 use crate::token::TokenizeError;
 
@@ -536,8 +535,8 @@ impl From<NodeId> for Sexp {
     }
 }
 
-impl From<Box<EnvObject>> for Sexp {
-    fn from(env: Box<EnvObject>) -> Self {
+impl<T: 'static + Environment> From<Box<T>> for Sexp {
+    fn from(env: Box<T>) -> Self {
         Sexp::Primitive(Primitive::Env(env))
     }
 }
