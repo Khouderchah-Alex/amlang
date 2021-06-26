@@ -3,7 +3,7 @@ use std::convert::TryFrom;
 use std::sync::Arc;
 
 use super::amlang_context::AmlangContext;
-use crate::environment::environment::{EnvObject, Environment, TripleSet};
+use crate::environment::environment::{EnvObject, TripleSet};
 use crate::environment::NodeId;
 use crate::function::EvalErr::{self, *};
 use crate::model::Model;

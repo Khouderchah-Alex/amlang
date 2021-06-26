@@ -10,7 +10,7 @@ use super::amlang_context::AmlangContext;
 use super::amlang_wrappers::quote_wrapper;
 use super::env_state::{EnvState, AMLANG_DESIGNATION};
 use crate::builtins::generate_builtin_map;
-use crate::environment::environment::Environment;
+use crate::environment::environment::{EnvObject, Environment};
 use crate::environment::mem_environment::MemEnvironment;
 use crate::function::{self, Ret};
 use crate::model::{Eval, Model};
@@ -82,9 +82,10 @@ macro_rules! bootstrap_context {
 
 impl EnvManager {
     pub fn bootstrap<P: AsRef<Path>>(base_path: P) -> Result<Self, DeserializeError> {
-        let mut meta = MemEnvironment::new();
+        // Initially create as MemEnvironment.
+        let mut meta = Box::new(MemEnvironment::new());
 
-        let lang_env_node = EnvManager::create_env_internal(&mut meta);
+        let lang_env_node = EnvManager::create_env_internal(&mut *meta);
         let lang_env = if let Some(Sexp::Primitive(Primitive::Env(env))) =
             meta.node_structure(lang_env_node)
         {
@@ -202,7 +203,8 @@ impl EnvManager {
     }
 
 
-    fn create_env_internal(meta: &mut MemEnvironment) -> NodeId {
+    fn create_env_internal(meta: &mut EnvObject) -> NodeId {
+        // Initially create as MemEnvironment.
         meta.insert_structure(Box::new(MemEnvironment::new()).into())
     }
 
