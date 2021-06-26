@@ -1,12 +1,13 @@
 //! Environment abstraction.
 
 use std::collections::BTreeSet;
+use std::fmt;
 
 use super::node::{NodeId, TripleId};
 use crate::sexp::Sexp;
 
 
-pub type BaseEnvObject<Structure> = dyn Environment<Structure> + Send + Sync;
+pub type BaseEnvObject<Structure> = dyn Environment<Structure>;
 pub type EnvObject = BaseEnvObject<Sexp>;
 
 // TODO(flex) Use newtype w/trait impls? In future could be enum w/static dispatch.
@@ -15,7 +16,7 @@ pub type TripleSet = BTreeSet<TripleId>;
 
 /// Triple store of Nodes, which can be atoms, structures, or triples.
 /// Always contains at least one node, which represents itself.
-pub trait Environment<Structure> {
+pub trait Environment<Structure>: EnvClone<Structure> {
     // Portal to self node.
     fn self_node(&self) -> NodeId;
     fn all_nodes(&self) -> NodeSet;
@@ -51,4 +52,31 @@ pub trait Environment<Structure> {
     fn triple_predicate(&self, triple: TripleId) -> NodeId;
     fn triple_object(&self, triple: TripleId) -> NodeId;
     fn triple_index(&self, triple: TripleId) -> usize;
+}
+
+
+pub trait EnvClone<Structure> {
+    fn clone_box(&self) -> Box<BaseEnvObject<Structure>>;
+}
+
+impl<S, T> EnvClone<S> for T
+where
+    T: 'static + Environment<S> + Clone,
+{
+    fn clone_box(&self) -> Box<BaseEnvObject<S>> {
+        Box::new(self.clone())
+    }
+}
+
+impl<S> Clone for Box<BaseEnvObject<S>> {
+    fn clone(&self) -> Self {
+        self.clone_box()
+    }
+}
+
+
+impl<S> fmt::Debug for Box<BaseEnvObject<S>> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "[Env @ {:p}]", self)
+    }
 }

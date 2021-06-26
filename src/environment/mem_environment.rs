@@ -8,7 +8,7 @@ use super::node::{LocalId, NodeId, TripleId};
 
 
 #[derive(Debug)]
-pub struct MemEnvironment<Structure: Debug> {
+pub struct MemEnvironment<Structure: Debug + 'static> {
     nodes: Vec<Node<Structure>>,
     triples: Vec<Triple>,
 }
@@ -222,6 +222,12 @@ impl<Structure: Debug> Environment<Structure> for MemEnvironment<Structure> {
     }
 }
 
+// We need this for dyn Environment to be cloneable. Just return a new env.
+impl<Structure: Debug> Clone for MemEnvironment<Structure> {
+    fn clone(&self) -> Self {
+        MemEnvironment::new()
+    }
+}
 
 impl<Structure: Debug> Node<Structure> {
     fn new(kind: NodeKind<Structure>) -> Node<Structure> {
