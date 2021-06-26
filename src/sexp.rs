@@ -34,6 +34,8 @@ pub struct SexpIntoIter {
     current: Option<Cons>,
 }
 
+// Consider using convenience macros in sexp_conversion rather than directly
+// using this.
 pub fn cons(car: Option<HeapSexp>, cdr: Option<HeapSexp>) -> Option<HeapSexp> {
     Some(HeapSexp::new(Sexp::Cons(Cons::new(car, cdr))))
 }

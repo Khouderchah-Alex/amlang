@@ -75,6 +75,37 @@ macro_rules! break_by_types {
     };
 }
 
+// Should not be used directly. Use list! below.
+macro_rules! list_inner {
+    () => { None };
+    (($elem:expr, $($sub_tail:tt)*), $($tail:tt)*) => {
+        {
+            crate::sexp::cons(
+                crate::sexp::cons(
+                    Some(crate::sexp::HeapSexp::new($elem.into())),
+                    list_inner!($($sub_tail)*)),
+                list_inner!($($tail)*))
+        }
+    };
+    ($elem:expr, $($tail:tt)*) => {
+        {
+            crate::sexp::cons(
+                Some(crate::sexp::HeapSexp::new($elem.into())),
+                list_inner!($($tail)*))
+        }
+    };
+}
+
+/// Returns the specified sexp as a HeapSexp.
+///
+/// Provided Primitive elements must implement Into<Sexp>.
+/// Trailing commas currently must be used.
+macro_rules! list {
+    ($($tail:tt)*) => {
+        list_inner!($($tail)*).unwrap()
+    }
+}
+
 
 #[cfg(test)]
 #[path = "./sexp_conversion_test.rs"]

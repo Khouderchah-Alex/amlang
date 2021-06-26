@@ -3,7 +3,7 @@ use std::convert::TryFrom;
 use super::{NodeId, Primitive};
 use crate::agent::env_state::EnvState;
 use crate::model::Model;
-use crate::sexp::{cons, HeapSexp, Sexp};
+use crate::sexp::{HeapSexp, Sexp};
 
 
 #[derive(Clone, Debug, PartialEq)]
@@ -25,24 +25,11 @@ pub struct Branch {
 impl Model for Procedure {
     fn generate_structure(&self, env_state: &mut EnvState) -> HeapSexp {
         match self {
-            Procedure::Application(func, args) => cons(
-                Some(HeapSexp::new(env_state.context().apply.into())),
-                cons(
-                    Some(HeapSexp::new((*func).into())),
-                    cons(Some(HeapSexp::new(args.into())), None),
-                ),
-            )
-            .unwrap(),
+            Procedure::Application(func, args) => {
+                list!(env_state.context().apply, *func, args,)
+            }
             Procedure::Abstraction(params, body) => {
-                let sparams = HeapSexp::new(<Sexp>::from(params));
-                cons(
-                    Some(HeapSexp::new(env_state.context().lambda.into())),
-                    cons(
-                        Some(sparams),
-                        cons(Some(HeapSexp::new((*body).into())), None),
-                    ),
-                )
-                .unwrap()
+                list!(env_state.context().lambda, params, *body,)
             }
             _ => panic!(),
         }

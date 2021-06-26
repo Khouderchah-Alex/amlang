@@ -8,7 +8,7 @@ use std::fmt;
 use crate::agent::env_state::EnvState;
 use crate::model::Model;
 use crate::primitive::Primitive;
-use crate::sexp::{cons, HeapSexp, Sexp};
+use crate::sexp::{HeapSexp, Sexp};
 
 
 pub type LocalId = u64;
@@ -47,14 +47,7 @@ impl Model for TripleId {
         let s = env.triple_subject(*self);
         let p = env.triple_predicate(*self);
         let o = env.triple_object(*self);
-        cons(
-            Some(Box::new(s.into())),
-            cons(
-                Some(Box::new(p.into())),
-                cons(Some(Box::new(o.into())), None),
-            ),
-        )
-        .unwrap()
+        list!(s, p, o,)
     }
 }
 
