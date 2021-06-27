@@ -85,7 +85,7 @@ impl EnvManager {
         // Initially create as MemEnvironment.
         let mut meta = Box::new(MemEnvironment::new());
 
-        let lang_env_node = EnvManager::create_env_internal(&mut *meta);
+        let (lang_env_node, designation) = EnvManager::create_env_internal(&mut *meta);
         let lang_env = if let Some(Sexp::Primitive(Primitive::Env(env))) =
             meta.node_structure(lang_env_node)
         {
@@ -93,13 +93,6 @@ impl EnvManager {
         } else {
             panic!()
         };
-
-        let designation = lang_env.insert_structure(SymbolTable::default().into());
-        if let Ok(table) = <&mut SymbolTable>::try_from(lang_env.node_structure(designation)) {
-            table.insert(AMLANG_DESIGNATION.to_symbol_or_panic(), designation);
-        } else {
-            panic!("Env designation isn't a symbol table");
-        }
 
         let pos = lang_env.self_node();
         let mut context = Arc::new(AmlangContext::new(meta, lang_env_node, designation));
@@ -129,7 +122,7 @@ impl EnvManager {
     }
 
     pub fn create_env(&mut self) -> NodeId {
-        EnvManager::create_env_internal(self.env_state().context().meta())
+        EnvManager::create_env_internal(self.env_state().context().meta()).0
     }
 
     pub fn serialize<P: AsRef<Path>>(&mut self, out_path: P) -> std::io::Result<()> {
@@ -203,9 +196,26 @@ impl EnvManager {
     }
 
 
-    fn create_env_internal(meta: &mut EnvObject) -> NodeId {
+    // Returns (Env Meta Node, Designation Base Node).
+    fn create_env_internal(meta: &mut EnvObject) -> (NodeId, NodeId) {
         // Initially create as MemEnvironment.
-        meta.insert_structure(Box::new(MemEnvironment::new()).into())
+        let env_node = meta.insert_structure(Box::new(MemEnvironment::new()).into());
+
+        let env = if let Some(Sexp::Primitive(Primitive::Env(env))) = meta.node_structure(env_node)
+        {
+            env
+        } else {
+            panic!()
+        };
+
+        let designation = env.insert_structure(SymbolTable::default().into());
+        if let Ok(table) = <&mut SymbolTable>::try_from(env.node_structure(designation)) {
+            table.insert(AMLANG_DESIGNATION.to_symbol_or_panic(), designation);
+        } else {
+            panic!("Env designation isn't a symbol table");
+        }
+
+        (env_node, designation)
     }
 
     fn serialize_list_internal<W: std::io::Write>(
