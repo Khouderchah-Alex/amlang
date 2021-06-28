@@ -55,6 +55,8 @@ impl AmlangContext {
         self.lang_env
     }
 
+    /// Returns designation node, which has the same id in every environment, as
+    /// enforced by EnvManager.
     pub fn designation(&self) -> NodeId {
         self.designation
     }

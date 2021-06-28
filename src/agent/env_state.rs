@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::collections::VecDeque;
 use std::convert::TryFrom;
 use std::sync::Arc;
 
@@ -16,6 +17,8 @@ pub struct EnvState {
     env: NodeId,
     pos: NodeId,
 
+    // Ordered list of Env Nodes.
+    designation_chain: VecDeque<NodeId>,
     context: Arc<AmlangContext>,
 }
 
@@ -23,7 +26,12 @@ pub const AMLANG_DESIGNATION: &str = "__designatedBy";
 
 impl EnvState {
     pub fn new(env: NodeId, pos: NodeId, context: Arc<AmlangContext>) -> Self {
-        Self { env, pos, context }
+        Self {
+            env,
+            pos,
+            designation_chain: VecDeque::new(),
+            context,
+        }
     }
 
     pub fn pos(&self) -> NodeId {
@@ -36,6 +44,17 @@ impl EnvState {
 
     pub fn designation(&self) -> NodeId {
         self.context.designation()
+    }
+
+    pub fn designation_chain(&self) -> &VecDeque<NodeId> {
+        &self.designation_chain
+    }
+
+    // EnvState does not currently contain any policy; Agents populate this as
+    // needed.
+    // TODO(func, sec) Provide dedicated interface for d-chain mutations.
+    pub fn designation_chain_mut(&mut self) -> &mut VecDeque<NodeId> {
+        &mut self.designation_chain
     }
 
     pub fn jump(&mut self, node: NodeId) {
@@ -70,22 +89,28 @@ impl EnvState {
             ));
         }
 
-        let env = self.env();
-        let names = env.match_but_object(node, designation);
-        if let Some(name_node) = names.iter().next() {
-            let name = env.triple_object(*name_node);
-            return Some(HeapSexp::new(env.node_structure(name).cloned().unwrap()));
+        for i in 0..self.designation_chain.len() {
+            let env = self.access_env(self.designation_chain[i]).unwrap();
+            let names = env.match_but_object(node, designation);
+            if let Some(name_node) = names.iter().next() {
+                let name = env.triple_object(*name_node);
+                return Some(HeapSexp::new(env.node_structure(name).cloned().unwrap()));
+            }
         }
         None
     }
 
     pub fn resolve(&mut self, name: &Symbol) -> Result<NodeId, EvalErr> {
         let designation = self.designation();
-        let env = self.env();
 
-        let table = <&mut SymbolTable>::try_from(env.node_structure(designation)).unwrap();
-        let node = table.lookup(name)?;
-        Ok(node.into())
+        for i in 0..self.designation_chain.len() {
+            let env = self.access_env(self.designation_chain[i]).unwrap();
+            let table = <&mut SymbolTable>::try_from(env.node_structure(designation)).unwrap();
+            if let Ok(node) = table.lookup(name) {
+                return Ok(node);
+            }
+        }
+        Err(EvalErr::UnboundSymbol(name.clone()))
     }
 
     pub fn designate(&mut self, designator: Primitive) -> Result<Sexp, EvalErr> {
@@ -123,13 +148,12 @@ impl EnvState {
             });
         };
 
-        let designation = self.designation();
-        if let Ok(table) = <&mut SymbolTable>::try_from(self.env().node_structure(designation)) {
-            if table.contains_key(&symbol) {
-                return Err(AlreadyBoundSymbol(symbol));
-            }
-        } else {
-            panic!("Env designation isn't a symbol table");
+        // TODO(func) This prevents us from using an existing designation
+        // anywhere in the chain. Perhaps we should allow "overriding"
+        // designations; that is, only fail if the designation exists earlier in
+        // the chain than the current environment.
+        if let Ok(_) = self.resolve(&symbol) {
+            return Err(AlreadyBoundSymbol(symbol));
         }
 
         let node = if let Some(node) = structure {
@@ -138,6 +162,8 @@ impl EnvState {
             self.env().insert_atom()
         };
 
+        let designation = self.designation();
+        // Use designation of current environment.
         if let Ok(table) = <&mut SymbolTable>::try_from(self.env().node_structure(designation)) {
             table.insert(symbol, node);
         } else {

@@ -30,14 +30,22 @@ impl InteractiveHelper {
     fn designation_prefix(&self, prefix: &str) -> Vec<Symbol> {
         let mut state = self.env_state.borrow_mut();
         let designation = state.designation();
-        let table = <&mut SymbolTable>::try_from(state.env().node_structure(designation)).unwrap();
 
-        table
-            .as_map()
-            .range(prefix.to_string()..)
-            .take_while(|(k, _)| k.as_str().starts_with(prefix))
-            .map(|(k, _)| k.clone())
-            .collect()
+        let mut res = Vec::<Symbol>::new();
+        for env in state.designation_chain().clone() {
+            let table = <&mut SymbolTable>::try_from(
+                state.access_env(env).unwrap().node_structure(designation),
+            )
+            .unwrap();
+            res.extend(
+                table
+                    .as_map()
+                    .range(prefix.to_string()..)
+                    .take_while(|(k, _)| k.as_str().starts_with(prefix))
+                    .map(|(k, _)| k.clone()),
+            );
+        }
+        res
     }
 
     fn word_bounds<'a>(&self, line: &'a str, pos: usize) -> (usize, usize) {
