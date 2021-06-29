@@ -2,24 +2,18 @@ use super::*;
 
 
 #[test]
-fn contains_self() {
-    let mut env = MemEnvironment::new();
-    assert_eq!(env.node_structure(env.self_node()), None);
-    assert_eq!(env.node_as_triple(env.self_node()), None);
-}
-
-#[test]
 fn atomic_insertion() {
     let mut env = MemEnvironment::new();
     let a = env.insert_atom();
     let b = env.insert_atom();
+    let c = env.insert_atom();
 
-    let t = env.insert_triple(env.self_node(), a, b);
-    assert_eq!(env.triple_predicate(t), a);
+    let t = env.insert_triple(a, b, c);
+    assert_eq!(env.triple_predicate(t), b);
 
-    let m = env.match_subject(env.self_node());
+    let m = env.match_subject(a);
     assert_eq!(m.len(), 1);
-    assert_eq!(env.triple_object(*m.iter().next().unwrap()), b);
+    assert_eq!(env.triple_object(*m.iter().next().unwrap()), c);
 }
 
 #[test]
@@ -29,15 +23,16 @@ fn structure_insertion() {
     assert_eq!(env.node_structure(a).unwrap(), &"(1 2 3)".parse().unwrap());
 
     let b = env.insert_atom();
+    let c = env.insert_atom();
 
-    let t = env.insert_triple(env.self_node(), a, b);
-    assert_eq!(env.triple_predicate(t), a);
+    let t = env.insert_triple(a, b, c);
+    assert_eq!(env.triple_subject(t), a);
     assert_eq!(
-        env.node_structure(env.triple_predicate(t)).unwrap(),
+        env.node_structure(env.triple_subject(t)).unwrap(),
         &"(1 2 3)".parse().unwrap()
     );
 
-    let m = env.match_subject(env.self_node());
+    let m = env.match_predicate(b);
     assert_eq!(m.len(), 1);
-    assert_eq!(env.triple_object(*m.iter().next().unwrap()), b);
+    assert_eq!(env.triple_object(*m.iter().next().unwrap()), c);
 }

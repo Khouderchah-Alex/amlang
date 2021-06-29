@@ -10,7 +10,7 @@ use super::amlang_context::AmlangContext;
 use super::amlang_wrappers::quote_wrapper;
 use super::env_state::{EnvState, AMLANG_DESIGNATION};
 use crate::builtins::generate_builtin_map;
-use crate::environment::environment::{EnvObject, Environment};
+use crate::environment::environment::EnvObject;
 use crate::environment::mem_environment::MemEnvironment;
 use crate::environment::LocalNode;
 use crate::function::{self, Ret};
@@ -84,23 +84,20 @@ macro_rules! bootstrap_context {
 
 impl EnvManager {
     pub fn bootstrap<P: AsRef<Path>>(base_path: P) -> Result<Self, DeserializeError> {
-        // Initially create as MemEnvironment.
+        // Initially create meta as MemEnvironment.
         let mut meta = Box::new(MemEnvironment::new());
+        EnvManager::initialize_env(LocalNode::default(), &mut *meta);
 
-        let (lang_env_node, designation) = EnvManager::create_env_internal(&mut *meta);
-        let lang_env = if let Some(Sexp::Primitive(Primitive::Env(env))) =
-            meta.node_structure(lang_env_node)
-        {
-            env
-        } else {
-            panic!()
-        };
+        let (lang_env_node, self_node, designation) = EnvManager::create_env_internal(&mut *meta);
+        let mut context = Arc::new(AmlangContext::new(
+            meta,
+            lang_env_node,
+            self_node,
+            designation,
+        ));
 
-        let pos = lang_env.self_node();
-        let mut context = Arc::new(AmlangContext::new(meta, lang_env_node, designation));
         // Start in lang env. Ditto for below.
-        let env_state = EnvState::new(context.lang_env(), pos, context.clone());
-
+        let env_state = EnvState::new(context.lang_env(), context.self_node(), context.clone());
         let mut manager = Self { env_state };
         manager.deserialize(base_path)?;
 
@@ -119,7 +116,7 @@ impl EnvManager {
         );
 
         Ok(Self {
-            env_state: EnvState::new(context.lang_env(), pos, context),
+            env_state: EnvState::new(context.lang_env(), context.self_node(), context),
         })
     }
 
@@ -198,8 +195,8 @@ impl EnvManager {
     }
 
 
-    // Returns (Env Meta Node, Designation Base Node).
-    fn create_env_internal(meta: &mut EnvObject) -> (LocalNode, LocalNode) {
+    // Returns (Env Meta Node, Self Base Node, Designation Base Node).
+    fn create_env_internal(meta: &mut EnvObject) -> (LocalNode, LocalNode, LocalNode) {
         // Initially create as MemEnvironment.
         let env_node = meta.insert_structure(Box::new(MemEnvironment::new()).into());
 
@@ -210,6 +207,16 @@ impl EnvManager {
             panic!()
         };
 
+        let (self_node, designation) = EnvManager::initialize_env(env_node, &mut **env);
+        (env_node, self_node, designation)
+    }
+
+    // Returns (Env Meta Node, Self Base Node, Designation Base Node).
+    fn initialize_env(env_node: LocalNode, env: &mut EnvObject) -> (LocalNode, LocalNode) {
+        // Set up self node.
+        let self_node = env.insert_structure(Node::new(env_node, LocalNode::default()).into());
+
+        // Set up designation node.
         let designation = env.insert_structure(SymbolTable::default().into());
         if let Ok(table) = <&mut SymbolTable>::try_from(env.node_structure(designation)) {
             table.insert(
@@ -219,8 +226,7 @@ impl EnvManager {
         } else {
             panic!("Env designation isn't a symbol table");
         }
-
-        (env_node, designation)
+        (self_node, designation)
     }
 
     fn serialize_list_internal<W: std::io::Write>(

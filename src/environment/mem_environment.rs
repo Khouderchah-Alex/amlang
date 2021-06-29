@@ -46,14 +46,10 @@ struct Triple {
 
 impl MemEnvironment {
     pub fn new() -> MemEnvironment {
-        let mut env = MemEnvironment {
+        Self {
             nodes: vec![],
             triples: vec![],
-        };
-        // Set up self node.
-        // TODO(func) This should be a Portal rather than Atom.
-        env.insert_atom();
-        env
+        }
     }
 
     fn edges(&self, node: LocalNode) -> &Edges {
@@ -106,10 +102,6 @@ impl MemEnvironment {
 }
 
 impl Environment for MemEnvironment {
-    fn self_node(&self) -> LocalNode {
-        LocalNode::new(0)
-    }
-
     fn all_nodes(&self) -> NodeSet {
         (0..self.nodes.len())
             .map(|x| LocalNode::new(x as LocalId))

@@ -61,7 +61,7 @@ impl EnvState {
     pub fn jump_env(&mut self, env_node: LocalNode) {
         // TODO(sec) Verify.
         self.env = env_node;
-        self.pos = self.env().self_node();
+        self.pos = self.context.self_node();
     }
 
 

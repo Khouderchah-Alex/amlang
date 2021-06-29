@@ -16,8 +16,6 @@ pub type TripleSet = BTreeSet<LocalTriple>;
 /// Triple store of Nodes, which can be atoms, structures, or triples.
 /// Always contains at least one node, which represents itself.
 pub trait Environment: EnvClone {
-    // Portal to self node.
-    fn self_node(&self) -> LocalNode;
     fn all_nodes(&self) -> NodeSet;
 
     fn insert_atom(&mut self) -> LocalNode;

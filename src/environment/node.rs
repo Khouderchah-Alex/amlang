@@ -12,7 +12,7 @@ use crate::sexp::HeapSexp;
 
 pub type LocalId = u64;
 
-#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialOrd, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialOrd, PartialEq)]
 pub struct LocalNode(LocalId);
 
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialOrd, PartialEq)]

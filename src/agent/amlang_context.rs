@@ -8,6 +8,7 @@ pub struct AmlangContext {
     meta: UnsafeCell<Box<EnvObject>>,
 
     lang_env: LocalNode,
+    self_node: LocalNode,
     designation: LocalNode,
 
     // All below are relative to lang_env.
@@ -26,10 +27,16 @@ pub struct AmlangContext {
 
 
 impl AmlangContext {
-    pub(super) fn new(meta: Box<EnvObject>, lang_env: LocalNode, designation: LocalNode) -> Self {
+    pub(super) fn new(
+        meta: Box<EnvObject>,
+        lang_env: LocalNode,
+        self_node: LocalNode,
+        designation: LocalNode,
+    ) -> Self {
         Self {
             meta: UnsafeCell::new(meta),
             lang_env,
+            self_node,
             designation: designation.clone(),
             // This is delicate; putting placeholders here, but not used until
             // after EnvManager is bootstrapped.
@@ -54,6 +61,10 @@ impl AmlangContext {
 
     pub fn lang_env(&self) -> LocalNode {
         self.lang_env
+    }
+
+    pub fn self_node(&self) -> LocalNode {
+        self.self_node
     }
 
     /// Returns designation node, which has the same id in every environment, as
