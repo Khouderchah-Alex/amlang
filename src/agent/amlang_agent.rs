@@ -494,6 +494,8 @@ impl AmlangAgent {
         primitive: &Primitive,
         depth: usize,
     ) -> std::io::Result<()> {
+        const MAX_DEPTH: usize = 16;
+
         match primitive {
             Primitive::Node(node) => {
                 // Print Nodes as their designators if possible.
@@ -522,7 +524,14 @@ impl AmlangAgent {
                     } else {
                         return write!(w, "{}", node);
                     };
-                    self.print_list_internal(w, &s, depth + 1)
+
+                    // If we recurse unconditionally, cycles will cause stack
+                    // overflows.
+                    if s == (*node).into() || depth > MAX_DEPTH {
+                        write!(w, "{}", node)
+                    } else {
+                        self.print_list_internal(w, &s, depth + 1)
+                    }
                 }
             }
             _ => write!(w, "{}", primitive),
