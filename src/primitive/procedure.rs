@@ -1,6 +1,6 @@
 use std::convert::TryFrom;
 
-use super::{NodeId, Primitive};
+use super::{Node, Primitive};
 use crate::agent::env_state::EnvState;
 use crate::model::Model;
 use crate::sexp::{HeapSexp, Sexp};
@@ -8,28 +8,31 @@ use crate::sexp::{HeapSexp, Sexp};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Procedure {
-    Application(NodeId, Vec<NodeId>),
-    Abstraction(Vec<NodeId>, NodeId),
-    Sequence(Vec<NodeId>),
+    Application(Node, Vec<Node>),
+    Abstraction(Vec<Node>, Node),
+    Sequence(Vec<Node>),
     Branch(Box<Branch>),
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Branch {
-    cond: NodeId,
-    a: NodeId,
-    b: NodeId,
+    cond: Node,
+    a: Node,
+    b: Node,
 }
 
 
 impl Model for Procedure {
     fn generate_structure(&self, env_state: &mut EnvState) -> HeapSexp {
+        let context = env_state.context();
         match self {
             Procedure::Application(func, args) => {
-                list!(env_state.context().apply, *func, args,)
+                let apply_node = Node::new(context.lang_env(), context.apply);
+                list!(apply_node, *func, args,)
             }
             Procedure::Abstraction(params, body) => {
-                list!(env_state.context().lambda, params, *body,)
+                let lambda_node = Node::new(context.lang_env(), context.lambda);
+                list!(lambda_node, params, *body,)
             }
             _ => panic!(),
         }

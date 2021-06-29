@@ -4,23 +4,22 @@ use std::borrow::Borrow;
 use std::collections::BTreeMap;
 use std::convert::TryFrom;
 
-use super::{Primitive, Symbol, ToSymbol};
-use crate::environment::NodeId;
+use super::{Node, Primitive, Symbol, ToSymbol};
 use crate::function::EvalErr;
 use crate::sexp::Sexp;
 
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct SymbolTable {
-    map: BTreeMap<Symbol, NodeId>,
+    map: BTreeMap<Symbol, Node>,
 }
 
 impl SymbolTable {
-    pub fn new(map: BTreeMap<Symbol, NodeId>) -> SymbolTable {
+    pub fn new(map: BTreeMap<Symbol, Node>) -> SymbolTable {
         SymbolTable { map }
     }
 
-    pub fn lookup<Q>(&self, k: &Q) -> Result<NodeId, EvalErr>
+    pub fn lookup<Q>(&self, k: &Q) -> Result<Node, EvalErr>
     where
         Symbol: Borrow<Q>,
         Q: Ord + Eq + ToSymbol + ?Sized,
@@ -40,11 +39,11 @@ impl SymbolTable {
         self.map.contains_key(k)
     }
 
-    pub fn insert(&mut self, k: Symbol, v: NodeId) -> Option<NodeId> {
+    pub fn insert(&mut self, k: Symbol, v: Node) -> Option<Node> {
         self.map.insert(k, v)
     }
 
-    pub fn as_map(&self) -> &BTreeMap<Symbol, NodeId> {
+    pub fn as_map(&self) -> &BTreeMap<Symbol, Node> {
         &self.map
     }
 }

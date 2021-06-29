@@ -12,10 +12,11 @@ use super::env_state::{EnvState, AMLANG_DESIGNATION};
 use crate::builtins::generate_builtin_map;
 use crate::environment::environment::{EnvObject, Environment};
 use crate::environment::mem_environment::MemEnvironment;
+use crate::environment::LocalNode;
 use crate::function::{self, Ret};
 use crate::model::{Eval, Model};
 use crate::parser::{self, parse_sexp};
-use crate::primitive::{BuiltIn, NodeId, Primitive, Procedure, Symbol, SymbolTable, ToSymbol};
+use crate::primitive::{BuiltIn, Node, Primitive, Procedure, Symbol, SymbolTable, ToSymbol};
 use crate::sexp::{Cons, HeapSexp, Sexp, SexpIntoIter};
 use crate::token::file_stream::{self, FileStream};
 
@@ -57,13 +58,14 @@ macro_rules! bootstrap_context {
             } else {
                 panic!("Env designation isn't a symbol table");
             };
-            let lookup = |s: &str| -> Result<NodeId, DeserializeError> {
+
+            let lookup = |s: &str| -> Result<LocalNode, DeserializeError> {
                 Ok(table
                     .lookup(&s.to_symbol_or_panic())
                     .map_err(|e| EvalErr(e))?
-                    .clone())
+                    .local()
+                )
             };
-
             (
                 $(lookup($query)?,)+
             )
@@ -121,7 +123,7 @@ impl EnvManager {
         })
     }
 
-    pub fn create_env(&mut self) -> NodeId {
+    pub fn create_env(&mut self) -> LocalNode {
         EnvManager::create_env_internal(self.env_state().context().meta()).0
     }
 
@@ -149,7 +151,7 @@ impl EnvManager {
             if write_structure {
                 write!(&mut w, "(")?;
             }
-            self.serialize_list_internal(&mut w, &node.into(), 0)?;
+            self.serialize_list_internal(&mut w, &node.globalize(&self.env_state).into(), 0)?;
             if write_structure {
                 write!(&mut w, "\t")?;
                 if add_quote {
@@ -197,7 +199,7 @@ impl EnvManager {
 
 
     // Returns (Env Meta Node, Designation Base Node).
-    fn create_env_internal(meta: &mut EnvObject) -> (NodeId, NodeId) {
+    fn create_env_internal(meta: &mut EnvObject) -> (LocalNode, LocalNode) {
         // Initially create as MemEnvironment.
         let env_node = meta.insert_structure(Box::new(MemEnvironment::new()).into());
 
@@ -210,7 +212,10 @@ impl EnvManager {
 
         let designation = env.insert_structure(SymbolTable::default().into());
         if let Ok(table) = <&mut SymbolTable>::try_from(env.node_structure(designation)) {
-            table.insert(AMLANG_DESIGNATION.to_symbol_or_panic(), designation);
+            table.insert(
+                AMLANG_DESIGNATION.to_symbol_or_panic(),
+                Node::new(env_node, designation),
+            );
         } else {
             panic!("Env designation isn't a symbol table");
         }
@@ -245,7 +250,12 @@ impl EnvManager {
                 self.serialize_list_internal(w, &proc_sexp, depth + 1)
             }
             Primitive::Node(node) => {
-                if let Some(triple) = self.env_state().env().node_as_triple(*node) {
+                if let Some(triple) = self
+                    .env_state()
+                    .access_env(node.env())
+                    .unwrap()
+                    .node_as_triple(node.local())
+                {
                     return write!(w, "^t{}", self.env_state().env().triple_index(triple));
                 }
 
@@ -254,7 +264,7 @@ impl EnvManager {
                 {
                     write!(w, "{}", designator.as_str())?;
                 } else {
-                    write!(w, "^{}", node.id())?;
+                    write!(w, "^{}", node.local().id())?;
                 }
 
                 Ok(())
@@ -277,11 +287,13 @@ impl EnvManager {
             match *entry {
                 Sexp::Primitive(primitive) => {
                     if let Primitive::Symbol(sym) = primitive {
-                        // TODO(func) Create designation here rather than in EnvState.
                         if sym.as_str() == AMLANG_DESIGNATION {
-                            node_table.insert(sym, self.env_state().designation());
+                            // We don't need to create this node since env construction will.
+                            let local = self.env_state().designation();
+                            node_table.insert(sym, self.env_state().globalize(local));
                         } else {
-                            node_table.insert(sym, self.env_state().env().insert_atom());
+                            let local = self.env_state().env().insert_atom();
+                            node_table.insert(sym, self.env_state().globalize(local));
                         }
                     } else {
                         return Err(ExpectedSymbol);
@@ -291,7 +303,8 @@ impl EnvManager {
                     let (name, command) =
                         break_by_types!(cons.into(), Symbol, Sexp).map_err(|e| EvalErr(e))?;
                     let structure = self.eval_structure(command, &builtins, &node_table)?;
-                    node_table.insert(name, self.env_state().env().insert_structure(structure));
+                    let local = self.env_state().env().insert_structure(structure);
+                    node_table.insert(name, self.env_state().globalize(local));
                 }
             }
         }
@@ -390,17 +403,18 @@ impl EnvManager {
             let predicate = node_table.lookup(&p).map_err(|e| EvalErr(e))?;
             let object = node_table.lookup(&o).map_err(|e| EvalErr(e))?;
 
-            let triple = self
-                .env_state()
-                .env()
-                .insert_triple(subject, predicate, object);
+            let triple = self.env_state().env().insert_triple(
+                subject.local(),
+                predicate.local(),
+                object.local(),
+            );
             node_table.insert(
                 format!("^t{}", self.env_state().env().triple_index(triple)).to_symbol_or_panic(),
-                triple.node(),
+                self.env_state().globalize(triple.node()),
             );
 
             let designation = self.env_state().designation();
-            if predicate == designation && object != designation {
+            if predicate.local() == designation && object.local() != designation {
                 let name = if let Ok(sym) =
                     <Symbol>::try_from(self.env_state().designate(Primitive::Node(object)))
                 {

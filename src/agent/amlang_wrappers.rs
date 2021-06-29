@@ -5,7 +5,7 @@ use crate::function::{
     EvalErr::{self, *},
     ExpectedCount, Ret,
 };
-use crate::primitive::{NodeId, Primitive, Symbol};
+use crate::primitive::{Node, Primitive, Symbol};
 use crate::sexp::{Cons, HeapSexp, Sexp};
 
 
@@ -60,7 +60,7 @@ pub fn make_procedure_wrapper(args: Option<HeapSexp>) -> Result<(Vec<Symbol>, Se
     };
 }
 
-pub fn tell_wrapper(args: &Vec<NodeId>) -> Result<(NodeId, NodeId, NodeId), EvalErr> {
+pub fn tell_wrapper(args: &Vec<Node>) -> Result<(Node, Node, Node), EvalErr> {
     if args.len() != 3 {
         return Err(WrongArgumentCount {
             given: args.len(),
@@ -74,7 +74,7 @@ pub fn tell_wrapper(args: &Vec<NodeId>) -> Result<(NodeId, NodeId, NodeId), Eval
     Ok((subject, predicate, object))
 }
 
-pub fn def_wrapper(args: &Vec<NodeId>) -> Result<(NodeId, Option<NodeId>), EvalErr> {
+pub fn def_wrapper(args: &Vec<Node>) -> Result<(Node, Option<Node>), EvalErr> {
     if args.len() < 1 {
         return Err(WrongArgumentCount {
             given: args.len(),
@@ -92,7 +92,7 @@ pub fn def_wrapper(args: &Vec<NodeId>) -> Result<(NodeId, Option<NodeId>), EvalE
     Ok((name, structure))
 }
 
-pub fn apply_wrapper(args: &Vec<NodeId>) -> Result<(NodeId, NodeId), EvalErr> {
+pub fn apply_wrapper(args: &Vec<Node>) -> Result<(Node, Node), EvalErr> {
     if args.len() != 2 {
         return Err(WrongArgumentCount {
             given: args.len(),

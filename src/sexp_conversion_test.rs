@@ -1,7 +1,7 @@
 use std::convert::TryFrom;
 
 use crate::function::EvalErr;
-use crate::primitive::{NodeId, Number, Symbol};
+use crate::primitive::{Node, Number, Symbol};
 use crate::sexp::{Cons, Sexp};
 
 
@@ -39,7 +39,7 @@ fn list_sexp() {
 #[test]
 fn wrong_type() {
     let original = "(lambda (a b) ing)".parse::<Sexp>().unwrap();
-    if let Err(EvalErr::InvalidArgument { .. }) = break_by_types!(original, NodeId, Sexp, Symbol) {
+    if let Err(EvalErr::InvalidArgument { .. }) = break_by_types!(original, Node, Sexp, Symbol) {
     } else {
         panic!();
     }

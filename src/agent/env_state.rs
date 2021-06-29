@@ -5,27 +5,27 @@ use std::sync::Arc;
 
 use super::amlang_context::AmlangContext;
 use crate::environment::environment::{EnvObject, TripleSet};
-use crate::environment::NodeId;
+use crate::environment::LocalNode;
 use crate::function::EvalErr::{self, *};
 use crate::model::Model;
-use crate::primitive::{Primitive, Symbol, SymbolTable, ToSymbol};
+use crate::primitive::{Node, Primitive, Symbol, SymbolTable, ToSymbol};
 use crate::sexp::{HeapSexp, Sexp};
 
 
 #[derive(Clone)]
 pub struct EnvState {
-    env: NodeId,
-    pos: NodeId,
+    env: LocalNode,
+    pos: LocalNode,
 
     // Ordered list of Env Nodes.
-    designation_chain: VecDeque<NodeId>,
+    designation_chain: VecDeque<LocalNode>,
     context: Arc<AmlangContext>,
 }
 
 pub const AMLANG_DESIGNATION: &str = "__designatedBy";
 
 impl EnvState {
-    pub fn new(env: NodeId, pos: NodeId, context: Arc<AmlangContext>) -> Self {
+    pub fn new(env: LocalNode, pos: LocalNode, context: Arc<AmlangContext>) -> Self {
         Self {
             env,
             pos,
@@ -34,40 +34,58 @@ impl EnvState {
         }
     }
 
-    pub fn pos(&self) -> NodeId {
+    pub fn globalize(&self, local: LocalNode) -> Node {
+        Node::new(self.env, local)
+    }
+
+    pub fn pos_local(&self) -> LocalNode {
         self.pos
     }
+
+    pub fn jump_local(&mut self, node: LocalNode) {
+        // TODO(sec) Verify.
+        self.pos = node;
+    }
+
+    pub fn pos_global(&self) -> Node {
+        Node::new(self.env, self.pos)
+    }
+
+    pub fn jump_global(&mut self, node: Node) {
+        // TODO(sec) Verify.
+        self.env = node.env();
+        self.pos = node.local();
+    }
+
+    /// Jump to self node of indicated env.
+    pub fn jump_env(&mut self, env_node: LocalNode) {
+        // TODO(sec) Verify.
+        self.env = env_node;
+        self.pos = self.env().self_node();
+    }
+
+
 
     pub fn context(&self) -> &AmlangContext {
         &*self.context
     }
 
-    pub fn designation(&self) -> NodeId {
+    pub fn designation(&self) -> LocalNode {
         self.context.designation()
     }
 
-    pub fn designation_chain(&self) -> &VecDeque<NodeId> {
+    pub fn designation_chain(&self) -> &VecDeque<LocalNode> {
         &self.designation_chain
     }
 
     // EnvState does not currently contain any policy; Agents populate this as
     // needed.
     // TODO(func, sec) Provide dedicated interface for d-chain mutations.
-    pub fn designation_chain_mut(&mut self) -> &mut VecDeque<NodeId> {
+    pub fn designation_chain_mut(&mut self) -> &mut VecDeque<LocalNode> {
         &mut self.designation_chain
     }
 
-    pub fn jump(&mut self, node: NodeId) {
-        // TODO(sec) Verify.
-        self.pos = node;
-    }
-
-    pub fn jump_env(&mut self, node: NodeId) {
-        // TODO(sec) Verify.
-        self.env = node;
-    }
-
-    pub fn access_env(&mut self, meta_node: NodeId) -> Option<&mut EnvObject> {
+    pub fn access_env(&mut self, meta_node: LocalNode) -> Option<&mut EnvObject> {
         let meta = self.context.meta();
         if let Some(Sexp::Primitive(Primitive::Env(env))) = meta.node_structure(meta_node) {
             Some(env.as_mut())
@@ -81,26 +99,25 @@ impl EnvState {
         self.access_env(self.env).unwrap()
     }
 
-    pub fn node_designator(&mut self, node: NodeId) -> Option<HeapSexp> {
+    pub fn node_designator(&mut self, node: Node) -> Option<HeapSexp> {
         let designation = self.designation();
-        if node == designation {
+        if node.local() == designation {
             return Some(HeapSexp::new(
                 AMLANG_DESIGNATION.to_symbol_or_panic().into(),
             ));
         }
 
-        for i in 0..self.designation_chain.len() {
-            let env = self.access_env(self.designation_chain[i]).unwrap();
-            let names = env.match_but_object(node, designation);
-            if let Some(name_node) = names.iter().next() {
-                let name = env.triple_object(*name_node);
-                return Some(HeapSexp::new(env.node_structure(name).cloned().unwrap()));
-            }
+        let env = self.access_env(node.env()).unwrap();
+        let names = env.match_but_object(node.local(), designation);
+        if let Some(name_node) = names.iter().next() {
+            let name = env.triple_object(*name_node);
+            Some(HeapSexp::new(env.node_structure(name).cloned().unwrap()))
+        } else {
+            None
         }
-        None
     }
 
-    pub fn resolve(&mut self, name: &Symbol) -> Result<NodeId, EvalErr> {
+    pub fn resolve(&mut self, name: &Symbol) -> Result<Node, EvalErr> {
         let designation = self.designation();
 
         for i in 0..self.designation_chain.len() {
@@ -119,9 +136,17 @@ impl EnvState {
             Primitive::Symbol(symbol) => Ok(self.resolve(&symbol)?.into()),
             // Node -> Structure
             Primitive::Node(node) => {
-                if let Some(structure) = self.env().node_structure(node) {
+                if let Some(structure) = self
+                    .access_env(node.env())
+                    .unwrap()
+                    .node_structure(node.local())
+                {
                     Ok(structure.clone())
-                } else if let Some(triple) = self.env().node_as_triple(node) {
+                } else if let Some(triple) = self
+                    .access_env(node.env())
+                    .unwrap()
+                    .node_as_triple(node.local())
+                {
                     Ok(*triple.generate_structure(self))
                 } else {
                     // Atoms are self-designating.
@@ -133,7 +158,11 @@ impl EnvState {
         }
     }
 
-    pub fn def_node(&mut self, name: NodeId, structure: Option<NodeId>) -> Result<NodeId, EvalErr> {
+    pub fn def_node(
+        &mut self,
+        name: LocalNode,
+        structure: Option<LocalNode>,
+    ) -> Result<Node, EvalErr> {
         let name_sexp = self.env().node_structure(name);
         let symbol = if let Ok(symbol) = <Symbol>::try_from(name_sexp.cloned()) {
             symbol
@@ -160,7 +189,8 @@ impl EnvState {
             node
         } else {
             self.env().insert_atom()
-        };
+        }
+        .globalize(&self);
 
         let designation = self.designation();
         // Use designation of current environment.
@@ -170,15 +200,15 @@ impl EnvState {
             panic!("Env designation isn't a symbol table");
         }
 
-        self.env().insert_triple(node, designation, name);
+        self.env().insert_triple(node.local(), designation, name);
         Ok(node)
     }
 
     pub fn tell(
         &mut self,
-        subject: NodeId,
-        predicate: NodeId,
-        object: NodeId,
+        subject: LocalNode,
+        predicate: LocalNode,
+        object: LocalNode,
     ) -> Result<Sexp, EvalErr> {
         if let Some(triple) = self
             .env()
@@ -190,14 +220,14 @@ impl EnvState {
         }
 
         let triple = self.env().insert_triple(subject, predicate, object);
-        Ok(triple.node().into())
+        Ok(triple.node().globalize(&self).into())
     }
 
     pub fn ask(
         &mut self,
-        subject: NodeId,
-        predicate: NodeId,
-        object: NodeId,
+        subject: LocalNode,
+        predicate: LocalNode,
+        object: LocalNode,
     ) -> Result<Sexp, EvalErr> {
         let res = if subject == self.context.placeholder {
             if predicate == self.context.placeholder {
@@ -233,7 +263,7 @@ impl EnvState {
             }
         }
         .into_iter()
-        .map(|t| t.node().into())
+        .map(|t| t.node().globalize(&self).into())
         .collect::<Vec<Sexp>>();
 
         Ok(res.into())

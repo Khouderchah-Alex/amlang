@@ -1,31 +1,32 @@
 use std::cell::UnsafeCell;
 
 use crate::environment::environment::EnvObject;
-use crate::environment::NodeId;
+use crate::environment::LocalNode;
 
 
 pub struct AmlangContext {
     meta: UnsafeCell<Box<EnvObject>>,
 
-    lang_env: NodeId,
-    designation: NodeId,
+    lang_env: LocalNode,
+    designation: LocalNode,
 
-    pub quote: NodeId,
-    pub lambda: NodeId,
-    pub def: NodeId,
-    pub tell: NodeId,
-    pub curr: NodeId,
-    pub jump: NodeId,
-    pub ask: NodeId,
-    pub placeholder: NodeId,
-    pub apply: NodeId,
-    pub eval: NodeId,
-    pub exec: NodeId,
+    // All below are relative to lang_env.
+    pub quote: LocalNode,
+    pub lambda: LocalNode,
+    pub def: LocalNode,
+    pub tell: LocalNode,
+    pub curr: LocalNode,
+    pub jump: LocalNode,
+    pub ask: LocalNode,
+    pub placeholder: LocalNode,
+    pub apply: LocalNode,
+    pub eval: LocalNode,
+    pub exec: LocalNode,
 }
 
 
 impl AmlangContext {
-    pub(super) fn new(meta: Box<EnvObject>, lang_env: NodeId, designation: NodeId) -> Self {
+    pub(super) fn new(meta: Box<EnvObject>, lang_env: LocalNode, designation: LocalNode) -> Self {
         Self {
             meta: UnsafeCell::new(meta),
             lang_env,
@@ -51,13 +52,13 @@ impl AmlangContext {
         unsafe { &mut **self.meta.get() }
     }
 
-    pub fn lang_env(&self) -> NodeId {
+    pub fn lang_env(&self) -> LocalNode {
         self.lang_env
     }
 
     /// Returns designation node, which has the same id in every environment, as
     /// enforced by EnvManager.
-    pub fn designation(&self) -> NodeId {
+    pub fn designation(&self) -> LocalNode {
         self.designation
     }
 }

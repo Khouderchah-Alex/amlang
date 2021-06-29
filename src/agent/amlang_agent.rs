@@ -14,12 +14,12 @@ use crate::function::{
 use crate::model::{Eval, Model};
 use crate::parser::parse_sexp;
 use crate::primitive::procedure::Procedure;
-use crate::primitive::{NodeId, Primitive, Symbol, SymbolTable};
+use crate::primitive::{Node, Primitive, Symbol, SymbolTable};
 use crate::sexp::{Cons, HeapSexp, Sexp, SexpIntoIter};
 use crate::token::interactive_stream::InteractiveStream;
 
 
-pub type Continuation = std::collections::HashMap<NodeId, NodeId>;
+pub type Continuation = std::collections::HashMap<Node, Node>;
 
 pub struct AmlangAgent {
     agent_state: EnvState,
@@ -47,7 +47,11 @@ impl AmlangAgent {
     fn make_procedure(&mut self, params: Vec<Symbol>, body: Sexp) -> Result<Procedure, EvalErr> {
         let mut surface = Vec::new();
         for symbol in params {
-            let node = self.agent_state.env().insert_atom();
+            let node = self
+                .agent_state
+                .env()
+                .insert_atom()
+                .globalize(&self.agent_state);
             // TODO(func) Use actual deep environment representation (including popping off).
             self.eval_symbols.insert(symbol, node);
             surface.push(node);
@@ -61,7 +65,11 @@ impl AmlangAgent {
         };
         // TODO(func) Allow for sequence.
         let body_eval = self.eval(Box::new(cons.car().unwrap().clone()))?;
-        let body_node = self.agent_state.env().insert_structure(body_eval);
+        let body_node = self
+            .agent_state
+            .env()
+            .insert_structure(body_eval)
+            .globalize(&self.agent_state);
         Ok(Procedure::Abstraction(surface, body_node))
     }
 
@@ -89,118 +97,151 @@ impl AmlangAgent {
         }
     }
 
-    fn apply(&mut self, proc_node: NodeId, arg_nodes: Vec<NodeId>, cont: &mut Continuation) -> Ret {
+    fn apply(&mut self, proc_node: Node, arg_nodes: Vec<Node>, cont: &mut Continuation) -> Ret {
         match self.agent_state.designate(Primitive::Node(proc_node))? {
             Sexp::Primitive(Primitive::Node(node)) => {
                 let context = self.agent_state.context();
-                match node {
-                    _ if context.tell == node || context.ask == node => {
-                        let is_tell = context.tell == node;
-                        let (ss, pp, oo) = tell_wrapper(&arg_nodes)?;
+                if node.env() == context.lang_env() {
+                    let lang_node = node.local();
+                    match lang_node {
+                        _ if context.tell == lang_node || context.ask == lang_node => {
+                            let is_tell = context.tell == lang_node;
+                            let (ss, pp, oo) = tell_wrapper(&arg_nodes)?;
 
-                        let mut exec_to_node = |node: NodeId| {
-                            let desig = self.agent_state.designate(Primitive::Node(node))?;
-                            let e = self.exec(desig, cont)?;
-                            if let Ok(new_node) = NodeId::try_from(&e) {
-                                Ok(new_node)
-                            } else {
-                                Ok(node)
-                            }
-                        };
-                        let (s, p, o) = (exec_to_node(ss)?, exec_to_node(pp)?, exec_to_node(oo)?);
-                        debug!(
-                            "({} {} {} {})",
-                            if is_tell { "tell" } else { "ask" },
-                            s,
-                            p,
-                            o
-                        );
-                        if is_tell {
-                            self.agent_state.tell(s, p, o)
-                        } else {
-                            self.agent_state.ask(s, p, o)
-                        }
-                    }
-                    _ if context.def == node => {
-                        let (name, structure) = def_wrapper(&arg_nodes)?;
-                        self.agent_state.designate(Primitive::Node(name))?;
-                        return Ok(self.agent_state.def_node(name, structure)?.into());
-                    }
-                    _ if context.curr == node => {
-                        if arg_nodes.len() > 0 {
-                            return Err(WrongArgumentCount {
-                                given: arg_nodes.len(),
-                                expected: ExpectedCount::Exactly(0),
-                            });
-                        }
-                        self.print_curr_triples();
-                        return Ok(self.agent_state.pos().into());
-                    }
-                    _ if context.jump == node => {
-                        if arg_nodes.len() != 1 {
-                            return Err(WrongArgumentCount {
-                                given: arg_nodes.len(),
-                                expected: ExpectedCount::Exactly(1),
-                            });
-                        }
-                        self.agent_state.jump(arg_nodes[0]);
-                        self.print_curr_triples();
-                        return Ok(self.agent_state.pos().into());
-                    }
-                    _ if context.apply == node => {
-                        let (proc_node, args_node) = apply_wrapper(&arg_nodes)?;
-                        let proc_meaning =
-                            self.agent_state.designate(Primitive::Node(proc_node))?;
-                        let proc_sexp = self.exec(proc_meaning, cont)?;
-                        let args_meaning =
-                            self.agent_state.designate(Primitive::Node(args_node))?;
-                        let args_sexp = self.exec(args_meaning, cont)?;
-                        debug!("applying (apply {} '{})", proc_sexp, args_sexp);
+                            // TODO(func) Add support for cross-env triples through surrogates.
+                            let mut exec_to_node = |node: Node| {
+                                let desig = self.agent_state.designate(Primitive::Node(node))?;
+                                let e = self.exec(desig, cont)?;
+                                let final_node = if let Ok(new_node) = Node::try_from(&e) {
+                                    new_node
+                                } else {
+                                    node
+                                };
 
-                        let proc = if let Ok(node) = NodeId::try_from(&proc_sexp) {
-                            node
-                        } else {
-                            self.agent_state.env().insert_structure(proc_sexp)
-                        };
-                        let mut args = Vec::new();
-                        for arg in SexpIntoIter::try_from(args_sexp)? {
-                            if let Ok(node) = NodeId::try_from(&*arg) {
-                                args.push(node);
+                                if final_node.env() != self.agent_state.pos_global().env() {
+                                    panic!("Cross-env triples are not yet supported");
+                                }
+                                Ok(final_node.local())
+                            };
+                            let (s, p, o) =
+                                (exec_to_node(ss)?, exec_to_node(pp)?, exec_to_node(oo)?);
+                            debug!(
+                                "({} {} {} {})",
+                                if is_tell { "tell" } else { "ask" },
+                                s,
+                                p,
+                                o
+                            );
+                            if is_tell {
+                                self.agent_state.tell(s, p, o)
                             } else {
-                                args.push(self.agent_state.env().insert_structure(arg.into()));
+                                self.agent_state.ask(s, p, o)
                             }
                         }
+                        _ if context.def == lang_node => {
+                            let (name, structure) = def_wrapper(&arg_nodes)?;
+                            self.agent_state.designate(Primitive::Node(name))?;
+                            if name.env() != self.agent_state.pos_global().env()
+                                || (structure.is_some()
+                                    && structure.clone().unwrap().env()
+                                        != self.agent_state.pos_global().env())
+                            {
+                                panic!("Cross-env triples are not yet supported");
+                            }
+                            return Ok(self
+                                .agent_state
+                                .def_node(name.local(), structure.map(|n| n.local()))?
+                                .into());
+                        }
+                        _ if context.curr == lang_node => {
+                            if arg_nodes.len() > 0 {
+                                return Err(WrongArgumentCount {
+                                    given: arg_nodes.len(),
+                                    expected: ExpectedCount::Exactly(0),
+                                });
+                            }
+                            self.print_curr_triples();
+                            return Ok(self.agent_state.pos_global().into());
+                        }
+                        _ if context.jump == lang_node => {
+                            if arg_nodes.len() != 1 {
+                                return Err(WrongArgumentCount {
+                                    given: arg_nodes.len(),
+                                    expected: ExpectedCount::Exactly(1),
+                                });
+                            }
+                            self.agent_state.jump_global(arg_nodes[0]);
+                            self.print_curr_triples();
+                            return Ok(self.agent_state.pos_global().into());
+                        }
+                        _ if context.apply == lang_node => {
+                            let (proc_node, args_node) = apply_wrapper(&arg_nodes)?;
+                            let proc_meaning =
+                                self.agent_state.designate(Primitive::Node(proc_node))?;
+                            let proc_sexp = self.exec(proc_meaning, cont)?;
+                            let args_meaning =
+                                self.agent_state.designate(Primitive::Node(args_node))?;
+                            let args_sexp = self.exec(args_meaning, cont)?;
+                            debug!("applying (apply {} '{})", proc_sexp, args_sexp);
 
-                        return self.apply(proc, args, cont);
-                    }
-                    _ if context.eval == node || context.exec == node => {
-                        if arg_nodes.len() != 1 {
-                            return Err(WrongArgumentCount {
-                                given: arg_nodes.len(),
-                                expected: ExpectedCount::Exactly(1),
-                            });
+                            let proc = if let Ok(node) = Node::try_from(&proc_sexp) {
+                                node
+                            } else {
+                                self.agent_state
+                                    .env()
+                                    .insert_structure(proc_sexp)
+                                    .globalize(&self.agent_state)
+                            };
+                            let mut args = Vec::new();
+                            for arg in SexpIntoIter::try_from(args_sexp)? {
+                                if let Ok(node) = Node::try_from(&*arg) {
+                                    args.push(node);
+                                } else {
+                                    args.push(
+                                        self.agent_state
+                                            .env()
+                                            .insert_structure(arg.into())
+                                            .globalize(&self.agent_state),
+                                    );
+                                }
+                            }
+
+                            return self.apply(proc, args, cont);
                         }
-                        let is_eval = context.eval == node;
-                        let arg = self.agent_state.designate(Primitive::Node(arg_nodes[0]))?;
-                        let structure = self.exec(arg, cont)?;
-                        debug!("applying (eval {})", structure);
-                        if is_eval {
-                            self.eval(HeapSexp::new(structure))
-                        } else {
-                            self.exec(structure, cont)
+                        _ if context.eval == lang_node || context.exec == lang_node => {
+                            if arg_nodes.len() != 1 {
+                                return Err(WrongArgumentCount {
+                                    given: arg_nodes.len(),
+                                    expected: ExpectedCount::Exactly(1),
+                                });
+                            }
+                            let is_eval = context.eval == lang_node;
+                            let arg = self.agent_state.designate(Primitive::Node(arg_nodes[0]))?;
+                            let structure = self.exec(arg, cont)?;
+                            debug!("applying (eval {})", structure);
+                            if is_eval {
+                                self.eval(HeapSexp::new(structure))
+                            } else {
+                                self.exec(structure, cont)
+                            }
                         }
+                        _ => Err(InvalidArgument {
+                            given: node.into(),
+                            expected: Cow::Borrowed("Amlang Procedure or special Node"),
+                        }),
                     }
-                    _ => Err(InvalidArgument {
+                } else {
+                    Err(InvalidArgument {
                         given: node.into(),
-                        expected: Cow::Borrowed("Procedure or special Node"),
-                    }),
+                        expected: Cow::Borrowed("Procedure or Amlang Node"),
+                    })
                 }
             }
             Sexp::Primitive(Primitive::BuiltIn(builtin)) => {
                 let mut args = Vec::with_capacity(arg_nodes.len());
                 for node in arg_nodes {
                     let structure = self.agent_state.designate(Primitive::Node(node))?;
-                    let arg = if let Ok(_) = <NodeId>::try_from(&structure) {
+                    let arg = if let Ok(_) = <Node>::try_from(&structure) {
                         structure
                     } else {
                         self.exec(structure, cont)?
@@ -221,7 +262,7 @@ impl AmlangAgent {
                 let mut args = Vec::with_capacity(arg_nodes.len());
                 for (i, node) in arg_nodes.into_iter().enumerate() {
                     let structure = self.agent_state.designate(Primitive::Node(node))?;
-                    let arg = if let Ok(_) = <NodeId>::try_from(&structure) {
+                    let arg = if let Ok(_) = <Node>::try_from(&structure) {
                         structure
                     } else {
                         self.exec(structure, cont)?
@@ -236,7 +277,7 @@ impl AmlangAgent {
 
                 let body = self.agent_state.designate(Primitive::Node(body_node))?;
                 let result = self.exec(body, cont)?;
-                if let Ok(node) = <NodeId>::try_from(&result) {
+                if let Ok(node) = <Node>::try_from(&result) {
                     let concretize = |node| {
                         if let Some(new_node) = cont.get(&node) {
                             debug!("concretizing: {} -> {}", node, new_node);
@@ -257,7 +298,7 @@ impl AmlangAgent {
         }
     }
 
-    fn evlis(&mut self, structures: Option<HeapSexp>) -> Result<Vec<NodeId>, EvalErr> {
+    fn evlis(&mut self, structures: Option<HeapSexp>) -> Result<Vec<Node>, EvalErr> {
         if structures.is_none() {
             return Ok(vec![]);
         }
@@ -267,14 +308,19 @@ impl AmlangAgent {
 
             Sexp::Cons(cons) => {
                 // TODO(perf) Return Cow.
-                let mut args = Vec::<NodeId>::with_capacity(cons.iter().count());
+                let mut args = Vec::<Node>::with_capacity(cons.iter().count());
                 for structure in cons.into_iter() {
                     let val = self.eval(structure)?;
                     // Don't recreate existing Nodes.
-                    if let Ok(node) = <NodeId>::try_from(&val) {
+                    if let Ok(node) = <Node>::try_from(&val) {
                         args.push(node.into());
                     } else {
-                        args.push(self.agent_state.env().insert_structure(val));
+                        args.push(
+                            self.agent_state
+                                .env()
+                                .insert_structure(val)
+                                .globalize(&self.agent_state),
+                        );
                     }
                 }
                 Ok(args)
@@ -310,7 +356,11 @@ impl Agent for AmlangAgent {
 
             let mut cont = Continuation::default();
             // TODO(func) Make this behavior configurable?
-            let meaning_node = self.history_state.env().insert_structure(meaning);
+            let meaning_node = self
+                .history_state
+                .env()
+                .insert_structure(meaning)
+                .globalize(&self.history_state);
             let meaning = self
                 .history_state
                 .designate(Primitive::Node(meaning_node))
@@ -318,7 +368,7 @@ impl Agent for AmlangAgent {
             match self.exec(meaning, &mut cont) {
                 Ok(val) => {
                     print!("-> ");
-                    if let Ok(node) = <NodeId>::try_from(&val) {
+                    if let Ok(node) = <Node>::try_from(&val) {
                         let designated = self.agent_state.designate(Primitive::Node(node)).unwrap();
                         self.print_list(&designated);
                     } else {
@@ -361,14 +411,21 @@ impl Eval for AmlangAgent {
                 };
 
                 let eval_car = self.eval(car)?;
-                if let Ok(node) = <NodeId>::try_from(&eval_car) {
+                if let Ok(node) = <Node>::try_from(&eval_car) {
                     let context = self.agent_state.context();
                     match node {
-                        _ if context.quote == node => return quote_wrapper(cdr),
-                        _ if context.lambda == node => {
+                        _ if Node::new(context.lang_env(), context.quote) == node => {
+                            return quote_wrapper(cdr);
+                        }
+                        _ if Node::new(context.lang_env(), context.lambda) == node => {
                             let (params, body) = make_procedure_wrapper(cdr)?;
                             let proc = self.make_procedure(params, body)?;
-                            return Ok(self.agent_state.env().insert_structure(proc.into()).into());
+                            return Ok(self
+                                .agent_state
+                                .env()
+                                .insert_structure(proc.into())
+                                .globalize(&self.agent_state)
+                                .into());
                         }
                         _ => {
                             let args = self.evlis(cdr)?;
@@ -387,17 +444,19 @@ impl Eval for AmlangAgent {
 
 
 impl AmlangAgent {
-    fn print_curr_nodes(&mut self) {
-        let nodes = self.agent_state.env().all_nodes();
-        for node in nodes {
-            self.print_list(&node.into());
-            println!("");
-        }
-    }
+    /*
+       fn print_curr_nodes(&mut self) {
+           let nodes = self.agent_state.env().all_nodes();
+           for node in nodes {
+               self.print_list(&node.into());
+               println!("");
+           }
+       }
+    */
 
     fn print_curr_triples(&mut self) {
-        let node = self.agent_state.pos();
-        let triples = self.agent_state.env().match_any(node);
+        let local = self.agent_state.pos_local();
+        let triples = self.agent_state.env().match_any(local);
         for triple in triples {
             print!("    ");
             let structure = triple.generate_structure(&mut self.agent_state);
@@ -439,11 +498,21 @@ impl AmlangAgent {
                     } else {
                         write!(w, "{}", designator)
                     }
-                } else if let Some(triple) = self.agent_state.env().node_as_triple(*node) {
+                } else if let Some(triple) = self
+                    .agent_state
+                    .access_env(node.env())
+                    .unwrap()
+                    .node_as_triple(node.local())
+                {
                     let s = triple.generate_structure(&mut self.agent_state);
                     self.print_list_internal(w, &s, depth + 1)
                 } else {
-                    let s = if let Some(structure) = self.agent_state.env().node_structure(*node) {
+                    let s = if let Some(structure) = self
+                        .agent_state
+                        .access_env(node.env())
+                        .unwrap()
+                        .node_structure(node.local())
+                    {
                         structure.clone()
                     } else {
                         return write!(w, "{}", node);

@@ -8,7 +8,7 @@ use crate::cons_list::ConsList;
 use crate::environment::Environment;
 use crate::function::{EvalErr, ExpectedCount};
 use crate::parser::{parse_sexp, ParseError};
-use crate::primitive::{BuiltIn, NodeId, Number, Primitive, Procedure, Symbol, SymbolTable};
+use crate::primitive::{BuiltIn, Node, Number, Primitive, Procedure, Symbol, SymbolTable};
 use crate::token::string_stream::StringStream;
 use crate::token::TokenizeError;
 
@@ -529,8 +529,8 @@ impl From<Procedure> for Sexp {
     }
 }
 
-impl From<NodeId> for Sexp {
-    fn from(node: NodeId) -> Self {
+impl From<Node> for Sexp {
+    fn from(node: Node) -> Self {
         Sexp::Primitive(Primitive::Node(node))
     }
 }

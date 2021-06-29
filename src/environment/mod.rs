@@ -1,6 +1,6 @@
 // Public exports.
 pub use environment::{Environment, TripleSet};
-pub use node::{NodeId, TripleId};
+pub use node::{LocalNode, LocalTriple};
 
 // Public mods.
 pub mod environment;

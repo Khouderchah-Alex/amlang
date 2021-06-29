@@ -4,18 +4,19 @@ use std::fmt;
 use std::mem;
 
 pub mod builtin;
+pub mod node;
 pub mod number;
 pub mod procedure;
 pub mod symbol;
 pub mod symbol_table;
 
 pub use self::builtin::BuiltIn;
+pub use self::node::Node;
 pub use self::number::Number;
 pub use self::procedure::Procedure;
 pub use self::symbol::{Symbol, ToSymbol};
 pub use self::symbol_table::SymbolTable;
 pub use crate::environment::environment::EnvObject;
-pub use crate::environment::NodeId;
 
 
 #[derive(Clone, Debug)]
@@ -23,7 +24,7 @@ pub enum Primitive {
     Number(Number),
     Symbol(Symbol),
     BuiltIn(BuiltIn),
-    Node(NodeId),
+    Node(Node),
 
     SymbolTable(SymbolTable),
     Procedure(Procedure),
