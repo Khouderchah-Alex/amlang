@@ -5,7 +5,7 @@ use std::collections::BTreeSet;
 use std::fmt::Debug;
 
 use super::environment::{Environment, NodeSet, TripleSet};
-use super::node::{LocalId, LocalNode, LocalTriple};
+use super::local_node::{LocalId, LocalNode, LocalTriple};
 use crate::primitive::Primitive;
 use crate::sexp::Sexp;
 

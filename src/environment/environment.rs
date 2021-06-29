@@ -3,7 +3,7 @@
 use std::collections::BTreeSet;
 use std::fmt;
 
-use super::node::{LocalNode, LocalTriple};
+use super::local_node::{LocalNode, LocalTriple};
 use crate::sexp::Sexp;
 
 
