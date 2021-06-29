@@ -1,10 +1,12 @@
 //! Thread-unsafe in-memory Environment.
 
+use log::debug;
 use std::collections::BTreeSet;
 use std::fmt::Debug;
 
 use super::environment::{Environment, NodeSet, TripleSet};
 use super::node::{LocalId, LocalNode, LocalTriple};
+use crate::primitive::Primitive;
 use crate::sexp::Sexp;
 
 
@@ -70,17 +72,31 @@ impl MemEnvironment {
     }
 
     fn node_unchecked(&self, node: LocalNode) -> &Node {
+        debug!("Env {}: node lookup: {}", self.env_id(), node.id());
         &self.nodes[node_index_unchecked(node.id())]
     }
     fn node_mut_unchecked(&mut self, node: LocalNode) -> &mut Node {
+        debug!("Env {}: node mut lookup: {}", self.env_id(), node.id());
         &mut self.nodes[node_index_unchecked(node.id())]
     }
 
     fn triple_unchecked(&self, triple: LocalNode) -> &Triple {
+        debug!("Env {}: triple lookup: {}", self.env_id(), triple.id());
         &self.triples[triple_index_unchecked(triple.id())]
     }
     fn triple_mut_unchecked(&mut self, triple: LocalNode) -> &mut Triple {
+        debug!("Env {}: triple mut lookup: {}", self.env_id(), triple.id());
         &mut self.triples[triple_index_unchecked(triple.id())]
+    }
+
+    fn env_id(&self) -> LocalId {
+        // Technically, this is a bit of a layer violation, but by assuming the
+        // self node exists, the env can identify itself at this layer.
+        if let NodeKind::Structured(Sexp::Primitive(Primitive::Node(node))) = self.nodes[0].kind {
+            node.env().id()
+        } else {
+            panic!();
+        }
     }
 
 
