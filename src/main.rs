@@ -44,7 +44,7 @@ fn main() -> Result<(), String> {
 }
 
 fn interactive_agent() -> Result<(), String> {
-    let mut manager = match agent::env_manager::EnvManager::bootstrap("test.env") {
+    let mut manager = match agent::env_manager::EnvManager::bootstrap("lang.env") {
         Ok(val) => val,
         Err(err) => return Err(format!("{:?}", err)),
     };
@@ -53,14 +53,14 @@ fn interactive_agent() -> Result<(), String> {
     let mut user_agent = agent::amlang_agent::AmlangAgent::from_lang(lang_state, &mut manager);
     user_agent.run()?;
 
-    if let Err(err) = manager.serialize("./testt.env") {
+    if let Err(err) = manager.serialize("lang.env") {
         return Err(err.to_string());
     }
 
     manager
         .env_state()
         .jump_env(user_agent.history_state().pos_global().env());
-    if let Err(err) = manager.serialize("./history.env") {
+    if let Err(err) = manager.serialize("history.env") {
         return Err(err.to_string());
     }
 

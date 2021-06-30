@@ -38,6 +38,10 @@ impl AmlangAgent {
         let lang_env = agent_state.context().lang_env();
         agent_state.designation_chain_mut().push_front(lang_env);
 
+        let working_env = manager.create_env();
+        agent_state.jump_env(working_env);
+        agent_state.designation_chain_mut().push_back(working_env);
+
         Self {
             agent_state,
             history_state,
