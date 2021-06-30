@@ -10,6 +10,9 @@ use crate::agent::env_state::EnvState;
 pub struct InteractiveStream {
     editor: Editor<InteractiveHelper>,
     tokens: TokenStore,
+
+    depth: i16,
+    curr_expr: String,
 }
 
 impl InteractiveStream {
@@ -20,6 +23,9 @@ impl InteractiveStream {
         InteractiveStream {
             editor,
             tokens: TokenStore::default(),
+
+            depth: 0,
+            curr_expr: String::default(),
         }
     }
 }
@@ -34,14 +40,42 @@ impl Iterator for InteractiveStream {
         }
 
         while self.tokens.len() == 0 {
-            match self.editor.readline("> ") {
+            let line = if self.depth <= 0 {
+                self.editor.add_history_entry(self.curr_expr.as_str());
+                self.curr_expr = String::default();
+                self.depth = 0;
+                self.editor.readline("> ")
+            } else {
+                self.editor
+                    .readline(&format!("..{}", "  ".repeat(self.depth as usize)))
+            };
+
+            match line {
                 Ok(line) => {
-                    self.editor.add_history_entry(line.as_str());
-                    if let Err(err) = tokenize_line(&line, 0, &mut self.tokens) {
-                        println!("[Tokenize Error]: {:?}", err);
-                        println!("");
-                        self.tokens.clear();
-                        continue;
+                    let l = self.curr_expr.len();
+                    // Insert whitespace only if we don't already have any and
+                    // we haven't just opened or are about to close a list.
+                    if l > 0
+                        && (|c: char| !c.is_whitespace() && c != '(')(
+                            self.curr_expr.as_str().chars().next_back().unwrap(),
+                        )
+                    {
+                        if let Some(')') = line.as_str().chars().next() {
+                        } else {
+                            self.curr_expr += " ";
+                        }
+                    }
+                    self.curr_expr += &line;
+                    match tokenize_line(&line, 0, &mut self.tokens) {
+                        Ok(depth) => {
+                            self.depth = self.depth.saturating_add(depth);
+                        }
+                        Err(err) => {
+                            println!("[Tokenize Error]: {:?}", err);
+                            println!("");
+                            self.tokens.clear();
+                            continue;
+                        }
                     }
                 }
                 Err(ReadlineError::Interrupted) => {

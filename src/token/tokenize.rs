@@ -15,11 +15,14 @@ pub enum TokenizeError {
     InvalidSymbol(SymbolError),
 }
 
+/// Returns depth change on success (positive means deeper, negative
+/// means shallower). Tokens returned through result out-param.
+// TODO(func) Reflect depth from quoting as well.
 pub fn tokenize_line<S: AsRef<str>>(
     line: S,
     linum: usize,
     result: &mut TokenStore,
-) -> Result<(), TokenizeError> {
+) -> Result<i16, TokenizeError> {
     let mut sexp_slice = line.as_ref();
 
     let mut comment: Option<TokenInfo> = None;
@@ -36,10 +39,17 @@ pub fn tokenize_line<S: AsRef<str>>(
         .replace(")", " ) ")
         .replace("'", " ' ");
 
+    let mut depth: i16 = 0;
     for ptoken in expanded.split_whitespace() {
         let token = match ptoken {
-            "(" => Token::LeftParen,
-            ")" => Token::RightParen,
+            "(" => {
+                depth += 1;
+                Token::LeftParen
+            }
+            ")" => {
+                depth -= 1;
+                Token::RightParen
+            }
             "'" => Token::Quote,
             _ => {
                 // Try to parse as number before imposing Symbol constraints.
@@ -63,7 +73,7 @@ pub fn tokenize_line<S: AsRef<str>>(
     if let Some(comment) = comment {
         result.push_back(comment);
     }
-    Ok(())
+    Ok(depth)
 }
 
 

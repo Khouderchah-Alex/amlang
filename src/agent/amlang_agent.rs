@@ -363,6 +363,7 @@ impl Agent for AmlangAgent {
                 Ok(meaning) => meaning,
                 Err(err) => {
                     println!("[Compile error] {}", err);
+                    println!("");
                     continue;
                 }
             };
