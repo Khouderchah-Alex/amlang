@@ -57,5 +57,13 @@ fn interactive_agent() -> Result<(), String> {
         return Err(err.to_string());
     }
 
+    manager
+        .env_state()
+        .jump_env(user_agent.history_state().pos_global().env());
+    if let Err(err) = manager.serialize("./history.env") {
+        return Err(err.to_string());
+    }
+
+
     Ok(())
 }

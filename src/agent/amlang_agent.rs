@@ -45,6 +45,10 @@ impl AmlangAgent {
         }
     }
 
+    pub fn history_state(&mut self) -> &EnvState {
+        &self.history_state
+    }
+
     fn make_procedure(&mut self, params: Vec<Symbol>, body: Sexp) -> Result<Procedure, EvalErr> {
         let mut surface = Vec::new();
         for symbol in params {
@@ -360,7 +364,6 @@ impl Agent for AmlangAgent {
             };
 
             let mut cont = Continuation::default();
-            // TODO(func) Make this behavior configurable?
             let meaning_node = self
                 .history_state
                 .env()

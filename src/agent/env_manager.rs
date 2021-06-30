@@ -262,6 +262,9 @@ impl EnvManager {
                     .unwrap()
                     .node_as_triple(node.local())
                 {
+                    if node.env() != self.env_state().pos_global().env() {
+                        write!(w, "^{}", node.env().id())?;
+                    }
                     return write!(w, "^t{}", self.env_state().env().triple_index(triple));
                 }
 
@@ -270,6 +273,9 @@ impl EnvManager {
                 {
                     write!(w, "{}", designator.as_str())?;
                 } else {
+                    if node.env() != self.env_state().pos_global().env() {
+                        write!(w, "^{}", node.env().id())?;
+                    }
                     write!(w, "^{}", node.local().id())?;
                 }
 
