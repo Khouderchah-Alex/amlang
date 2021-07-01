@@ -409,7 +409,7 @@ impl Eval for AmlangAgent {
         match *structure {
             Sexp::Primitive(primitive) => {
                 if let Primitive::Symbol(symbol) = &primitive {
-                    if let Ok(node) = self.eval_symbols.lookup(symbol) {
+                    if let Some(node) = self.eval_symbols.lookup(symbol) {
                         return Ok(node.into());
                     }
                 }

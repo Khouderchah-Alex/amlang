@@ -8,14 +8,14 @@ pub mod node;
 pub mod number;
 pub mod procedure;
 pub mod symbol;
-pub mod symbol_table;
+pub mod table;
 
 pub use self::builtin::BuiltIn;
 pub use self::node::Node;
 pub use self::number::Number;
 pub use self::procedure::Procedure;
 pub use self::symbol::{Symbol, ToSymbol};
-pub use self::symbol_table::SymbolTable;
+pub use self::table::SymbolTable;
 pub use crate::environment::environment::EnvObject;
 
 

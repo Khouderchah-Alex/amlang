@@ -123,7 +123,7 @@ impl EnvState {
         for i in 0..self.designation_chain.len() {
             let env = self.access_env(self.designation_chain[i]).unwrap();
             let table = <&mut SymbolTable>::try_from(env.node_structure(designation)).unwrap();
-            if let Ok(node) = table.lookup(name) {
+            if let Some(node) = table.lookup(name) {
                 return Ok(node);
             }
         }

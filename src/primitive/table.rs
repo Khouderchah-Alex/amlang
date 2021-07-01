@@ -4,47 +4,56 @@ use std::borrow::Borrow;
 use std::collections::BTreeMap;
 use std::convert::TryFrom;
 
-use super::{Node, Primitive, Symbol, ToSymbol};
-use crate::function::EvalErr;
+use super::{Node, Primitive, Symbol};
 use crate::sexp::Sexp;
 
 
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
-pub struct SymbolTable {
-    map: BTreeMap<Symbol, Node>,
+pub type SymbolTable = Table<Symbol, Node>;
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Table<K, V> {
+    map: BTreeMap<K, V>,
 }
 
-impl SymbolTable {
-    pub fn new(map: BTreeMap<Symbol, Node>) -> SymbolTable {
-        SymbolTable { map }
+impl<K: Ord, V: Copy> Table<K, V> {
+    pub fn new(map: BTreeMap<K, V>) -> Self {
+        Self { map }
     }
 
-    pub fn lookup<Q>(&self, k: &Q) -> Result<Node, EvalErr>
+    pub fn lookup<Q>(&self, k: &Q) -> Option<V>
     where
-        Symbol: Borrow<Q>,
-        Q: Ord + Eq + ToSymbol + ?Sized,
+        K: Borrow<Q>,
+        Q: Ord + Eq + ?Sized,
     {
-        if let Some(node) = self.map.get(k) {
-            Ok(*node)
+        if let Some(v) = self.map.get(k) {
+            Some(*v)
         } else {
-            Err(EvalErr::UnboundSymbol(k.to_symbol_or_panic()))
+            None
         }
     }
 
     pub fn contains_key<Q>(&self, k: &Q) -> bool
     where
-        Symbol: Borrow<Q>,
+        K: Borrow<Q>,
         Q: Ord + Eq + ?Sized,
     {
         self.map.contains_key(k)
     }
 
-    pub fn insert(&mut self, k: Symbol, v: Node) -> Option<Node> {
+    pub fn insert(&mut self, k: K, v: V) -> Option<V> {
         self.map.insert(k, v)
     }
 
-    pub fn as_map(&self) -> &BTreeMap<Symbol, Node> {
+    pub fn as_map(&self) -> &BTreeMap<K, V> {
         &self.map
+    }
+}
+
+impl<K: Ord, V> Default for Table<K, V> {
+    fn default() -> Self {
+        Self {
+            map: Default::default(),
+        }
     }
 }
 

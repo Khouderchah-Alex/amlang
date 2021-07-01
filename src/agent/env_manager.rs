@@ -60,10 +60,8 @@ macro_rules! bootstrap_context {
             };
 
             let lookup = |s: &str| -> Result<LocalNode, DeserializeError> {
-                Ok(table
-                    .lookup(&s.to_symbol_or_panic())
-                    .map_err(|e| EvalErr(e))?
-                    .local()
+                Ok(Self::lookup_res(table, &s.to_symbol_or_panic())?
+                   .local()
                 )
             };
             (
@@ -323,6 +321,14 @@ impl EnvManager {
         Ok(node_table)
     }
 
+    fn lookup_res(table: &SymbolTable, sym: &Symbol) -> Result<Node, DeserializeError> {
+        if let Some(node) = table.lookup(sym) {
+            Ok(node)
+        } else {
+            Err(EvalErr(function::EvalErr::UnboundSymbol(sym.clone())))
+        }
+    }
+
     fn eval_structure(
         &mut self,
         structure: Sexp,
@@ -330,7 +336,7 @@ impl EnvManager {
         node_table: &SymbolTable,
     ) -> Result<Sexp, DeserializeError> {
         if let Ok(sym) = <&Symbol>::try_from(&structure) {
-            return Ok(node_table.lookup(sym).map_err(|e| EvalErr(e))?.into());
+            return Ok(Self::lookup_res(node_table, sym)?.into());
         }
 
         let (command, cdr) =
@@ -359,11 +365,11 @@ impl EnvManager {
 
                 let (func, args) =
                     break_by_types!(*cdr.unwrap(), Symbol, Cons).map_err(|e| EvalErr(e))?;
-                let fnode = node_table.lookup(&func).map_err(|e| EvalErr(e))?;
+                let fnode = Self::lookup_res(node_table, &func)?;
                 let mut arg_nodes = Vec::with_capacity(args.iter().count());
                 for arg in args {
                     if let Ok(sym) = <&Symbol>::try_from(&*arg) {
-                        arg_nodes.push(node_table.lookup(sym).map_err(|e| EvalErr(e))?);
+                        arg_nodes.push(Self::lookup_res(node_table, sym)?);
                     } else {
                         return Err(EvalErr(function::EvalErr::InvalidSexp(*arg)));
                     }
@@ -383,12 +389,12 @@ impl EnvManager {
                 let mut param_nodes = Vec::with_capacity(params.iter().count());
                 for param in params {
                     if let Ok(sym) = <&Symbol>::try_from(&*param) {
-                        param_nodes.push(node_table.lookup(sym).map_err(|e| EvalErr(e))?);
+                        param_nodes.push(Self::lookup_res(node_table, sym)?);
                     } else {
                         return Err(EvalErr(function::EvalErr::InvalidSexp(*param)));
                     }
                 }
-                let body_node = node_table.lookup(&body).map_err(|e| EvalErr(e))?;
+                let body_node = Self::lookup_res(node_table, &body)?;
                 Ok(Procedure::Abstraction(param_nodes, body_node).into())
             }
             _ => panic!("{}", command),
@@ -411,9 +417,9 @@ impl EnvManager {
             let (s, p, o) =
                 break_by_types!(*entry, Symbol, Symbol, Symbol).map_err(|e| EvalErr(e))?;
 
-            let subject = node_table.lookup(&s).map_err(|e| EvalErr(e))?;
-            let predicate = node_table.lookup(&p).map_err(|e| EvalErr(e))?;
-            let object = node_table.lookup(&o).map_err(|e| EvalErr(e))?;
+            let subject = Self::lookup_res(&node_table, &s)?;
+            let predicate = Self::lookup_res(&node_table, &p)?;
+            let object = Self::lookup_res(&node_table, &o)?;
 
             let triple = self.env_state().env().insert_triple(
                 subject.local(),
