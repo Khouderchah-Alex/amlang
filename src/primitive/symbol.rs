@@ -38,7 +38,7 @@ impl Symbol {
         match s {
             "+" | "-" | "*" | "/" => {}
             _ => {
-                if !s.chars().all(|c| c.is_alphabetic() || c == '_')
+                if !s.chars().all(|c| c.is_alphabetic() || c == '_' || c == '-')
                     && !(s.as_bytes()[0] == ('^' as u8)
                         && (s.chars().skip(1).all(|c| c.is_ascii_digit())
                             || s.len() > 2
