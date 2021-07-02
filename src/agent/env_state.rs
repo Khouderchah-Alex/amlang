@@ -87,6 +87,10 @@ impl EnvState {
 
     pub fn access_env(&mut self, meta_node: LocalNode) -> Option<&mut EnvObject> {
         let meta = self.context.meta();
+        if meta_node == LocalNode::default() {
+            return Some(meta);
+        }
+
         if let Some(Sexp::Primitive(Primitive::Env(env))) = meta.node_structure(meta_node) {
             Some(env.as_mut())
         } else {

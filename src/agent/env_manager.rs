@@ -212,7 +212,7 @@ impl EnvManager {
     // Returns (Env Meta Node, Self Base Node, Designation Base Node).
     fn initialize_env(env_node: LocalNode, env: &mut EnvObject) -> (LocalNode, LocalNode) {
         // Set up self node.
-        let self_node = env.insert_structure(Node::new(env_node, LocalNode::default()).into());
+        let self_node = env.insert_structure(Node::new(LocalNode::default(), env_node).into());
 
         // Set up designation node.
         let designation = env.insert_structure(SymbolTable::default().into());
