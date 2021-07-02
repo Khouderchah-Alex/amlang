@@ -179,6 +179,16 @@ impl AmlangAgent {
         }
     }
 
+    fn exec_to_node(&mut self, node: Node, cont: &mut Continuation) -> Result<Node, EvalErr> {
+        let desig = self.agent_state.designate(Primitive::Node(node))?;
+        let e = self.exec(desig, cont)?;
+        if let Ok(new_node) = Node::try_from(&e) {
+            Ok(new_node)
+        } else {
+            Ok(node)
+        }
+    }
+
     fn apply_special(
         &mut self,
         special_node: LocalNode,
@@ -192,21 +202,14 @@ impl AmlangAgent {
                 let (ss, pp, oo) = tell_wrapper(&arg_nodes)?;
 
                 // TODO(func) Add support for cross-env triples through surrogates.
-                let mut exec_to_node = |node: Node| {
-                    let desig = self.agent_state.designate(Primitive::Node(node))?;
-                    let e = self.exec(desig, cont)?;
-                    let final_node = if let Ok(new_node) = Node::try_from(&e) {
-                        new_node
-                    } else {
-                        node
-                    };
-
+                let mut to_local = |node: Node| {
+                    let final_node = self.exec_to_node(node, cont)?;
                     if final_node.env() != self.agent_state.pos_global().env() {
                         panic!("Cross-env triples are not yet supported");
                     }
                     Ok(final_node.local())
                 };
-                let (s, p, o) = (exec_to_node(ss)?, exec_to_node(pp)?, exec_to_node(oo)?);
+                let (s, p, o) = (to_local(ss)?, to_local(pp)?, to_local(oo)?);
                 debug!(
                     "({} {} {} {})",
                     if is_tell { "tell" } else { "ask" },
@@ -251,7 +254,10 @@ impl AmlangAgent {
                         expected: ExpectedCount::Exactly(1),
                     });
                 }
-                self.agent_state.jump_global(arg_nodes[0]);
+
+                // If original expr eval + exec -> Node, use that.
+                let dest = self.exec_to_node(arg_nodes[0], cont)?;
+                self.agent_state.jump_global(dest);
                 self.print_curr_triples();
                 return Ok(self.agent_state.pos_global().into());
             }
