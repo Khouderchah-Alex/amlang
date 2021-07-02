@@ -59,7 +59,7 @@ fn interactive_agent() -> Result<(), String> {
 
     manager
         .env_state()
-        .jump_env(user_agent.history_state().pos_global().env());
+        .jump_env(user_agent.history_state().pos().env());
     if let Err(err) = manager.serialize("history.env") {
         return Err(err.to_string());
     }

@@ -204,7 +204,7 @@ impl AmlangAgent {
                 // TODO(func) Add support for cross-env triples through surrogates.
                 let mut to_local = |node: Node| {
                     let final_node = self.exec_to_node(node, cont)?;
-                    if final_node.env() != self.agent_state.pos_global().env() {
+                    if final_node.env() != self.agent_state.pos().env() {
                         panic!("Cross-env triples are not yet supported");
                     }
                     Ok(final_node.local())
@@ -226,7 +226,7 @@ impl AmlangAgent {
             _ if context.def == special_node => {
                 let (name, structure) = def_wrapper(&arg_nodes)?;
                 self.agent_state.designate(Primitive::Node(name))?;
-                if name.env() != self.agent_state.pos_global().env() {
+                if name.env() != self.agent_state.pos().env() {
                     panic!("Cross-env triples are not yet supported");
                 }
 
@@ -250,7 +250,7 @@ impl AmlangAgent {
                     });
                 }
                 self.print_curr_triples();
-                return Ok(self.agent_state.pos_global().into());
+                return Ok(self.agent_state.pos().into());
             }
             _ if context.jump == special_node => {
                 if arg_nodes.len() != 1 {
@@ -262,9 +262,9 @@ impl AmlangAgent {
 
                 // If original expr eval + exec -> Node, use that.
                 let dest = self.exec_to_node(arg_nodes[0], cont)?;
-                self.agent_state.jump_global(dest);
+                self.agent_state.jump(dest);
                 self.print_curr_triples();
-                return Ok(self.agent_state.pos_global().into());
+                return Ok(self.agent_state.pos().into());
             }
             _ if context.apply == special_node => {
                 let (proc_node, args_node) = apply_wrapper(&arg_nodes)?;
@@ -480,7 +480,7 @@ impl AmlangAgent {
     */
 
     fn print_curr_triples(&mut self) {
-        let local = self.agent_state.pos_local();
+        let local = self.agent_state.pos().local();
         let triples = self.agent_state.env().match_any(local);
         for triple in triples {
             print!("    ");

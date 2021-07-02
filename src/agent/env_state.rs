@@ -38,20 +38,11 @@ impl EnvState {
         Node::new(self.env, local)
     }
 
-    pub fn pos_local(&self) -> LocalNode {
-        self.pos
-    }
-
-    pub fn jump_local(&mut self, node: LocalNode) {
-        // TODO(sec) Verify.
-        self.pos = node;
-    }
-
-    pub fn pos_global(&self) -> Node {
+    pub fn pos(&self) -> Node {
         Node::new(self.env, self.pos)
     }
 
-    pub fn jump_global(&mut self, node: Node) {
+    pub fn jump(&mut self, node: Node) {
         // TODO(sec) Verify.
         self.env = node.env();
         self.pos = node.local();

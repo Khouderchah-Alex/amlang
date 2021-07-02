@@ -197,7 +197,6 @@ impl EnvManager {
     fn create_env_internal(meta: &mut EnvObject) -> (LocalNode, LocalNode, LocalNode) {
         // Initially create as MemEnvironment.
         let env_node = meta.insert_structure(Box::new(MemEnvironment::new()).into());
-
         let env = if let Some(Sexp::Primitive(Primitive::Env(env))) = meta.node_structure(env_node)
         {
             env
@@ -260,7 +259,7 @@ impl EnvManager {
                     .unwrap()
                     .node_as_triple(node.local())
                 {
-                    if node.env() != self.env_state().pos_global().env() {
+                    if node.env() != self.env_state().pos().env() {
                         write!(w, "^{}", node.env().id())?;
                     }
                     return write!(w, "^t{}", self.env_state().env().triple_index(triple));
@@ -271,7 +270,7 @@ impl EnvManager {
                 {
                     write!(w, "{}", designator.as_str())?;
                 } else {
-                    if node.env() != self.env_state().pos_global().env() {
+                    if node.env() != self.env_state().pos().env() {
                         write!(w, "^{}", node.env().id())?;
                     }
                     write!(w, "^{}", node.local().id())?;

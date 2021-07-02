@@ -47,7 +47,7 @@ impl LocalTriple {
 
 impl Model for LocalTriple {
     fn generate_structure(&self, env_state: &mut EnvState) -> HeapSexp {
-        let e = env_state.pos_global().env();
+        let e = env_state.pos().env();
         let env = env_state.env();
         let s = Node::new(e, env.triple_subject(*self));
         let p = Node::new(e, env.triple_predicate(*self));
