@@ -226,15 +226,20 @@ impl AmlangAgent {
             _ if context.def == special_node => {
                 let (name, structure) = def_wrapper(&arg_nodes)?;
                 self.agent_state.designate(Primitive::Node(name))?;
-                if name.env() != self.agent_state.pos_global().env()
-                    || (structure.is_some()
-                        && structure.clone().unwrap().env() != self.agent_state.pos_global().env())
-                {
+                if name.env() != self.agent_state.pos_global().env() {
                     panic!("Cross-env triples are not yet supported");
                 }
+
+                let structure_node = if let Some(s) = structure {
+                    let des = self.agent_state.designate(Primitive::Node(s))?;
+                    let res = self.exec(des, cont)?;
+                    self.agent_state.env().insert_structure(res)
+                } else {
+                    self.agent_state.env().insert_atom()
+                };
                 return Ok(self
                     .agent_state
-                    .def_node(name.local(), structure.map(|n| n.local()))?
+                    .name_structure(name.local(), structure_node)?
                     .into());
             }
             _ if context.curr == special_node => {

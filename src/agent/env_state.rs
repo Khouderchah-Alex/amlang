@@ -162,10 +162,10 @@ impl EnvState {
         }
     }
 
-    pub fn def_node(
+    pub fn name_structure(
         &mut self,
         name: LocalNode,
-        structure: Option<LocalNode>,
+        structure: LocalNode,
     ) -> Result<Node, EvalErr> {
         let name_sexp = self.env().node_structure(name);
         let symbol = if let Ok(symbol) = <Symbol>::try_from(name_sexp.cloned()) {
@@ -189,12 +189,7 @@ impl EnvState {
             return Err(AlreadyBoundSymbol(symbol));
         }
 
-        let node = if let Some(node) = structure {
-            node
-        } else {
-            self.env().insert_atom()
-        }
-        .globalize(&self);
+        let node = structure.globalize(&self);
 
         let designation = self.designation();
         // Use designation of current environment.
