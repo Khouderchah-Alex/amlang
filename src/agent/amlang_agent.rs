@@ -388,6 +388,7 @@ impl Agent for AmlangAgent {
                 Ok(val) => {
                     print!("-> ");
                     if let Ok(node) = <Node>::try_from(&val) {
+                        print!("{}->", node);
                         let designated = self.agent_state.designate(Primitive::Node(node)).unwrap();
                         self.print_list(&designated);
                     } else {
@@ -534,6 +535,7 @@ impl AmlangAgent {
                         .unwrap()
                         .node_structure(node.local())
                     {
+                        write!(w, "{}->", node)?;
                         structure.clone()
                     } else {
                         return write!(w, "{}", node);
