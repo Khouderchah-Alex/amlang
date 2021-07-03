@@ -115,6 +115,7 @@ impl EnvManager {
                            apply: "apply",
                            eval: "eval",
                            exec: "exec",
+                           import: "import",
         );
 
         Ok(Self {

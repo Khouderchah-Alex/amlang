@@ -266,6 +266,19 @@ impl AmlangAgent {
                 self.print_curr_triples();
                 return Ok(self.agent_state.pos().into());
             }
+            _ if context.import == special_node => {
+                if arg_nodes.len() != 1 {
+                    return Err(WrongArgumentCount {
+                        given: arg_nodes.len(),
+                        expected: ExpectedCount::Exactly(1),
+                    });
+                }
+
+                // If original expr eval + exec -> Node, use that.
+                let original = self.exec_to_node(arg_nodes[0], cont)?;
+                let imported = self.agent_state.import(original)?;
+                return Ok(imported.into());
+            }
             _ if context.apply == special_node => {
                 let (proc_node, args_node) = apply_wrapper(&arg_nodes)?;
                 let proc_meaning = self.agent_state.designate(Primitive::Node(proc_node))?;
