@@ -7,7 +7,12 @@ use crate::environment::LocalNode;
 pub struct AmlangContext {
     meta: UnsafeCell<Box<EnvObject>>,
 
+    // Relative to meta env.
     lang_env: LocalNode,
+    imports: LocalNode,
+    import_table: LocalNode,
+
+    // Available in all envs.
     self_node: LocalNode,
     designation: LocalNode,
 
@@ -30,14 +35,20 @@ impl AmlangContext {
     pub(super) fn new(
         meta: Box<EnvObject>,
         lang_env: LocalNode,
+        imports: LocalNode,
+        import_table: LocalNode,
         self_node: LocalNode,
         designation: LocalNode,
     ) -> Self {
         Self {
             meta: UnsafeCell::new(meta),
             lang_env,
+            imports,
+            import_table,
+
             self_node,
             designation: designation.clone(),
+
             // This is delicate; putting placeholders here, but not used until
             // after EnvManager is bootstrapped.
             quote: designation.clone(),
@@ -61,6 +72,14 @@ impl AmlangContext {
 
     pub fn lang_env(&self) -> LocalNode {
         self.lang_env
+    }
+
+    pub fn imports(&self) -> LocalNode {
+        self.imports
+    }
+
+    pub fn import_table(&self) -> LocalNode {
+        self.import_table
     }
 
     pub fn self_node(&self) -> LocalNode {

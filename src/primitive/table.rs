@@ -5,10 +5,12 @@ use std::collections::BTreeMap;
 use std::convert::TryFrom;
 
 use super::{Node, Primitive, Symbol};
+use crate::environment::LocalNode;
 use crate::sexp::Sexp;
 
 
 pub type SymbolTable = Table<Symbol, Node>;
+pub type LocalNodeTable = Table<LocalNode, LocalNode>;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Table<K, V> {
@@ -57,7 +59,7 @@ impl<K: Ord, V> Default for Table<K, V> {
     }
 }
 
-
+// SymbolTable TryFrom impls.
 impl TryFrom<Sexp> for SymbolTable {
     type Error = ();
 
@@ -123,6 +125,80 @@ impl<'a, E> TryFrom<&'a Result<Sexp, E>> for &'a SymbolTable {
 
     fn try_from(value: &'a Result<Sexp, E>) -> Result<Self, Self::Error> {
         if let Ok(Sexp::Primitive(Primitive::SymbolTable(table))) = value {
+            Ok(table)
+        } else {
+            Err(())
+        }
+    }
+}
+
+
+// LocalNodeTable TryFrom impls.
+impl TryFrom<Sexp> for LocalNodeTable {
+    type Error = ();
+
+    fn try_from(value: Sexp) -> Result<Self, Self::Error> {
+        if let Sexp::Primitive(Primitive::LocalNodeTable(table)) = value {
+            Ok(table)
+        } else {
+            Err(())
+        }
+    }
+}
+
+impl<'a> TryFrom<&'a Sexp> for &'a LocalNodeTable {
+    type Error = ();
+
+    fn try_from(value: &'a Sexp) -> Result<Self, Self::Error> {
+        if let Sexp::Primitive(Primitive::LocalNodeTable(table)) = value {
+            Ok(table)
+        } else {
+            Err(())
+        }
+    }
+}
+
+impl<'a> TryFrom<Option<&'a Sexp>> for &'a LocalNodeTable {
+    type Error = ();
+
+    fn try_from(value: Option<&'a Sexp>) -> Result<Self, Self::Error> {
+        if let Some(Sexp::Primitive(Primitive::LocalNodeTable(table))) = value {
+            Ok(table)
+        } else {
+            Err(())
+        }
+    }
+}
+
+impl<'a> TryFrom<Option<&'a mut Sexp>> for &'a mut LocalNodeTable {
+    type Error = ();
+
+    fn try_from(value: Option<&'a mut Sexp>) -> Result<Self, Self::Error> {
+        if let Some(Sexp::Primitive(Primitive::LocalNodeTable(table))) = value {
+            Ok(table)
+        } else {
+            Err(())
+        }
+    }
+}
+
+impl<E> TryFrom<Result<Sexp, E>> for LocalNodeTable {
+    type Error = ();
+
+    fn try_from(value: Result<Sexp, E>) -> Result<Self, Self::Error> {
+        if let Ok(Sexp::Primitive(Primitive::LocalNodeTable(table))) = value {
+            Ok(table)
+        } else {
+            Err(())
+        }
+    }
+}
+
+impl<'a, E> TryFrom<&'a Result<Sexp, E>> for &'a LocalNodeTable {
+    type Error = ();
+
+    fn try_from(value: &'a Result<Sexp, E>) -> Result<Self, Self::Error> {
+        if let Ok(Sexp::Primitive(Primitive::LocalNodeTable(table))) = value {
             Ok(table)
         } else {
             Err(())

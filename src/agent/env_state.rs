@@ -8,7 +8,7 @@ use crate::environment::environment::{EnvObject, TripleSet};
 use crate::environment::LocalNode;
 use crate::function::EvalErr::{self, *};
 use crate::model::Model;
-use crate::primitive::{Node, Primitive, Symbol, SymbolTable, ToSymbol};
+use crate::primitive::{LocalNodeTable, Node, Primitive, Symbol, SymbolTable, ToSymbol};
 use crate::sexp::{HeapSexp, Sexp};
 
 
@@ -54,7 +54,6 @@ impl EnvState {
         self.env = env_node;
         self.pos = self.context.self_node();
     }
-
 
 
     pub fn context(&self) -> &AmlangContext {
@@ -257,5 +256,59 @@ impl EnvState {
         .collect::<Vec<Sexp>>();
 
         Ok(res.into())
+    }
+
+    pub fn import(&mut self, original: Node) -> Result<Node, EvalErr> {
+        if original.env() == self.pos().env() {
+            return Err(InvalidArgument {
+                given: original.into(),
+                expected: Cow::Borrowed("Node outside of current env"),
+            });
+        }
+
+        let meta = self.context.meta();
+        let import_triple =
+            meta.get_or_insert_triple(self.pos().env(), self.context.imports(), original.env());
+        let matches = meta.match_but_object(import_triple.node(), self.context.import_table());
+        let table_node = match matches.len() {
+            0 => {
+                let table = LocalNodeTable::default().into();
+                let table_node = meta.insert_structure(table);
+                meta.insert_triple(
+                    import_triple.node(),
+                    self.context.import_table(),
+                    table_node,
+                );
+                table_node
+            }
+            1 => meta.triple_object(*matches.iter().next().unwrap()),
+            _ => panic!("Found multiple import tables for single import triple"),
+        };
+
+        if let Ok(table) =
+            <&mut LocalNodeTable>::try_from(self.context.meta().node_structure(table_node))
+        {
+            if let Some(imported) = table.lookup(&original.local()) {
+                return Ok(imported.globalize(&self));
+            }
+        } else {
+            return Err(InvalidState {
+                actual: Cow::Borrowed("import table triple object has no table"),
+                expected: Cow::Borrowed("has table"),
+            });
+        };
+
+        let imported = self.env().insert_structure(original.into());
+        if let Ok(table) =
+            <&mut LocalNodeTable>::try_from(self.context.meta().node_structure(table_node))
+        {
+            table.insert(original.local(), imported);
+        } else {
+            return Err(InvalidState {
+                actual: Cow::Borrowed("import table triple object has no table"),
+                expected: Cow::Borrowed("has table"),
+            });
+        };
+        Ok(imported.globalize(&self))
     }
 }

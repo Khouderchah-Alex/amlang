@@ -22,6 +22,10 @@ pub enum EvalErr {
         given: Sexp,
         expected: Cow<'static, str>,
     },
+    InvalidState {
+        actual: Cow<'static, str>,
+        expected: Cow<'static, str>,
+    },
     InvalidSexp(Sexp),
     WrongArgumentCount {
         given: usize,
@@ -49,6 +53,9 @@ impl fmt::Display for EvalErr {
                 "Invalid argument: given {}, expected {}",
                 given, expected
             ),
+            InvalidState { actual, expected } => {
+                write!(f, "Invalid state: actual {}, expected {}", actual, expected)
+            }
             InvalidSexp(val) => write!(f, "Invalid S-exp for evaluation: {:#}", val),
             WrongArgumentCount { given, expected } => write!(
                 f,

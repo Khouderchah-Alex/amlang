@@ -10,7 +10,7 @@ use super::amlang_context::AmlangContext;
 use super::amlang_wrappers::quote_wrapper;
 use super::env_state::{EnvState, AMLANG_DESIGNATION};
 use crate::builtins::generate_builtin_map;
-use crate::environment::environment::EnvObject;
+use crate::environment::environment::{EnvObject, Environment};
 use crate::environment::mem_environment::MemEnvironment;
 use crate::environment::LocalNode;
 use crate::function::{self, Ret};
@@ -85,11 +85,15 @@ impl EnvManager {
         // Initially create meta as MemEnvironment.
         let mut meta = Box::new(MemEnvironment::new());
         EnvManager::initialize_env(LocalNode::default(), &mut *meta);
+        let imports = meta.insert_atom();
+        let import_table = meta.insert_atom();
 
         let (lang_env_node, self_node, designation) = EnvManager::create_env_internal(&mut *meta);
         let mut context = Arc::new(AmlangContext::new(
             meta,
             lang_env_node,
+            imports,
+            import_table,
             self_node,
             designation,
         ));

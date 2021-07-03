@@ -8,7 +8,9 @@ use crate::cons_list::ConsList;
 use crate::environment::Environment;
 use crate::function::{EvalErr, ExpectedCount};
 use crate::parser::{parse_sexp, ParseError};
-use crate::primitive::{BuiltIn, Node, Number, Primitive, Procedure, Symbol, SymbolTable};
+use crate::primitive::{
+    BuiltIn, LocalNodeTable, Node, Number, Primitive, Procedure, Symbol, SymbolTable,
+};
 use crate::token::string_stream::StringStream;
 use crate::token::TokenizeError;
 
@@ -514,6 +516,12 @@ impl From<Symbol> for Sexp {
 impl From<SymbolTable> for Sexp {
     fn from(table: SymbolTable) -> Self {
         Sexp::Primitive(Primitive::SymbolTable(table))
+    }
+}
+
+impl From<LocalNodeTable> for Sexp {
+    fn from(table: LocalNodeTable) -> Self {
+        Sexp::Primitive(Primitive::LocalNodeTable(table))
     }
 }
 

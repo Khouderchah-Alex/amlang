@@ -15,7 +15,7 @@ pub use self::node::Node;
 pub use self::number::Number;
 pub use self::procedure::Procedure;
 pub use self::symbol::{Symbol, ToSymbol};
-pub use self::table::SymbolTable;
+pub use self::table::{LocalNodeTable, SymbolTable};
 pub use crate::environment::environment::EnvObject;
 
 
@@ -27,6 +27,7 @@ pub enum Primitive {
     Node(Node),
 
     SymbolTable(SymbolTable),
+    LocalNodeTable(LocalNodeTable),
     Procedure(Procedure),
     // Presumably only present in meta env Nodes, but this comes down
     // to how base Agents are implemented.
@@ -43,6 +44,7 @@ impl fmt::Display for Primitive {
             Primitive::Node(node) => write!(f, "{}", node),
 
             Primitive::SymbolTable(table) => write!(f, "{:?}", table),
+            Primitive::LocalNodeTable(table) => write!(f, "{:?}", table),
             Primitive::Procedure(proc) => write!(f, "{:?}", proc),
             Primitive::Env(_env) => write!(f, "[Env]"),
         }
@@ -72,6 +74,10 @@ impl PartialEq for Primitive {
                     (&Primitive::SymbolTable(ref this), &Primitive::SymbolTable(ref that)) => {
                         (*this) == (*that)
                     }
+                    (
+                        &Primitive::LocalNodeTable(ref this),
+                        &Primitive::LocalNodeTable(ref that),
+                    ) => (*this) == (*that),
                     (&Primitive::Procedure(ref this), &Primitive::Procedure(ref that)) => {
                         (*this) == (*that)
                     }
