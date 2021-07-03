@@ -203,8 +203,14 @@ impl AmlangAgent {
 
                 // TODO(func) Add support for cross-env triples through surrogates.
                 let mut to_local = |node: Node| {
+                    let placeholder = Node::new(
+                        self.agent_state.context().lang_env(),
+                        self.agent_state.context().placeholder,
+                    );
                     let final_node = self.exec_to_node(node, cont)?;
-                    if final_node.env() != self.agent_state.pos().env() {
+                    if (is_tell || final_node != placeholder)
+                        && final_node.env() != self.agent_state.pos().env()
+                    {
                         panic!("Cross-env triples are not yet supported");
                     }
                     Ok(final_node.local())
