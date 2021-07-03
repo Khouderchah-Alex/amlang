@@ -152,11 +152,7 @@ impl EnvState {
         }
     }
 
-    pub fn name_structure(
-        &mut self,
-        name: LocalNode,
-        structure: LocalNode,
-    ) -> Result<Node, EvalErr> {
+    pub fn name_node(&mut self, name: LocalNode, node: LocalNode) -> Result<Node, EvalErr> {
         let name_sexp = self.env().node_structure(name);
         let symbol = if let Ok(symbol) = <Symbol>::try_from(name_sexp.cloned()) {
             symbol
@@ -179,18 +175,19 @@ impl EnvState {
             return Err(AlreadyBoundSymbol(symbol));
         }
 
-        let node = structure.globalize(&self);
+        let global_node = node.globalize(&self);
 
         let designation = self.designation();
         // Use designation of current environment.
         if let Ok(table) = <&mut SymbolTable>::try_from(self.env().node_structure(designation)) {
-            table.insert(symbol, node);
+            table.insert(symbol, global_node);
         } else {
             panic!("Env designation isn't a symbol table");
         }
 
-        self.env().insert_triple(node.local(), designation, name);
-        Ok(node)
+        self.env()
+            .insert_triple(global_node.local(), designation, name);
+        Ok(global_node)
     }
 
     pub fn tell(

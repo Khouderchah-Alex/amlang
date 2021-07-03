@@ -85,7 +85,9 @@ impl EnvManager {
         // Initially create meta as MemEnvironment.
         let mut meta = Box::new(MemEnvironment::new());
         EnvManager::initialize_env(LocalNode::default(), &mut *meta);
+        let imports_name = meta.insert_structure("imports".to_symbol_or_panic().into());
         let imports = meta.insert_atom();
+        let import_table_name = meta.insert_structure("__import_table".to_symbol_or_panic().into());
         let import_table = meta.insert_atom();
 
         let (lang_env_node, self_node, designation) = EnvManager::create_env_internal(&mut *meta);
@@ -97,6 +99,17 @@ impl EnvManager {
             self_node,
             designation,
         ));
+
+        {
+            let mut meta_state =
+                EnvState::new(LocalNode::default(), context.self_node(), context.clone());
+            meta_state
+                .name_node(imports_name, imports)
+                .map_err(|e| EvalErr(e))?;
+            meta_state
+                .name_node(import_table_name, import_table)
+                .map_err(|e| EvalErr(e))?;
+        }
 
         // Start in lang env. Ditto for below.
         let env_state = EnvState::new(context.lang_env(), context.self_node(), context.clone());

@@ -239,7 +239,7 @@ impl AmlangAgent {
                 };
                 return Ok(self
                     .agent_state
-                    .name_structure(name.local(), structure_node)?
+                    .name_node(name.local(), structure_node)?
                     .into());
             }
             _ if context.curr == special_node => {
