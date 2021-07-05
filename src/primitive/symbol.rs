@@ -28,6 +28,8 @@ pub trait ToSymbol {
 #[derive(Debug)]
 pub enum SymbolError {
     NonAlphabetic(String),
+    DunderPrefix(String),
+    InvalidNodeSpec(String),
     EmptyString,
 }
 

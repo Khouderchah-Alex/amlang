@@ -20,7 +20,7 @@ pub struct LocalTriple(LocalNode);
 
 
 impl LocalNode {
-    pub(super) const fn new(id: LocalId) -> LocalNode {
+    pub const fn new(id: LocalId) -> LocalNode {
         LocalNode(id)
     }
 
@@ -35,7 +35,7 @@ impl LocalNode {
 }
 
 impl LocalTriple {
-    pub(super) const fn new(id: LocalId) -> LocalTriple {
+    pub const fn new(id: LocalId) -> LocalTriple {
         LocalTriple(LocalNode::new(id))
     }
 
