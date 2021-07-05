@@ -18,11 +18,15 @@ pub enum TokenizeError {
 /// Returns depth change on success (positive means deeper, negative
 /// means shallower). Tokens returned through result out-param.
 // TODO(func) Reflect depth from quoting as well.
-pub fn tokenize_line<S: AsRef<str>>(
+pub fn tokenize_line<S: AsRef<str>, SymbolInfo, SymbolPolicy>(
     line: S,
     linum: usize,
+    symbol_policy: &SymbolPolicy,
     result: &mut TokenStore,
-) -> Result<i16, TokenizeError> {
+) -> Result<i16, TokenizeError>
+where
+    SymbolPolicy: Fn(&str) -> Result<SymbolInfo, SymbolError>,
+{
     let mut sexp_slice = line.as_ref();
 
     let mut comment: Option<TokenInfo> = None;
@@ -56,7 +60,7 @@ pub fn tokenize_line<S: AsRef<str>>(
                 if let Ok(num) = ptoken.parse::<Num>() {
                     Token::Primitive(Number(num))
                 } else {
-                    match ptoken.to_symbol() {
+                    match ptoken.to_symbol(symbol_policy) {
                         Ok(symbol) => Token::Primitive(Symbol(symbol)),
                         Err(err) => return Err(TokenizeError::InvalidSymbol(err)),
                     }

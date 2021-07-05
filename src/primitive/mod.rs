@@ -8,6 +8,7 @@ pub mod node;
 pub mod number;
 pub mod procedure;
 pub mod symbol;
+pub mod symbol_policies;
 pub mod table;
 
 pub use self::builtin::BuiltIn;

@@ -8,6 +8,7 @@ use crate::environment::environment::{EnvObject, TripleSet};
 use crate::environment::LocalNode;
 use crate::function::EvalErr::{self, *};
 use crate::model::Model;
+use crate::primitive::symbol_policies::policy_admin;
 use crate::primitive::{LocalNodeTable, Node, Primitive, Symbol, SymbolTable, ToSymbol};
 use crate::sexp::{HeapSexp, Sexp};
 
@@ -97,7 +98,7 @@ impl EnvState {
         let designation = self.designation();
         if node.local() == designation {
             return Some(HeapSexp::new(
-                AMLANG_DESIGNATION.to_symbol_or_panic().into(),
+                AMLANG_DESIGNATION.to_symbol_or_panic(policy_admin).into(),
             ));
         }
 

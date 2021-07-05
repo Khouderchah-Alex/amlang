@@ -16,6 +16,7 @@ use crate::environment::LocalNode;
 use crate::function::{self, Ret};
 use crate::model::{Eval, Model};
 use crate::parser::{self, parse_sexp};
+use crate::primitive::symbol_policies::policy_admin;
 use crate::primitive::{BuiltIn, Node, Primitive, Procedure, Symbol, SymbolTable, ToSymbol};
 use crate::sexp::{Cons, HeapSexp, Sexp, SexpIntoIter};
 use crate::token::file_stream::{self, FileStream};
@@ -60,7 +61,7 @@ macro_rules! bootstrap_context {
             };
 
             let lookup = |s: &str| -> Result<LocalNode, DeserializeError> {
-                Ok(Self::lookup_res(table, &s.to_symbol_or_panic())?
+                Ok(Self::lookup_res(table, &s.to_symbol_or_panic(policy_admin))?
                    .local()
                 )
             };
@@ -85,9 +86,10 @@ impl EnvManager {
         // Initially create meta as MemEnvironment.
         let mut meta = Box::new(MemEnvironment::new());
         EnvManager::initialize_env(LocalNode::default(), &mut *meta);
-        let imports_name = meta.insert_structure("imports".to_symbol_or_panic().into());
+        let imports_name = meta.insert_structure("imports".to_symbol_or_panic(policy_admin).into());
         let imports = meta.insert_atom();
-        let import_table_name = meta.insert_structure("__import_table".to_symbol_or_panic().into());
+        let import_table_name =
+            meta.insert_structure("__import_table".to_symbol_or_panic(policy_admin).into());
         let import_table = meta.insert_atom();
 
         let (lang_env_node, self_node, designation) = EnvManager::create_env_internal(&mut *meta);
@@ -187,7 +189,7 @@ impl EnvManager {
     }
 
     pub fn deserialize<P: AsRef<Path>>(&mut self, in_path: P) -> Result<(), DeserializeError> {
-        let stream = match FileStream::new(in_path) {
+        let stream = match FileStream::new(in_path, policy_admin) {
             Ok(stream) => stream,
             Err(err) => return Err(FileStreamError(err)),
         };
@@ -235,7 +237,7 @@ impl EnvManager {
         let designation = env.insert_structure(SymbolTable::default().into());
         if let Ok(table) = <&mut SymbolTable>::try_from(env.node_structure(designation)) {
             table.insert(
-                AMLANG_DESIGNATION.to_symbol_or_panic(),
+                AMLANG_DESIGNATION.to_symbol_or_panic(policy_admin),
                 Node::new(env_node, designation),
             );
         } else {
@@ -444,7 +446,8 @@ impl EnvManager {
                 object.local(),
             );
             node_table.insert(
-                format!("^t{}", self.env_state().env().triple_index(triple)).to_symbol_or_panic(),
+                format!("^t{}", self.env_state().env().triple_index(triple))
+                    .to_symbol_or_panic(policy_admin),
                 self.env_state().globalize(triple.node()),
             );
 

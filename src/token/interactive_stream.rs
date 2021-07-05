@@ -5,6 +5,7 @@ use super::interactive_helper::InteractiveHelper;
 use super::token::TokenInfo;
 use super::tokenize::{tokenize_line, TokenStore};
 use crate::agent::env_state::EnvState;
+use crate::primitive::symbol_policies::policy_base;
 
 
 pub struct InteractiveStream {
@@ -66,7 +67,8 @@ impl Iterator for InteractiveStream {
                         }
                     }
                     self.curr_expr += &line;
-                    match tokenize_line(&line, 0, &mut self.tokens) {
+                    // TODO(func) Make generic over policy.
+                    match tokenize_line(&line, 0, &policy_base, &mut self.tokens) {
                         Ok(depth) => {
                             self.depth = self.depth.saturating_add(depth);
                         }

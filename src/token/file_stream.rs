@@ -4,6 +4,7 @@ use std::path::Path;
 
 use super::token::TokenInfo;
 use super::tokenize::{tokenize_line, TokenStore, TokenizeError};
+use crate::primitive::symbol::SymbolError;
 
 
 pub struct FileStream {
@@ -17,7 +18,13 @@ pub enum FileStreamError {
 }
 
 impl FileStream {
-    pub fn new<P: AsRef<Path>>(path: P) -> Result<FileStream, FileStreamError> {
+    pub fn new<P: AsRef<Path>, SymbolInfo, SymbolPolicy>(
+        path: P,
+        symbol_policy: SymbolPolicy,
+    ) -> Result<FileStream, FileStreamError>
+    where
+        SymbolPolicy: Fn(&str) -> Result<SymbolInfo, SymbolError>,
+    {
         let file = match File::open(path) {
             Ok(file) => file,
             Err(err) => return Err(FileStreamError::IoError(err)),
@@ -30,7 +37,7 @@ impl FileStream {
                 return Err(FileStreamError::IoError(err));
             }
 
-            if let Err(err) = tokenize_line(&line.1.unwrap(), line.0, &mut tokens) {
+            if let Err(err) = tokenize_line(&line.1.unwrap(), line.0, &symbol_policy, &mut tokens) {
                 return Err(FileStreamError::TokenizeError(err));
             }
         }

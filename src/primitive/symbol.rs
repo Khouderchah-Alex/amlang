@@ -13,14 +13,17 @@ use crate::sexp::{HeapSexp, Sexp};
 pub struct Symbol(String);
 
 pub trait ToSymbol {
-    fn to_symbol(&self) -> SymbolResult;
+    fn to_symbol<Info, P>(&self, policy: P) -> Result<Symbol, SymbolError>
+    where
+        P: Fn(&str) -> Result<Info, SymbolError>;
 
-    fn to_symbol_or_panic(&self) -> Symbol {
-        self.to_symbol().unwrap()
+    fn to_symbol_or_panic<Info, P>(&self, policy: P) -> Symbol
+    where
+        P: Fn(&str) -> Result<Info, SymbolError>,
+    {
+        self.to_symbol(policy).unwrap()
     }
 }
-
-pub type SymbolResult = Result<Symbol, SymbolError>;
 
 #[derive(Debug)]
 pub enum SymbolError {
@@ -29,26 +32,18 @@ pub enum SymbolError {
 }
 
 impl Symbol {
-    pub fn new<S: AsRef<str>>(sym: S) -> SymbolResult {
+    pub fn try_policy<S, Info, P>(sym: S, policy: P) -> Result<(Symbol, Info), SymbolError>
+    where
+        S: AsRef<str>,
+        P: Fn(&str) -> Result<Info, SymbolError>,
+    {
         let s = sym.as_ref();
         if s.len() == 0 {
             return Err(SymbolError::EmptyString);
         }
 
-        match s {
-            "+" | "-" | "*" | "/" => {}
-            _ => {
-                if !s.chars().all(|c| c.is_alphabetic() || c == '_' || c == '-')
-                    && !s
-                        .chars()
-                        .all(|c| c.is_ascii_digit() || c == '^' || c == 't')
-                {
-                    return Err(SymbolError::NonAlphabetic(s.to_string()));
-                }
-            }
-        }
-
-        Ok(Symbol(s.to_string()))
+        let info = policy(s)?;
+        Ok((Symbol(s.to_string()), info))
     }
 
     pub fn as_str(&self) -> &str {
@@ -58,14 +53,22 @@ impl Symbol {
 
 
 impl<S: AsRef<str>> ToSymbol for S {
-    fn to_symbol(&self) -> SymbolResult {
-        Symbol::new(self)
+    fn to_symbol<Info, P>(&self, policy: P) -> Result<Symbol, SymbolError>
+    where
+        P: Fn(&str) -> Result<Info, SymbolError>,
+    {
+        let (sym, _info) = Symbol::try_policy(self, policy)?;
+        Ok(sym)
     }
 }
 
 impl ToSymbol for Symbol {
-    fn to_symbol(&self) -> SymbolResult {
-        Ok(self.clone())
+    fn to_symbol<Info, P>(&self, policy: P) -> Result<Symbol, SymbolError>
+    where
+        P: Fn(&str) -> Result<Info, SymbolError>,
+    {
+        let (sym, _info) = Symbol::try_policy(self.as_str(), policy)?;
+        Ok(sym)
     }
 }
 

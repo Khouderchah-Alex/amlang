@@ -8,6 +8,7 @@ use crate::cons_list::ConsList;
 use crate::environment::Environment;
 use crate::function::{EvalErr, ExpectedCount};
 use crate::parser::{parse_sexp, ParseError};
+use crate::primitive::symbol_policies::policy_base;
 use crate::primitive::{
     BuiltIn, LocalNodeTable, Node, Number, Primitive, Procedure, Symbol, SymbolTable,
 };
@@ -436,7 +437,7 @@ impl FromStr for Sexp {
     type Err = FromStrError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let stream = match StringStream::new(s) {
+        let stream = match StringStream::new(s, policy_base) {
             Ok(stream) => stream,
             Err(err) => return Err(FromStrError::TokenizeError(err)),
         };

@@ -4,7 +4,8 @@ use std::fmt;
 use std::iter::Peekable;
 
 use crate::cons_list::ConsList;
-use crate::primitive::ToSymbol;
+use crate::primitive::symbol::ToSymbol;
+use crate::primitive::symbol_policies::policy_base;
 use crate::sexp::HeapSexp;
 use crate::token::{Token, TokenInfo};
 
@@ -94,7 +95,9 @@ pub fn parse_sexp<I: Iterator<Item = TokenInfo>>(
             if let Some(val) = sexp {
                 let mut list = ConsList::new();
 
-                list.append(HeapSexp::new("quote".to_symbol_or_panic().into()));
+                list.append(HeapSexp::new(
+                    "quote".to_symbol_or_panic(policy_base).into(),
+                ));
                 list.append(val);
                 return Ok(Some(list.release()));
             } else {

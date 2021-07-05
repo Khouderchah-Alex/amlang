@@ -1,5 +1,6 @@
 use super::*;
 
+use crate::primitive::symbol_policies::policy_base;
 use crate::primitive::{Number, ToSymbol};
 use crate::token::string_stream::StringStream;
 use Token::*;
@@ -13,13 +14,18 @@ fn nest(mut v: Vec<Token>) -> Vec<Token> {
 #[test]
 fn nested() {
     let input = "(testing (this (out)))";
-    let mut expected = nest(vec![Primitive(Symbol("out".to_symbol_or_panic()))]);
-    expected.insert(0, Primitive(Symbol("this".to_symbol_or_panic())));
+    let mut expected = nest(vec![Primitive(Symbol(
+        "out".to_symbol_or_panic(policy_base),
+    ))]);
+    expected.insert(0, Primitive(Symbol("this".to_symbol_or_panic(policy_base))));
     expected = nest(expected);
-    expected.insert(0, Primitive(Symbol("testing".to_symbol_or_panic())));
+    expected.insert(
+        0,
+        Primitive(Symbol("testing".to_symbol_or_panic(policy_base))),
+    );
     expected = nest(expected);
 
-    let tokens = StringStream::new(input).unwrap();
+    let tokens = StringStream::new(input, policy_base).unwrap();
     for (i, elem) in tokens.enumerate() {
         assert_eq!(elem.token, expected[i]);
     }
@@ -28,13 +34,18 @@ fn nested() {
 #[test]
 fn newlines() {
     let input = "\n(testing\n\n (\nthis (out))\n)";
-    let mut expected = nest(vec![Primitive(Symbol("out".to_symbol_or_panic()))]);
-    expected.insert(0, Primitive(Symbol("this".to_symbol_or_panic())));
+    let mut expected = nest(vec![Primitive(Symbol(
+        "out".to_symbol_or_panic(policy_base),
+    ))]);
+    expected.insert(0, Primitive(Symbol("this".to_symbol_or_panic(policy_base))));
     expected = nest(expected);
-    expected.insert(0, Primitive(Symbol("testing".to_symbol_or_panic())));
+    expected.insert(
+        0,
+        Primitive(Symbol("testing".to_symbol_or_panic(policy_base))),
+    );
     expected = nest(expected);
 
-    let tokens = StringStream::new(input).unwrap();
+    let tokens = StringStream::new(input, policy_base).unwrap();
     for (i, elem) in tokens.enumerate() {
         assert_eq!(elem.token, expected[i]);
     }
@@ -49,7 +60,7 @@ fn ints() {
         .collect();
     expected = nest(expected);
 
-    let tokens = StringStream::new(input).unwrap();
+    let tokens = StringStream::new(input, policy_base).unwrap();
     for (i, elem) in tokens.enumerate() {
         assert_eq!(elem.token, expected[i]);
     }
@@ -64,7 +75,7 @@ fn floats() {
         .collect();
     expected = nest(expected);
 
-    let tokens = StringStream::new(input).unwrap();
+    let tokens = StringStream::new(input, policy_base).unwrap();
     for (i, elem) in tokens.enumerate() {
         assert_eq!(elem.token, expected[i]);
     }
