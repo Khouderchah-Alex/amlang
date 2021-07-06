@@ -239,6 +239,9 @@ impl Environment for MemEnvironment {
     fn triple_index(&self, triple: LocalTriple) -> usize {
         triple_index_unchecked(triple.node().id())
     }
+    fn triple_from_index(&self, index: usize) -> LocalTriple {
+        index_to_triple_id(index)
+    }
 }
 
 // We need this for dyn Environment to be cloneable. Just return a new env.

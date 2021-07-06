@@ -2,7 +2,7 @@ use lazy_static::lazy_static;
 use regex::Regex;
 
 use super::symbol::SymbolError;
-use crate::environment::local_node::{LocalId, LocalNode, LocalTriple};
+use crate::environment::local_node::{LocalId, LocalNode};
 
 
 pub fn policy_base(s: &str) -> Result<(), SymbolError> {
@@ -41,9 +41,9 @@ pub fn policy_admin(s: &str) -> Result<AdminSymbolInfo, SymbolError> {
                     cap.get(1).unwrap().as_str().parse::<LocalId>().unwrap(),
                 )))
             } else if let Some(cap) = LTRIPLE.captures(s) {
-                Ok(AdminSymbolInfo::LocalTriple(LocalTriple::new(
-                    cap.get(1).unwrap().as_str().parse::<LocalId>().unwrap(),
-                )))
+                Ok(AdminSymbolInfo::LocalTriple(
+                    cap.get(1).unwrap().as_str().parse::<usize>().unwrap(),
+                ))
             } else if let Some(cap) = GNODE.captures(s) {
                 Ok(AdminSymbolInfo::GlobalNode(
                     LocalNode::new(cap.get(1).unwrap().as_str().parse::<LocalId>().unwrap()),
@@ -52,7 +52,7 @@ pub fn policy_admin(s: &str) -> Result<AdminSymbolInfo, SymbolError> {
             } else if let Some(cap) = GTRIPLE.captures(s) {
                 Ok(AdminSymbolInfo::GlobalTriple(
                     LocalNode::new(cap.get(1).unwrap().as_str().parse::<LocalId>().unwrap()),
-                    LocalTriple::new(cap.get(2).unwrap().as_str().parse::<LocalId>().unwrap()),
+                    cap.get(2).unwrap().as_str().parse::<usize>().unwrap(),
                 ))
             } else {
                 Err(SymbolError::InvalidNodeSpec(s.to_string()))
@@ -66,7 +66,7 @@ pub fn policy_admin(s: &str) -> Result<AdminSymbolInfo, SymbolError> {
 pub enum AdminSymbolInfo {
     Identifier,
     LocalNode(LocalNode),
-    LocalTriple(LocalTriple),
+    LocalTriple(usize),
     GlobalNode(LocalNode, LocalNode),
-    GlobalTriple(LocalNode, LocalTriple),
+    GlobalTriple(LocalNode, usize),
 }

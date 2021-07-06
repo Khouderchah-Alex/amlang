@@ -71,6 +71,7 @@ pub trait Environment: EnvClone {
     fn triple_predicate(&self, triple: LocalTriple) -> LocalNode;
     fn triple_object(&self, triple: LocalTriple) -> LocalNode;
     fn triple_index(&self, triple: LocalTriple) -> usize;
+    fn triple_from_index(&self, index: usize) -> LocalTriple;
 }
 
 
