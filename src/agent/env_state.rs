@@ -10,7 +10,7 @@ use crate::function::EvalErr::{self, *};
 use crate::model::Model;
 use crate::primitive::symbol_policies::policy_admin;
 use crate::primitive::{LocalNodeTable, Node, Primitive, Symbol, SymbolTable, ToSymbol};
-use crate::sexp::{HeapSexp, Sexp};
+use crate::sexp::Sexp;
 
 
 #[derive(Clone)]
@@ -94,22 +94,21 @@ impl EnvState {
         self.access_env(self.env).unwrap()
     }
 
-    pub fn node_designator(&mut self, node: Node) -> Option<HeapSexp> {
+    pub fn node_designator(&mut self, node: Node) -> Option<Symbol> {
         let designation = self.designation();
         if node.local() == designation {
-            return Some(HeapSexp::new(
-                AMLANG_DESIGNATION.to_symbol_or_panic(policy_admin).into(),
-            ));
+            return Some(AMLANG_DESIGNATION.to_symbol_or_panic(policy_admin));
         }
 
         let env = self.access_env(node.env()).unwrap();
         let names = env.match_but_object(node.local(), designation);
         if let Some(name_node) = names.iter().next() {
             let name = env.triple_object(*name_node);
-            Some(HeapSexp::new(env.node_structure(name).cloned().unwrap()))
-        } else {
-            None
+            if let Ok(sym) = Symbol::try_from(env.node_structure(name).cloned().unwrap()) {
+                return Some(sym);
+            }
         }
+        None
     }
 
     pub fn resolve(&mut self, name: &Symbol) -> Result<Node, EvalErr> {

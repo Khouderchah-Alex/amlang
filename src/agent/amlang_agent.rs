@@ -538,12 +538,8 @@ impl AmlangAgent {
         match primitive {
             Primitive::Node(node) => {
                 // Print Nodes as their designators if possible.
-                if let Some(designator) = self.agent_state.node_designator(*node) {
-                    if let Ok(sym) = <&Symbol>::try_from(&*designator) {
-                        write!(w, "{}", sym.as_str())
-                    } else {
-                        write!(w, "{}", designator)
-                    }
+                if let Some(sym) = self.agent_state.node_designator(*node) {
+                    write!(w, "{}", sym.as_str())
                 } else if let Some(triple) = self
                     .agent_state
                     .access_env(node.env())
