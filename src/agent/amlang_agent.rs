@@ -574,6 +574,10 @@ impl AmlangAgent {
                     }
                 }
             }
+            Primitive::Procedure(procedure) => {
+                let s = procedure.generate_structure(self.env_state());
+                self.print_list_internal(w, &s, depth + 1)
+            }
             _ => write!(w, "{}", primitive),
         }
     }
