@@ -103,6 +103,12 @@ impl EnvManager {
             self_node,
             designation,
         ));
+        // TODO(flex) Find more flexible approch to bootstrapping required lang nodes.
+        {
+            let mut c = Arc::get_mut(&mut context).unwrap();
+            c.lambda = LocalNode::new(13);
+            c.apply = LocalNode::new(33);
+        }
 
         {
             let mut meta_state =
@@ -197,13 +203,13 @@ impl EnvManager {
         };
         let mut peekable = stream.peekable();
 
-        let identifier_table = match parse_sexp(&mut peekable, 0) {
+        match parse_sexp(&mut peekable, 0) {
             Ok(Some(parsed)) => self.deserialize_nodes(parsed)?,
             Ok(None) => return Err(MissingNodeSection),
             Err(err) => return Err(ParseError(err)),
         };
         match parse_sexp(&mut peekable, 0) {
-            Ok(Some(parsed)) => self.deserialize_triples(parsed, identifier_table)?,
+            Ok(Some(parsed)) => self.deserialize_triples(parsed)?,
             Ok(None) => return Err(MissingTripleSection),
             Err(err) => return Err(ParseError(err)),
         };
@@ -288,26 +294,16 @@ impl EnvManager {
                 }
 
                 if node.env() != self.env_state().pos().env() {
-                    write!(w, "^{}^{}", node.env().id(), node.local().id())?;
+                    write!(w, "^{}", node.env().id())?;
                 }
-                // Output Nodes as their designators if possible.
-                else if let Ok(designator) =
-                    <Symbol>::try_from(self.env_state().node_designator(*node))
-                {
-                    write!(w, "{}", designator.as_str())?;
-                } else {
-                    write!(w, "^{}", node.local().id())?;
-                }
-
-                Ok(())
+                write!(w, "^{}", node.local().id())
             }
             _ => write!(w, "{}", primitive),
         }
     }
 
-    fn deserialize_nodes(&mut self, structure: HeapSexp) -> Result<SymbolTable, DeserializeError> {
+    fn deserialize_nodes(&mut self, structure: HeapSexp) -> Result<(), DeserializeError> {
         let builtins = generate_builtin_map();
-        let mut identifier_table = SymbolTable::default();
         let (command, remainder) =
             break_by_types!(*structure, Symbol; remainder).map_err(|e| EvalErr(e))?;
         if command.as_str() != "nodes" {
@@ -315,51 +311,30 @@ impl EnvManager {
         }
 
         let iter = SexpIntoIter::try_from(remainder).map_err(|e| EvalErr(e))?;
-        for entry in iter.skip(1) {
+        for entry in iter.skip(2) {
             match *entry {
                 Sexp::Primitive(primitive) => {
-                    if let Primitive::Symbol(sym) = primitive {
-                        if sym.as_str() == AMLANG_DESIGNATION {
-                            // We don't need to create this node since env construction will.
-                            let local = self.env_state().designation();
-                            identifier_table.insert(sym, self.env_state().globalize(local));
-                        } else {
-                            let local = self.env_state().env().insert_atom();
-                            if let AdminSymbolInfo::Identifier = policy_admin(sym.as_str()).unwrap()
-                            {
-                                identifier_table.insert(sym, self.env_state().globalize(local));
-                            }
-                        }
+                    if let Primitive::Symbol(_sym) = primitive {
+                        self.env_state().env().insert_atom();
                     } else {
                         return Err(ExpectedSymbol);
                     }
                 }
                 Sexp::Cons(cons) => {
-                    let (name, command) =
+                    let (_name, command) =
                         break_by_types!(cons.into(), Symbol, Sexp).map_err(|e| EvalErr(e))?;
-                    let structure = self.eval_structure(command, &builtins, &identifier_table)?;
-                    let local = self.env_state().env().insert_structure(structure);
-                    if let AdminSymbolInfo::Identifier = policy_admin(name.as_str()).unwrap() {
-                        identifier_table.insert(name, self.env_state().globalize(local));
-                    }
+                    let structure = self.eval_structure(command, &builtins)?;
+                    self.env_state().env().insert_structure(structure);
                 }
             }
         }
-        Ok(identifier_table)
+        Ok(())
     }
 
-    fn parse_symbol(
-        &mut self,
-        table: &SymbolTable,
-        sym: &Symbol,
-    ) -> Result<Node, DeserializeError> {
+    fn parse_symbol(&mut self, sym: &Symbol) -> Result<Node, DeserializeError> {
         match policy_admin(sym.as_str()).unwrap() {
             AdminSymbolInfo::Identifier => {
-                if let Some(node) = table.lookup(sym) {
-                    Ok(node)
-                } else {
-                    Err(EvalErr(function::EvalErr::UnboundSymbol(sym.clone())))
-                }
+                Err(EvalErr(function::EvalErr::UnboundSymbol(sym.clone())))
             }
             AdminSymbolInfo::LocalNode(node) => Ok(node.globalize(self.env_state())),
             AdminSymbolInfo::LocalTriple(idx) => {
@@ -378,14 +353,63 @@ impl EnvManager {
         &mut self,
         structure: Sexp,
         builtins: &HashMap<&'static str, BuiltIn>,
-        identifier_table: &SymbolTable,
     ) -> Result<Sexp, DeserializeError> {
         if let Ok(sym) = <&Symbol>::try_from(&structure) {
-            return Ok(self.parse_symbol(identifier_table, sym)?.into());
+            return Ok(self.parse_symbol(sym)?.into());
         }
 
         let (command, cdr) =
             break_by_types!(structure, Symbol; remainder).map_err(|e| EvalErr(e))?;
+
+        if let Ok(node) = self.parse_symbol(&command) {
+            let context = self.env_state().context();
+            // Note(subtle): during the initial deserialization of the lang env,
+            // these context nodes are only valid because they're specially set
+            // before actual context bootstrapping occurs.
+            if node.env() == context.lang_env() {
+                if node.local() == context.apply {
+                    if cdr.is_none() {
+                        return Err(EvalErr(function::EvalErr::WrongArgumentCount {
+                            given: 0,
+                            expected: function::ExpectedCount::Exactly(2),
+                        }));
+                    }
+
+                    let (func, args) =
+                        break_by_types!(*cdr.unwrap(), Symbol, Cons).map_err(|e| EvalErr(e))?;
+                    let fnode = self.parse_symbol(&func)?;
+                    let mut arg_nodes = Vec::with_capacity(args.iter().count());
+                    for arg in args {
+                        if let Ok(sym) = <&Symbol>::try_from(&*arg) {
+                            arg_nodes.push(self.parse_symbol(sym)?);
+                        } else {
+                            return Err(EvalErr(function::EvalErr::InvalidSexp(*arg)));
+                        }
+                    }
+                    return Ok(Procedure::Application(fnode, arg_nodes).into());
+                } else if node.local() == context.lambda {
+                    if cdr.is_none() {
+                        return Err(EvalErr(function::EvalErr::WrongArgumentCount {
+                            given: 0,
+                            expected: function::ExpectedCount::AtLeast(2),
+                        }));
+                    }
+
+                    let (params, body) =
+                        break_by_types!(*cdr.unwrap(), Cons, Symbol).map_err(|e| EvalErr(e))?;
+                    let mut param_nodes = Vec::with_capacity(params.iter().count());
+                    for param in params {
+                        if let Ok(sym) = <&Symbol>::try_from(&*param) {
+                            param_nodes.push(self.parse_symbol(sym)?);
+                        } else {
+                            return Err(EvalErr(function::EvalErr::InvalidSexp(*param)));
+                        }
+                    }
+                    let body_node = self.parse_symbol(&body)?;
+                    return Ok(Procedure::Abstraction(param_nodes, body_node).into());
+                }
+            }
+        }
 
         match command.as_str() {
             "quote" => Ok(quote_wrapper(cdr).map_err(|e| EvalErr(e))?),
@@ -400,57 +424,11 @@ impl EnvManager {
                     Err(ExpectedSymbol)
                 }
             }
-            "apply" => {
-                if cdr.is_none() {
-                    return Err(EvalErr(function::EvalErr::WrongArgumentCount {
-                        given: 0,
-                        expected: function::ExpectedCount::Exactly(2),
-                    }));
-                }
-
-                let (func, args) =
-                    break_by_types!(*cdr.unwrap(), Symbol, Cons).map_err(|e| EvalErr(e))?;
-                let fnode = self.parse_symbol(identifier_table, &func)?;
-                let mut arg_nodes = Vec::with_capacity(args.iter().count());
-                for arg in args {
-                    if let Ok(sym) = <&Symbol>::try_from(&*arg) {
-                        arg_nodes.push(self.parse_symbol(identifier_table, sym)?);
-                    } else {
-                        return Err(EvalErr(function::EvalErr::InvalidSexp(*arg)));
-                    }
-                }
-                Ok(Procedure::Application(fnode, arg_nodes).into())
-            }
-            "lambda" => {
-                if cdr.is_none() {
-                    return Err(EvalErr(function::EvalErr::WrongArgumentCount {
-                        given: 0,
-                        expected: function::ExpectedCount::AtLeast(2),
-                    }));
-                }
-
-                let (params, body) =
-                    break_by_types!(*cdr.unwrap(), Cons, Symbol).map_err(|e| EvalErr(e))?;
-                let mut param_nodes = Vec::with_capacity(params.iter().count());
-                for param in params {
-                    if let Ok(sym) = <&Symbol>::try_from(&*param) {
-                        param_nodes.push(self.parse_symbol(identifier_table, sym)?);
-                    } else {
-                        return Err(EvalErr(function::EvalErr::InvalidSexp(*param)));
-                    }
-                }
-                let body_node = self.parse_symbol(identifier_table, &body)?;
-                Ok(Procedure::Abstraction(param_nodes, body_node).into())
-            }
             _ => panic!("{}", command),
         }
     }
 
-    fn deserialize_triples(
-        &mut self,
-        structure: HeapSexp,
-        identifier_table: SymbolTable,
-    ) -> Result<(), DeserializeError> {
+    fn deserialize_triples(&mut self, structure: HeapSexp) -> Result<(), DeserializeError> {
         let (command, remainder) =
             break_by_types!(*structure, Symbol; remainder).map_err(|e| EvalErr(e))?;
         if command.as_str() != "triples" {
@@ -462,9 +440,9 @@ impl EnvManager {
             let (s, p, o) =
                 break_by_types!(*entry, Symbol, Symbol, Symbol).map_err(|e| EvalErr(e))?;
 
-            let subject = self.parse_symbol(&identifier_table, &s)?;
-            let predicate = self.parse_symbol(&identifier_table, &p)?;
-            let object = self.parse_symbol(&identifier_table, &o)?;
+            let subject = self.parse_symbol(&s)?;
+            let predicate = self.parse_symbol(&p)?;
+            let object = self.parse_symbol(&o)?;
 
             self.env_state().env().insert_triple(
                 subject.local(),
@@ -479,6 +457,12 @@ impl EnvManager {
                 {
                     sym
                 } else {
+                    println!(
+                        "{} {} {:?}",
+                        subject,
+                        object,
+                        self.env_state().designate(Primitive::Node(object)).unwrap()
+                    );
                     return Err(ExpectedSymbol);
                 };
 
