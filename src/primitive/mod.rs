@@ -6,6 +6,7 @@ use std::mem;
 pub mod builtin;
 pub mod node;
 pub mod number;
+pub mod path;
 pub mod procedure;
 pub mod symbol;
 pub mod symbol_policies;
@@ -14,6 +15,7 @@ pub mod table;
 pub use self::builtin::BuiltIn;
 pub use self::node::Node;
 pub use self::number::Number;
+pub use self::path::Path;
 pub use self::procedure::Procedure;
 pub use self::symbol::{Symbol, ToSymbol};
 pub use self::table::{LocalNodeTable, SymbolTable};
@@ -26,6 +28,7 @@ pub enum Primitive {
     Symbol(Symbol),
     BuiltIn(BuiltIn),
     Node(Node),
+    Path(Path),
 
     SymbolTable(SymbolTable),
     LocalNodeTable(LocalNodeTable),
@@ -43,6 +46,7 @@ impl fmt::Display for Primitive {
             Primitive::Symbol(s) => write!(f, "{}", s),
             Primitive::BuiltIn(b) => write!(f, "{}", b),
             Primitive::Node(node) => write!(f, "{}", node),
+            Primitive::Path(path) => write!(f, "{}", path),
 
             Primitive::SymbolTable(table) => write!(f, "{:?}", table),
             Primitive::LocalNodeTable(table) => write!(f, "{:?}", table),
@@ -72,6 +76,7 @@ impl PartialEq for Primitive {
                         (*this) == (*that)
                     }
                     (&Primitive::Node(ref this), &Primitive::Node(ref that)) => (*this) == (*that),
+                    (&Primitive::Path(ref this), &Primitive::Path(ref that)) => (*this) == (*that),
                     (&Primitive::SymbolTable(ref this), &Primitive::SymbolTable(ref that)) => {
                         (*this) == (*that)
                     }
