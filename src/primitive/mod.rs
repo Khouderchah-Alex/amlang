@@ -8,6 +8,7 @@ pub mod node;
 pub mod number;
 pub mod path;
 pub mod procedure;
+pub mod string;
 pub mod symbol;
 pub mod symbol_policies;
 pub mod table;
@@ -17,6 +18,7 @@ pub use self::node::Node;
 pub use self::number::Number;
 pub use self::path::Path;
 pub use self::procedure::Procedure;
+pub use self::string::AmString;
 pub use self::symbol::{Symbol, ToSymbol};
 pub use self::table::{LocalNodeTable, SymbolTable};
 pub use crate::environment::environment::EnvObject;
@@ -26,6 +28,7 @@ pub use crate::environment::environment::EnvObject;
 pub enum Primitive {
     Number(Number),
     Symbol(Symbol),
+    AmString(AmString),
     BuiltIn(BuiltIn),
     Node(Node),
     Path(Path),
@@ -44,6 +47,7 @@ impl fmt::Display for Primitive {
         match self {
             Primitive::Number(num) => write!(f, "{}", num),
             Primitive::Symbol(s) => write!(f, "{}", s),
+            Primitive::AmString(s) => write!(f, "{}", s),
             Primitive::BuiltIn(b) => write!(f, "{}", b),
             Primitive::Node(node) => write!(f, "{}", node),
             Primitive::Path(path) => write!(f, "{}", path),
@@ -70,6 +74,9 @@ impl PartialEq for Primitive {
                         (*this) == (*that)
                     }
                     (&Primitive::Symbol(ref this), &Primitive::Symbol(ref that)) => {
+                        (*this) == (*that)
+                    }
+                    (&Primitive::AmString(ref this), &Primitive::AmString(ref that)) => {
                         (*this) == (*that)
                     }
                     (&Primitive::BuiltIn(ref this), &Primitive::BuiltIn(ref that)) => {
