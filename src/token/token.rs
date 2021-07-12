@@ -19,6 +19,9 @@ pub struct TokenInfo {
 
 impl fmt::Display for TokenInfo {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?} @ line {}", self.token, self.line)
+        match &self.token {
+            Token::Primitive(p) => write!(f, "{} @ line {}", p, self.line),
+            _ => write!(f, "{:?} @ line {}", self.token, self.line),
+        }
     }
 }
