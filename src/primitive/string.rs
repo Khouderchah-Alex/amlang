@@ -9,8 +9,8 @@ use crate::sexp::{HeapSexp, Sexp};
 pub struct AmString(String);
 
 impl AmString {
-    pub fn new(string: String) -> Self {
-        Self(string)
+    pub fn new<S: AsRef<str>>(s: S) -> Self {
+        Self(s.as_ref().to_string())
     }
 
     pub fn as_str(&self) -> &str {

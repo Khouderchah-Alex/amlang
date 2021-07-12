@@ -4,14 +4,19 @@ use std::collections::VecDeque;
 
 use super::token::{Token, TokenInfo};
 use crate::primitive::symbol::{SymbolError, ToSymbol};
+use crate::primitive::AmString;
 use crate::primitive::Number as Num;
 use crate::primitive::Primitive::*;
 
+use self::TokenizerState::*;
 
+
+#[derive(Debug)]
 pub struct Tokenizer {
     tokens: VecDeque<TokenInfo>,
     line_count: usize,
     depth: usize,
+    state: TokenizerState,
 }
 
 #[derive(Debug)]
@@ -19,12 +24,20 @@ pub enum TokenizeError {
     InvalidSymbol(SymbolError),
 }
 
+#[derive(Debug)]
+enum TokenizerState {
+    Base,
+    InString,
+}
+
+
 impl Tokenizer {
     pub fn new() -> Self {
         Self {
             tokens: Default::default(),
             line_count: 0,
             depth: 0,
+            state: TokenizerState::Base,
         }
     }
 
@@ -46,57 +59,118 @@ impl Tokenizer {
     where
         SymbolPolicy: Fn(&str) -> Result<SymbolInfo, SymbolError>,
     {
-        let mut sexp_slice = line.as_ref();
+        // TODO(func) Allow for multi-line strings.
+        let mut start: usize = 0;
+        let mut empty = true;
+        let l = line.as_ref();
+        for (i, c) in l.char_indices() {
+            match self.state {
+                Base => {
+                    if c.is_whitespace() {
+                        if !empty {
+                            self.push_token(&l[start..i], symbol_policy)?;
+                            empty = true;
+                        }
+                        continue;
+                    }
 
-        let mut comment: Option<TokenInfo> = None;
-        if let Some(j) = sexp_slice.find(';') {
-            comment = Some(TokenInfo {
-                token: Token::Comment(sexp_slice[j + 1..].to_string()),
-                line: self.line_count,
-            });
-            sexp_slice = &sexp_slice[..j];
-        }
+                    match c {
+                        '(' | ')' | '\'' => {
+                            if !empty {
+                                self.push_token(&l[start..i], symbol_policy)?;
+                                empty = true;
+                            }
 
-        let expanded = sexp_slice
-            .replace("(", " ( ")
-            .replace(")", " ) ")
-            .replace("'", " ' ");
-
-        for ptoken in expanded.split_whitespace() {
-            let token = match ptoken {
-                "(" => {
-                    self.depth += 1;
-                    Token::LeftParen
-                }
-                ")" => {
-                    self.depth = self.depth.saturating_sub(1);
-                    Token::RightParen
-                }
-                "'" => Token::Quote,
-                _ => {
-                    // Try to parse as number before imposing Symbol constraints.
-                    if let Ok(num) = ptoken.parse::<Num>() {
-                        Token::Primitive(Number(num))
-                    } else {
-                        match ptoken.to_symbol(symbol_policy) {
-                            Ok(symbol) => Token::Primitive(Symbol(symbol)),
-                            Err(err) => return Err(TokenizeError::InvalidSymbol(err)),
+                            let token = match c {
+                                '(' => {
+                                    self.depth += 1;
+                                    Token::LeftParen
+                                }
+                                ')' => {
+                                    self.depth = self.depth.saturating_sub(1);
+                                    Token::RightParen
+                                }
+                                '\'' => Token::Quote,
+                                _ => panic!(),
+                            };
+                            self.tokens.push_back(TokenInfo {
+                                token,
+                                line: self.line_count,
+                            });
+                        }
+                        ';' => {
+                            if !empty {
+                                self.push_token(&l[start..i], symbol_policy)?;
+                            }
+                            self.tokens.push_back(TokenInfo {
+                                token: Token::Comment(l[i..].to_string()),
+                                line: self.line_count,
+                            });
+                            break;
+                        }
+                        '"' => {
+                            if !empty {
+                                self.push_token(&l[start..i], symbol_policy)?;
+                            }
+                            start = i + 1;
+                            self.state = InString;
+                        }
+                        _ => {
+                            if empty {
+                                empty = false;
+                                start = i;
+                            }
                         }
                     }
                 }
-            };
+                InString => {
+                    // TODO(func) Allow for escaping.
+                    if c == '"' {
+                        self.tokens.push_back(TokenInfo {
+                            token: Token::Primitive(AmString(AmString::new(
+                                line.as_ref()[start..i].to_string(),
+                            ))),
+                            line: self.line_count,
+                        });
 
-            self.tokens.push_back(TokenInfo {
-                token,
-                line: self.line_count + 1,
-            });
+                        self.state = Base;
+                        empty = true;
+                    }
+                }
+            }
         }
 
-        if let Some(comment) = comment {
-            self.tokens.push_back(comment);
+        if !empty {
+            self.push_token(&l[start..], symbol_policy)?;
         }
-
         self.line_count += 1;
+
+        Ok(())
+    }
+
+
+    fn push_token<SymbolInfo, SymbolPolicy>(
+        &mut self,
+        ptoken: &str,
+        symbol_policy: &SymbolPolicy,
+    ) -> Result<(), TokenizeError>
+    where
+        SymbolPolicy: Fn(&str) -> Result<SymbolInfo, SymbolError>,
+    {
+        // Try to parse as number before imposing Symbol constraints.
+        let token = if let Ok(num) = ptoken.parse::<Num>() {
+            Token::Primitive(Number(num))
+        } else {
+            match ptoken.to_symbol(symbol_policy) {
+                Ok(symbol) => Token::Primitive(Symbol(symbol)),
+                Err(err) => return Err(TokenizeError::InvalidSymbol(err)),
+            }
+        };
+
+        self.tokens.push_back(TokenInfo {
+            token,
+            line: self.line_count,
+        });
         Ok(())
     }
 }
@@ -108,6 +182,7 @@ impl Iterator for Tokenizer {
         self.tokens.pop_front()
     }
 }
+
 
 #[cfg(test)]
 #[path = "./tokenizer_test.rs"]

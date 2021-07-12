@@ -80,3 +80,18 @@ fn floats() {
         assert_eq!(elem.token, expected[i]);
     }
 }
+
+#[test]
+fn strings() {
+    let input = "(\"test.'(est)\" \n\"hello\")";
+    let mut expected: Vec<Token> = vec!["test.'(est)", "hello"]
+        .iter_mut()
+        .map(|elem| Primitive(AmString(AmString::new(*elem))))
+        .collect();
+    expected = nest(expected);
+
+    let tokens = StringStream::new(input, policy_base).unwrap();
+    for (i, elem) in tokens.enumerate() {
+        assert_eq!(elem.token, expected[i]);
+    }
+}
