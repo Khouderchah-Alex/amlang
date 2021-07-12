@@ -1,6 +1,6 @@
 // Public exports.
 pub use token::{Token, TokenInfo};
-pub use tokenize::TokenizeError;
+pub use tokenizer::TokenizeError;
 
 // Public mods.
 pub mod file_stream;
@@ -10,4 +10,4 @@ pub mod string_stream;
 pub mod token;
 
 // Private mods.
-mod tokenize;
+mod tokenizer;

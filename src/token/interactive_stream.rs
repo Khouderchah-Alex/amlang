@@ -3,16 +3,15 @@ use rustyline::Editor;
 
 use super::interactive_helper::InteractiveHelper;
 use super::token::TokenInfo;
-use super::tokenize::{tokenize_line, TokenStore};
+use super::tokenizer::Tokenizer;
 use crate::agent::env_state::EnvState;
 use crate::primitive::symbol_policies::policy_base;
 
 
 pub struct InteractiveStream {
     editor: Editor<InteractiveHelper>,
-    tokens: TokenStore,
+    tokenizer: Tokenizer,
 
-    depth: i16,
     curr_expr: String,
 }
 
@@ -23,9 +22,8 @@ impl InteractiveStream {
 
         InteractiveStream {
             editor,
-            tokens: TokenStore::default(),
+            tokenizer: Tokenizer::new(),
 
-            depth: 0,
             curr_expr: String::default(),
         }
     }
@@ -36,19 +34,18 @@ impl Iterator for InteractiveStream {
     type Item = TokenInfo;
 
     fn next(&mut self) -> Option<TokenInfo> {
-        if let Some(token) = self.tokens.pop_front() {
-            return Some(token);
-        }
+        loop {
+            if let Some(token) = self.tokenizer.next() {
+                return Some(token);
+            }
 
-        while self.tokens.len() == 0 {
-            let line = if self.depth <= 0 {
+            let line = if self.tokenizer.depth() == 0 {
                 self.editor.add_history_entry(self.curr_expr.as_str());
                 self.curr_expr = String::default();
-                self.depth = 0;
                 self.editor.readline("> ")
             } else {
                 self.editor
-                    .readline(&format!("..{}", "  ".repeat(self.depth as usize)))
+                    .readline(&format!("..{}", "  ".repeat(self.tokenizer.depth())))
             };
 
             match line {
@@ -68,16 +65,11 @@ impl Iterator for InteractiveStream {
                     }
                     self.curr_expr += &line;
                     // TODO(func) Make generic over policy.
-                    match tokenize_line(&line, 0, &policy_base, &mut self.tokens) {
-                        Ok(depth) => {
-                            self.depth = self.depth.saturating_add(depth);
-                        }
-                        Err(err) => {
-                            println!("[Tokenize Error]: {:?}", err);
-                            println!("");
-                            self.tokens.clear();
-                            continue;
-                        }
+                    if let Err(err) = self.tokenizer.tokenize_line(&line, &policy_base) {
+                        println!("[Tokenize Error]: {:?}", err);
+                        println!("");
+                        self.tokenizer.clear();
+                        continue;
                     }
                 }
                 Err(ReadlineError::Interrupted) => {
@@ -86,16 +78,15 @@ impl Iterator for InteractiveStream {
                 }
                 Err(ReadlineError::Eof) => {
                     println!("^D");
-                    break;
+                    return None;
                 }
                 Err(err) => {
                     println!("[Tokenize Error]: {:?}", err);
                     println!("");
-                    break;
+                    self.tokenizer.clear();
+                    continue;
                 }
             }
         }
-
-        self.tokens.pop_front()
     }
 }
