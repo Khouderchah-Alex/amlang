@@ -9,7 +9,7 @@ use crate::environment::LocalNode;
 use crate::function::EvalErr::{self, *};
 use crate::model::Model;
 use crate::primitive::symbol_policies::policy_admin;
-use crate::primitive::{LocalNodeTable, Node, Primitive, Symbol, SymbolTable, ToSymbol};
+use crate::primitive::{LocalNodeTable, Node, Path, Primitive, Symbol, SymbolTable, ToSymbol};
 use crate::sexp::Sexp;
 
 
@@ -265,17 +265,13 @@ impl EnvState {
 
         let meta = self.context.meta();
         let import_triple =
-            meta.get_or_insert_triple(self.pos().env(), self.context.imports(), original.env());
-        let matches = meta.match_but_object(import_triple.node(), self.context.import_table());
+            meta.get_or_insert_triple(self.pos().env(), self.context.imports, original.env());
+        let matches = meta.match_but_object(import_triple.node(), self.context.import_table);
         let table_node = match matches.len() {
             0 => {
                 let table = LocalNodeTable::default().into();
                 let table_node = meta.insert_structure(table);
-                meta.insert_triple(
-                    import_triple.node(),
-                    self.context.import_table(),
-                    table_node,
-                );
+                meta.insert_triple(import_triple.node(), self.context.import_table, table_node);
                 table_node
             }
             1 => meta.triple_object(*matches.iter().next().unwrap()),
@@ -307,5 +303,20 @@ impl EnvState {
             });
         };
         Ok(imported.globalize(&self))
+    }
+
+    pub fn find_env<S: AsRef<str>>(&self, s: S) -> Option<LocalNode> {
+        let meta = self.context.meta();
+        let triples = meta.match_predicate(self.context.serialize_path);
+        for triple in triples {
+            let object_node = meta.triple_object(triple);
+            let object = meta.node_structure(object_node).unwrap();
+            if let Ok(path) = <&Path>::try_from(&*object) {
+                if path.as_std_path().to_str() == Some(s.as_ref()) {
+                    return Some(meta.triple_subject(triple));
+                }
+            }
+        }
+        None
     }
 }

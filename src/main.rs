@@ -44,26 +44,26 @@ fn main() -> Result<(), String> {
 }
 
 fn interactive_agent() -> Result<(), String> {
-    let mut manager = match agent::env_manager::EnvManager::bootstrap("lang.env") {
+    let mut manager = match agent::env_manager::EnvManager::bootstrap("meta.env") {
         Ok(val) => val,
         Err(err) => return Err(format!("{:?}", err)),
     };
 
-    let lang_state = manager.env_state().clone();
-    let mut user_agent = agent::amlang_agent::AmlangAgent::from_lang(lang_state, &mut manager);
+    let mut history_state = manager.env_state().clone();
+    let history_env = history_state.find_env("history.env").unwrap();
+    history_state.jump_env(history_env);
+
+    let mut agent_state = manager.env_state().clone();
+    let working_env = agent_state.find_env("working.env").unwrap();
+    agent_state.jump_env(working_env);
+    agent_state.designation_chain_mut().push_back(working_env);
+
+    let mut user_agent = agent::amlang_agent::AmlangAgent::from_state(agent_state, history_state);
     user_agent.run()?;
 
-    if let Err(err) = manager.serialize("lang.env") {
+    if let Err(err) = manager.serialize_full("meta.env") {
         return Err(err.to_string());
     }
-
-    manager
-        .env_state()
-        .jump_env(user_agent.history_state().pos().env());
-    if let Err(err) = manager.serialize("history.env") {
-        return Err(err.to_string());
-    }
-
 
     Ok(())
 }

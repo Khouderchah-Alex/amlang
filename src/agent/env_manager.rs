@@ -1,8 +1,9 @@
+use log::{info, warn};
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::fs::File;
 use std::io::{BufWriter, Write};
-use std::path::Path;
+use std::path::Path as StdPath;
 use std::sync::Arc;
 
 use super::agent::Agent;
@@ -10,16 +11,18 @@ use super::amlang_context::AmlangContext;
 use super::amlang_wrappers::quote_wrapper;
 use super::env_state::{EnvState, AMLANG_DESIGNATION};
 use crate::builtins::generate_builtin_map;
-use crate::environment::environment::{EnvObject, Environment};
+use crate::environment::environment::EnvObject;
 use crate::environment::mem_environment::MemEnvironment;
 use crate::environment::LocalNode;
 use crate::function::{self, Ret};
 use crate::model::{Eval, Model};
 use crate::parser::{self, parse_sexp};
 use crate::primitive::symbol_policies::{policy_admin, AdminSymbolInfo};
-use crate::primitive::{BuiltIn, Node, Primitive, Procedure, Symbol, SymbolTable, ToSymbol};
+use crate::primitive::{
+    AmString, BuiltIn, Node, Path, Primitive, Procedure, Symbol, SymbolTable, ToSymbol,
+};
 use crate::sexp::{Cons, HeapSexp, Sexp, SexpIntoIter};
-use crate::token::file_stream::{self, FileStream};
+use crate::token::file_stream::{self, FileStream, FileStreamError};
 
 use DeserializeError::*;
 
@@ -84,48 +87,52 @@ macro_rules! bootstrap_context {
 }
 
 impl EnvManager {
-    pub fn bootstrap<P: AsRef<Path>>(base_path: P) -> Result<Self, DeserializeError> {
+    pub fn bootstrap<P: AsRef<StdPath>>(meta_path: P) -> Result<Self, DeserializeError> {
         // Initially create meta as MemEnvironment.
         let mut meta = Box::new(MemEnvironment::new());
         EnvManager::initialize_env(LocalNode::default(), &mut *meta);
-        let imports_name = meta.insert_structure("imports".to_symbol_or_panic(policy_admin).into());
-        let imports = meta.insert_atom();
-        let import_table_name =
-            meta.insert_structure("__import_table".to_symbol_or_panic(policy_admin).into());
-        let import_table = meta.insert_atom();
 
-        let (lang_env_node, self_node, designation) = EnvManager::create_env_internal(&mut *meta);
         let mut context = Arc::new(AmlangContext::new(
             meta,
-            lang_env_node,
-            imports,
-            import_table,
-            self_node,
-            designation,
+            LocalNode::new(0), // self
+            LocalNode::new(1), // designation
         ));
-        // TODO(flex) Find more flexible approch to bootstrapping required lang nodes.
+
+        // Bootstrap meta env.
+        let meta_state = EnvState::new(LocalNode::default(), context.self_node(), context.clone());
+        let mut manager = Self {
+            env_state: meta_state,
+        };
+        manager.deserialize_curr_env(meta_path)?;
+        bootstrap_context!(manager, context,
+                           imports: "__imports",
+                           import_table: "__import_table",
+                           serialize_path: "__serialize_path",
+        );
+        info!("Meta env bootstrapping complete.");
+
+        // Make context usable for bootstrapping lang.
         {
+            let meta_state =
+                EnvState::new(LocalNode::default(), context.self_node(), context.clone());
+            let l = meta_state.find_env("lang.env").unwrap();
+            std::mem::drop(meta_state);
             let mut c = Arc::get_mut(&mut context).unwrap();
+
+            EnvManager::initialize_env_node(&mut *c.meta(), l);
+            c.lang_env = l;
+
+            // TODO(flex) Find more flexible approch to bootstrapping these nodes.
             c.lambda = LocalNode::new(13);
             c.apply = LocalNode::new(33);
         }
 
-        {
-            let mut meta_state =
-                EnvState::new(LocalNode::default(), context.self_node(), context.clone());
-            meta_state
-                .name_node(imports_name, imports)
-                .map_err(|e| EvalErr(e))?;
-            meta_state
-                .name_node(import_table_name, import_table)
-                .map_err(|e| EvalErr(e))?;
-        }
-
-        // Start in lang env. Ditto for below.
-        let env_state = EnvState::new(context.lang_env(), context.self_node(), context.clone());
-        let mut manager = Self { env_state };
-        manager.deserialize(base_path)?;
-
+        // Bootstrap lang env.
+        let lang_state = EnvState::new(context.lang_env(), context.self_node(), context.clone());
+        let mut manager = Self {
+            env_state: lang_state,
+        };
+        manager.deserialize_curr_env("lang.env")?;
         bootstrap_context!(manager, context,
                            quote: "quote",
                            lambda: "lambda",
@@ -140,18 +147,91 @@ impl EnvManager {
                            exec: "exec",
                            import: "import",
         );
+        info!("Lang env bootstrapping complete.");
 
-        Ok(Self {
-            env_state: EnvState::new(context.lang_env(), context.self_node(), context),
-        })
+        let mut bootstrapped = Self {
+            env_state: EnvState::new(context.lang_env(), context.self_node(), context.clone()),
+        };
+
+        // TODO(func) Allow for delayed loading of environments.
+        let meta = context.meta();
+        let env_triples = meta.match_predicate(context.serialize_path);
+        for triple in env_triples {
+            let subject_node = meta.triple_subject(triple);
+            if subject_node == context.lang_env {
+                continue;
+            }
+            let object_node = meta.triple_object(triple);
+            let object = meta.node_structure(object_node).unwrap();
+            let path = <&Path>::try_from(&*object).unwrap();
+
+            EnvManager::initialize_env_node(&mut *context.meta(), subject_node);
+            bootstrapped
+                .env_state()
+                .jump(Node::new(subject_node, LocalNode::default()));
+            bootstrapped.deserialize_curr_env(path.as_std_path())?;
+        }
+
+        bootstrapped.env_state().jump_env(context.lang_env);
+        Ok(bootstrapped)
     }
 
-    pub fn create_env(&mut self) -> LocalNode {
-        EnvManager::create_env_internal(self.env_state().context().meta()).0
+    pub fn create_env<P: AsRef<StdPath>>(&mut self, path: P) -> LocalNode {
+        let serialize_path = self.env_state().context().serialize_path;
+        let meta = self.env_state().context().meta();
+        // Initially create as MemEnvironment.
+        let env_node = meta.insert_structure(Box::new(MemEnvironment::new()).into());
+
+        let path_node = meta.insert_structure(Path::new(path.as_ref().to_path_buf()).into());
+        meta.insert_triple(env_node, serialize_path, path_node);
+
+        let env = if let Some(Sexp::Primitive(Primitive::Env(env))) = meta.node_structure(env_node)
+        {
+            env
+        } else {
+            panic!()
+        };
+        EnvManager::initialize_env(env_node, &mut **env);
+        env_node
     }
 
-    pub fn serialize<P: AsRef<Path>>(&mut self, out_path: P) -> std::io::Result<()> {
-        let file = File::create(out_path)?;
+    pub fn serialize_full<P: AsRef<StdPath>>(&mut self, out_path: P) -> std::io::Result<()> {
+        let original_pos = self.env_state().pos();
+
+        self.env_state()
+            .jump(Node::new(LocalNode::default(), LocalNode::default()));
+        self.serialize_curr_env(out_path)?;
+
+        // Serialize recursively.
+        let serialize_path = self.env_state().context().serialize_path;
+        let env_triples = self
+            .env_state()
+            .context()
+            .meta()
+            .match_predicate(serialize_path);
+        for triple in env_triples {
+            let subject_node = self.env_state().context().meta().triple_subject(triple);
+            let path = {
+                let object_node = self.env_state().context().meta().triple_object(triple);
+                let object = self
+                    .env_state()
+                    .context()
+                    .meta()
+                    .node_structure(object_node)
+                    .unwrap();
+                <&Path>::try_from(&*object).unwrap().clone()
+            };
+
+            self.env_state().jump_env(subject_node);
+            self.serialize_curr_env(path.as_std_path())?;
+        }
+
+        self.env_state().jump(original_pos);
+        Ok(())
+    }
+
+    pub fn serialize_curr_env<P: AsRef<StdPath>>(&mut self, out_path: P) -> std::io::Result<()> {
+        let file = File::create(out_path.as_ref())?;
         let mut w = BufWriter::new(file);
 
         write!(&mut w, "(nodes")?;
@@ -166,6 +246,9 @@ impl EnvManager {
                     Sexp::Primitive(Primitive::BuiltIn(_)) => (true, false),
                     Sexp::Primitive(Primitive::Procedure(_)) => (true, false),
                     Sexp::Primitive(Primitive::Node(_)) => (true, false),
+                    Sexp::Primitive(Primitive::Env(_)) => (true, false),
+                    Sexp::Primitive(Primitive::Path(_)) => (true, false),
+                    Sexp::Primitive(Primitive::AmString(_)) => (true, false),
                     _ => (true, true),
                 },
                 _ => (false, false),
@@ -193,12 +276,28 @@ impl EnvManager {
             self.serialize_list_internal(&mut w, &s, 1)?;
         }
         writeln!(&mut w, "\n)")?;
+        info!(
+            "Serialized env {} @ \"{}\".",
+            self.env_state().pos().env(),
+            out_path.as_ref().to_string_lossy()
+        );
         Ok(())
     }
 
-    pub fn deserialize<P: AsRef<Path>>(&mut self, in_path: P) -> Result<(), DeserializeError> {
-        let stream = match FileStream::new(in_path, policy_admin) {
+    pub fn deserialize_curr_env<P: AsRef<StdPath>>(
+        &mut self,
+        in_path: P,
+    ) -> Result<(), DeserializeError> {
+        let stream = match FileStream::new(in_path.as_ref(), policy_admin) {
             Ok(stream) => stream,
+            Err(FileStreamError::IoError(ref e)) if e.kind() == std::io::ErrorKind::NotFound => {
+                warn!("Env file not found: {}", in_path.as_ref().to_string_lossy());
+                warn!(
+                    "Leaving env {} unchanged. If this is intended, then all is well.",
+                    self.env_state().pos().env()
+                );
+                return Ok(());
+            }
             Err(err) => return Err(FileStreamError(err)),
         };
         let mut peekable = stream.peekable();
@@ -215,31 +314,22 @@ impl EnvManager {
         };
         match parse_sexp(&mut peekable, 0) {
             Ok(Some(_)) => return Err(ExtraneousSection),
-            Ok(None) => return Ok(()),
+            Ok(None) => {}
             Err(err) => return Err(ParseError(err)),
         };
+
+        info!(
+            "Loaded env {} from \"{}\".",
+            self.env_state().pos().env(),
+            in_path.as_ref().to_string_lossy()
+        );
+        Ok(())
     }
 
 
-    // Returns (Env Meta Node, Self Base Node, Designation Base Node).
-    fn create_env_internal(meta: &mut EnvObject) -> (LocalNode, LocalNode, LocalNode) {
-        // Initially create as MemEnvironment.
-        let env_node = meta.insert_structure(Box::new(MemEnvironment::new()).into());
-        let env = if let Some(Sexp::Primitive(Primitive::Env(env))) = meta.node_structure(env_node)
-        {
-            env
-        } else {
-            panic!()
-        };
-
-        let (self_node, designation) = EnvManager::initialize_env(env_node, &mut **env);
-        (env_node, self_node, designation)
-    }
-
-    // Returns (Env Meta Node, Self Base Node, Designation Base Node).
-    fn initialize_env(env_node: LocalNode, env: &mut EnvObject) -> (LocalNode, LocalNode) {
+    fn initialize_env(env_node: LocalNode, env: &mut EnvObject) {
         // Set up self node.
-        let self_node = env.insert_structure(Node::new(LocalNode::default(), env_node).into());
+        let _self_node = env.insert_structure(Node::new(LocalNode::default(), env_node).into());
 
         // Set up designation node.
         let designation = env.insert_structure(SymbolTable::default().into());
@@ -251,7 +341,22 @@ impl EnvManager {
         } else {
             panic!("Env designation isn't a symbol table");
         }
-        (self_node, designation)
+    }
+
+    fn initialize_env_node(meta: &mut EnvObject, env_node: LocalNode) {
+        if let Some(sexp) = meta.node_structure(env_node) {
+            // Initially create as MemEnvironment.
+            *sexp = Box::new(MemEnvironment::new()).into();
+            let env =
+                if let Some(Sexp::Primitive(Primitive::Env(env))) = meta.node_structure(env_node) {
+                    env
+                } else {
+                    panic!()
+                };
+            EnvManager::initialize_env(env_node, &mut **env);
+        } else {
+            panic!()
+        }
     }
 
     fn serialize_list_internal<W: std::io::Write>(
@@ -272,8 +377,9 @@ impl EnvManager {
         depth: usize,
     ) -> std::io::Result<()> {
         match primitive {
-            Primitive::Symbol(symbol) => {
-                write!(w, "{}", symbol.as_str())
+            Primitive::Symbol(symbol) => write!(w, "{}", symbol.as_str()),
+            Primitive::Path(path) => {
+                write!(w, "(__path \"{}\")", path.as_std_path().to_string_lossy())
             }
             Primitive::BuiltIn(builtin) => write!(w, "(__builtin {})", builtin.name()),
             Primitive::Procedure(proc) => {
@@ -298,6 +404,7 @@ impl EnvManager {
                 }
                 write!(w, "^{}", node.local().id())
             }
+            Primitive::Env(_) => write!(w, "(__env)"),
             _ => write!(w, "{}", primitive),
         }
     }
@@ -363,6 +470,7 @@ impl EnvManager {
 
         if let Ok(node) = self.parse_symbol(&command) {
             let context = self.env_state().context();
+
             // Note(subtle): during the initial deserialization of the lang env,
             // these context nodes are only valid because they're specially set
             // before actual context bootstrapping occurs.
@@ -424,6 +532,13 @@ impl EnvManager {
                     Err(ExpectedSymbol)
                 }
             }
+            // TODO(func) Remove and load as atom once atomic nodes can be
+            // turned into structured nodes.
+            "__env" => Ok(Sexp::default()),
+            "__path" => {
+                let (path,) = break_by_types!(*cdr.unwrap(), AmString).map_err(|e| EvalErr(e))?;
+                Ok(Path::new(path.as_str().into()).into())
+            }
             _ => panic!("{}", command),
         }
     }
@@ -435,7 +550,12 @@ impl EnvManager {
             return Err(UnexpectedCommand(command.into()));
         }
 
-        let iter = SexpIntoIter::try_from(remainder).map_err(|e| EvalErr(e))?;
+        let iter = match SexpIntoIter::try_from(remainder) {
+            Ok(iter) => iter,
+            Err(function::EvalErr::WrongArgumentCount { .. }) => return Ok(()),
+            Err(err) => return Err(DeserializeError::EvalErr(err)),
+        };
+
         for entry in iter {
             let (s, p, o) =
                 break_by_types!(*entry, Symbol, Symbol, Symbol).map_err(|e| EvalErr(e))?;

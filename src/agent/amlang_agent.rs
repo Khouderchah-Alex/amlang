@@ -5,7 +5,6 @@ use std::io::{stdout, BufWriter};
 
 use super::agent::Agent;
 use super::amlang_wrappers::*;
-use super::env_manager::EnvManager;
 use super::env_state::EnvState;
 use crate::environment::LocalNode;
 use crate::function::{
@@ -29,28 +28,16 @@ pub struct AmlangAgent {
 }
 
 impl AmlangAgent {
-    pub fn from_lang(mut agent_state: EnvState, manager: &mut EnvManager) -> Self {
-        let mut history_state = agent_state.clone();
-        let history_env = manager.create_env();
-        history_state.jump_env(history_env);
-
+    pub fn from_state(mut agent_state: EnvState, history_state: EnvState) -> Self {
         // Ensure agent state designates amlang nodes first.
         let lang_env = agent_state.context().lang_env();
         agent_state.designation_chain_mut().push_front(lang_env);
-
-        let working_env = manager.create_env();
-        agent_state.jump_env(working_env);
-        agent_state.designation_chain_mut().push_back(working_env);
 
         Self {
             agent_state,
             history_state,
             eval_symbols: SymbolTable::default(),
         }
-    }
-
-    pub fn history_state(&mut self) -> &EnvState {
-        &self.history_state
     }
 
     fn make_procedure(&mut self, params: Vec<Symbol>, body: Sexp) -> Result<Procedure, EvalErr> {

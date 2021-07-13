@@ -7,14 +7,15 @@ use crate::environment::LocalNode;
 pub struct AmlangContext {
     meta: UnsafeCell<Box<EnvObject>>,
 
-    // Relative to meta env.
-    lang_env: LocalNode,
-    imports: LocalNode,
-    import_table: LocalNode,
-
     // Available in all envs.
     self_node: LocalNode,
     designation: LocalNode,
+
+    // Relative to meta env.
+    pub lang_env: LocalNode,
+    pub imports: LocalNode,
+    pub import_table: LocalNode,
+    pub serialize_path: LocalNode,
 
     // All below are relative to lang_env.
     pub quote: LocalNode,
@@ -33,25 +34,20 @@ pub struct AmlangContext {
 
 
 impl AmlangContext {
-    pub(super) fn new(
-        meta: Box<EnvObject>,
-        lang_env: LocalNode,
-        imports: LocalNode,
-        import_table: LocalNode,
-        self_node: LocalNode,
-        designation: LocalNode,
-    ) -> Self {
+    pub(super) fn new(meta: Box<EnvObject>, self_node: LocalNode, designation: LocalNode) -> Self {
         Self {
             meta: UnsafeCell::new(meta),
-            lang_env,
-            imports,
-            import_table,
 
             self_node,
             designation: designation.clone(),
 
-            // This is delicate; putting placeholders here, but not used until
-            // after EnvManager is bootstrapped.
+            // This is delicate; putting placeholders here, which must be set
+            // properly during bootstrapping.
+            lang_env: designation.clone(),
+            imports: designation.clone(),
+            import_table: designation.clone(),
+            serialize_path: designation.clone(),
+
             quote: designation.clone(),
             lambda: designation.clone(),
             def: designation.clone(),
@@ -74,14 +70,6 @@ impl AmlangContext {
 
     pub fn lang_env(&self) -> LocalNode {
         self.lang_env
-    }
-
-    pub fn imports(&self) -> LocalNode {
-        self.imports
-    }
-
-    pub fn import_table(&self) -> LocalNode {
-        self.import_table
     }
 
     pub fn self_node(&self) -> LocalNode {
