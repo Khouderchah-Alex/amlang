@@ -30,10 +30,10 @@ pub fn policy_admin(s: &str) -> Result<AdminSymbolInfo, SymbolError> {
             .all(|c| c.is_ascii_digit() || c == '^' || c == 't') =>
         {
             lazy_static! {
-                static ref LNODE: Regex = Regex::new(r"\^(\d+)$").unwrap();
-                static ref LTRIPLE: Regex = Regex::new(r"\^t(\d+)$").unwrap();
-                static ref GNODE: Regex = Regex::new(r"\^(\d+)\^(\d+)$").unwrap();
-                static ref GTRIPLE: Regex = Regex::new(r"\^(\d+)\^t(\d+)$").unwrap();
+                static ref LNODE: Regex = Regex::new(r"^\^(\d+)$").unwrap();
+                static ref LTRIPLE: Regex = Regex::new(r"^\^t(\d+)$").unwrap();
+                static ref GNODE: Regex = Regex::new(r"^\^(\d+)\^(\d+)$").unwrap();
+                static ref GTRIPLE: Regex = Regex::new(r"^\^(\d+)\^t(\d+)$").unwrap();
             }
 
             if let Some(cap) = LNODE.captures(s) {
