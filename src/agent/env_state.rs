@@ -147,6 +147,8 @@ impl EnvState {
                     Ok(node.into())
                 }
             }
+            // Procedure -> Structure
+            Primitive::Procedure(proc) => Ok(*proc.generate_structure(self)),
             // Base case for self-designating.
             _ => Ok(designator.clone().into()),
         }
