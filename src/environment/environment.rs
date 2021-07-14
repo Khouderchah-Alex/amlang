@@ -64,7 +64,8 @@ pub trait Environment: EnvClone {
         triples.union(&self.match_object(node)).cloned().collect()
     }
 
-    fn node_structure(&mut self, node: LocalNode) -> Option<&mut Sexp>;
+    fn node_structure(&self, node: LocalNode) -> Option<&Sexp>;
+    fn node_structure_mut(&mut self, node: LocalNode) -> Option<&mut Sexp>;
     fn node_as_triple(&self, node: LocalNode) -> Option<LocalTriple>;
 
     fn triple_subject(&self, triple: LocalTriple) -> LocalNode;

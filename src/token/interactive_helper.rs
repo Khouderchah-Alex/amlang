@@ -33,7 +33,7 @@ impl InteractiveHelper {
 
         let mut res = Vec::<Symbol>::new();
         for env in state.designation_chain().clone() {
-            let table = <&mut SymbolTable>::try_from(
+            let table = <&SymbolTable>::try_from(
                 state.access_env(env).unwrap().node_structure(designation),
             )
             .unwrap();

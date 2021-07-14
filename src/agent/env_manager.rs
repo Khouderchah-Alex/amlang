@@ -55,7 +55,7 @@ macro_rules! bootstrap_context {
     ) => {
         let ($($node,)+) = {
             let table = if let Ok(table) =
-                <&mut SymbolTable>::try_from(
+                <&SymbolTable>::try_from(
                     $manager.env_state().env().node_structure($context.designation())
                 ) {
                 table
@@ -140,7 +140,7 @@ impl EnvManager {
             .unwrap()
             .clone();
         let lang_path_node = meta.triple_object(lang_path_triple);
-        let lang_path = <&mut Path>::try_from(meta.node_structure(lang_path_node))
+        let lang_path = <&Path>::try_from(meta.node_structure(lang_path_node))
             .unwrap()
             .clone();
         std::mem::drop(meta);
@@ -197,12 +197,12 @@ impl EnvManager {
         let path_node = meta.insert_structure(Path::new(path.as_ref().to_path_buf()).into());
         meta.insert_triple(env_node, serialize_path, path_node);
 
-        let env = if let Some(Sexp::Primitive(Primitive::Env(env))) = meta.node_structure(env_node)
-        {
-            env
-        } else {
-            panic!()
-        };
+        let env =
+            if let Some(Sexp::Primitive(Primitive::Env(env))) = meta.node_structure_mut(env_node) {
+                env
+            } else {
+                panic!()
+            };
         EnvManager::initialize_env(env_node, &mut **env);
         env_node
     }
@@ -231,7 +231,7 @@ impl EnvManager {
                     .meta()
                     .node_structure(object_node)
                     .unwrap();
-                <&Path>::try_from(&*object).unwrap().clone()
+                <&Path>::try_from(object).unwrap().clone()
             };
 
             self.env_state().jump_env(subject_node);
@@ -345,7 +345,7 @@ impl EnvManager {
 
         // Set up designation node.
         let designation = env.insert_structure(SymbolTable::default().into());
-        if let Ok(table) = <&mut SymbolTable>::try_from(env.node_structure(designation)) {
+        if let Ok(table) = <&mut SymbolTable>::try_from(env.node_structure_mut(designation)) {
             table.insert(
                 AMLANG_DESIGNATION.to_symbol_or_panic(policy_admin),
                 Node::new(env_node, designation),
@@ -356,15 +356,16 @@ impl EnvManager {
     }
 
     fn initialize_env_node(meta: &mut EnvObject, env_node: LocalNode) {
-        if let Some(sexp) = meta.node_structure(env_node) {
+        if let Some(sexp) = meta.node_structure_mut(env_node) {
             // Initially create as MemEnvironment.
             *sexp = Box::new(MemEnvironment::new()).into();
-            let env =
-                if let Some(Sexp::Primitive(Primitive::Env(env))) = meta.node_structure(env_node) {
-                    env
-                } else {
-                    panic!()
-                };
+            let env = if let Some(Sexp::Primitive(Primitive::Env(env))) =
+                meta.node_structure_mut(env_node)
+            {
+                env
+            } else {
+                panic!()
+            };
             EnvManager::initialize_env(env_node, &mut **env);
         } else {
             panic!()
@@ -598,9 +599,9 @@ impl EnvManager {
                     return Err(ExpectedSymbol);
                 };
 
-                if let Ok(table) =
-                    <&mut SymbolTable>::try_from(self.env_state().env().node_structure(designation))
-                {
+                if let Ok(table) = <&mut SymbolTable>::try_from(
+                    self.env_state().env().node_structure_mut(designation),
+                ) {
                     table.insert(name, subject);
                 } else {
                     panic!("Env designation isn't a symbol table");

@@ -82,7 +82,7 @@ impl EnvState {
             return Some(meta);
         }
 
-        if let Some(Sexp::Primitive(Primitive::Env(env))) = meta.node_structure(meta_node) {
+        if let Some(Sexp::Primitive(Primitive::Env(env))) = meta.node_structure_mut(meta_node) {
             Some(env.as_mut())
         } else {
             None
@@ -116,7 +116,7 @@ impl EnvState {
 
         for i in 0..self.designation_chain.len() {
             let env = self.access_env(self.designation_chain[i]).unwrap();
-            let table = <&mut SymbolTable>::try_from(env.node_structure(designation)).unwrap();
+            let table = <&SymbolTable>::try_from(env.node_structure(designation)).unwrap();
             if let Some(node) = table.lookup(name) {
                 return Ok(node);
             }
@@ -181,7 +181,8 @@ impl EnvState {
 
         let designation = self.designation();
         // Use designation of current environment.
-        if let Ok(table) = <&mut SymbolTable>::try_from(self.env().node_structure(designation)) {
+        if let Ok(table) = <&mut SymbolTable>::try_from(self.env().node_structure_mut(designation))
+        {
             table.insert(symbol, global_node);
         } else {
             panic!("Env designation isn't a symbol table");
@@ -281,7 +282,7 @@ impl EnvState {
         };
 
         if let Ok(table) =
-            <&mut LocalNodeTable>::try_from(self.context.meta().node_structure(table_node))
+            <&LocalNodeTable>::try_from(self.context.meta().node_structure(table_node))
         {
             if let Some(imported) = table.lookup(&original.local()) {
                 return Ok(imported.globalize(&self));
@@ -295,7 +296,7 @@ impl EnvState {
 
         let imported = self.env().insert_structure(original.into());
         if let Ok(table) =
-            <&mut LocalNodeTable>::try_from(self.context.meta().node_structure(table_node))
+            <&mut LocalNodeTable>::try_from(self.context.meta().node_structure_mut(table_node))
         {
             table.insert(original.local(), imported);
         } else {
@@ -313,7 +314,7 @@ impl EnvState {
         for triple in triples {
             let object_node = meta.triple_object(triple);
             let object = meta.node_structure(object_node).unwrap();
-            if let Ok(path) = <&Path>::try_from(&*object) {
+            if let Ok(path) = <&Path>::try_from(object) {
                 if path.as_std_path().ends_with(s.as_ref()) {
                     return Some(meta.triple_subject(triple));
                 }

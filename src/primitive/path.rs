@@ -65,18 +65,6 @@ impl<'a> TryFrom<Option<&'a Sexp>> for &'a Path {
     }
 }
 
-impl<'a> TryFrom<Option<&'a mut Sexp>> for &'a mut Path {
-    type Error = ();
-
-    fn try_from(value: Option<&'a mut Sexp>) -> Result<Self, Self::Error> {
-        if let Some(Sexp::Primitive(Primitive::Path(symbol))) = value {
-            Ok(symbol)
-        } else {
-            Err(())
-        }
-    }
-}
-
 impl TryFrom<Option<Sexp>> for Path {
     type Error = ();
 

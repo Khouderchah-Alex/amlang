@@ -208,8 +208,17 @@ impl Environment for MemEnvironment {
             .collect()
     }
 
+    fn node_structure(&self, node: LocalNode) -> Option<&Sexp> {
+        if is_triple_id(node.id()) {
+            return None;
+        }
 
-    fn node_structure(&mut self, node: LocalNode) -> Option<&mut Sexp> {
+        match &self.node_unchecked(node).kind {
+            NodeKind::Atomic => None,
+            NodeKind::Structured(structure) => Some(structure),
+        }
+    }
+    fn node_structure_mut(&mut self, node: LocalNode) -> Option<&mut Sexp> {
         if is_triple_id(node.id()) {
             return None;
         }
