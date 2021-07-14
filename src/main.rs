@@ -44,7 +44,8 @@ fn main() -> Result<(), String> {
 }
 
 fn interactive_agent() -> Result<(), String> {
-    let mut manager = match agent::env_manager::EnvManager::bootstrap("meta.env") {
+    const META_ENV_PATH: &str = "envs/meta.env";
+    let mut manager = match agent::env_manager::EnvManager::bootstrap(META_ENV_PATH) {
         Ok(val) => val,
         Err(err) => return Err(format!("{:?}", err)),
     };
@@ -61,7 +62,7 @@ fn interactive_agent() -> Result<(), String> {
     let mut user_agent = agent::amlang_agent::AmlangAgent::from_state(agent_state, history_state);
     user_agent.run()?;
 
-    if let Err(err) = manager.serialize_full("meta.env") {
+    if let Err(err) = manager.serialize_full(META_ENV_PATH) {
         return Err(err.to_string());
     }
 

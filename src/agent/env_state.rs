@@ -312,7 +312,7 @@ impl EnvState {
             let object_node = meta.triple_object(triple);
             let object = meta.node_structure(object_node).unwrap();
             if let Ok(path) = <&Path>::try_from(&*object) {
-                if path.as_std_path().to_str() == Some(s.as_ref()) {
+                if path.as_std_path().ends_with(s.as_ref()) {
                     return Some(meta.triple_subject(triple));
                 }
             }

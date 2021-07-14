@@ -132,7 +132,19 @@ impl EnvManager {
         let mut manager = Self {
             env_state: lang_state,
         };
-        manager.deserialize_curr_env("lang.env")?;
+        let meta = manager.env_state().context().meta();
+        let lang_path_triple = meta
+            .match_but_object(context.lang_env(), context.serialize_path)
+            .iter()
+            .next()
+            .unwrap()
+            .clone();
+        let lang_path_node = meta.triple_object(lang_path_triple);
+        let lang_path = <&mut Path>::try_from(meta.node_structure(lang_path_node))
+            .unwrap()
+            .clone();
+        std::mem::drop(meta);
+        manager.deserialize_curr_env(lang_path.as_std_path())?;
         bootstrap_context!(manager, context,
                            quote: "quote",
                            lambda: "lambda",
