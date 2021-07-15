@@ -59,149 +59,19 @@ impl<K: Ord, V> Default for Table<K, V> {
     }
 }
 
-// SymbolTable TryFrom impls.
-impl TryFrom<Sexp> for SymbolTable {
-    type Error = ();
 
-    fn try_from(value: Sexp) -> Result<Self, Self::Error> {
-        if let Sexp::Primitive(Primitive::SymbolTable(table)) = value {
-            Ok(table)
-        } else {
-            Err(())
-        }
-    }
-}
+impl_try_from!(Sexp, SymbolTable, SymbolTable;
+               ref Sexp, ref SymbolTable, SymbolTable;
+               Option<Sexp>, SymbolTable, SymbolTable;
+               Option<ref Sexp>, ref SymbolTable, SymbolTable;
+               Option<ref mut Sexp>, ref mut SymbolTable, SymbolTable;
+               Result<Sexp>, SymbolTable, SymbolTable;
+               Result<ref Sexp>, ref SymbolTable, SymbolTable;);
 
-impl<'a> TryFrom<&'a Sexp> for &'a SymbolTable {
-    type Error = ();
-
-    fn try_from(value: &'a Sexp) -> Result<Self, Self::Error> {
-        if let Sexp::Primitive(Primitive::SymbolTable(table)) = value {
-            Ok(table)
-        } else {
-            Err(())
-        }
-    }
-}
-
-impl<'a> TryFrom<Option<&'a Sexp>> for &'a SymbolTable {
-    type Error = ();
-
-    fn try_from(value: Option<&'a Sexp>) -> Result<Self, Self::Error> {
-        if let Some(Sexp::Primitive(Primitive::SymbolTable(table))) = value {
-            Ok(table)
-        } else {
-            Err(())
-        }
-    }
-}
-
-impl<'a> TryFrom<Option<&'a mut Sexp>> for &'a mut SymbolTable {
-    type Error = ();
-
-    fn try_from(value: Option<&'a mut Sexp>) -> Result<Self, Self::Error> {
-        if let Some(Sexp::Primitive(Primitive::SymbolTable(table))) = value {
-            Ok(table)
-        } else {
-            Err(())
-        }
-    }
-}
-
-impl<E> TryFrom<Result<Sexp, E>> for SymbolTable {
-    type Error = ();
-
-    fn try_from(value: Result<Sexp, E>) -> Result<Self, Self::Error> {
-        if let Ok(Sexp::Primitive(Primitive::SymbolTable(table))) = value {
-            Ok(table)
-        } else {
-            Err(())
-        }
-    }
-}
-
-impl<'a, E> TryFrom<&'a Result<Sexp, E>> for &'a SymbolTable {
-    type Error = ();
-
-    fn try_from(value: &'a Result<Sexp, E>) -> Result<Self, Self::Error> {
-        if let Ok(Sexp::Primitive(Primitive::SymbolTable(table))) = value {
-            Ok(table)
-        } else {
-            Err(())
-        }
-    }
-}
-
-
-// LocalNodeTable TryFrom impls.
-impl TryFrom<Sexp> for LocalNodeTable {
-    type Error = ();
-
-    fn try_from(value: Sexp) -> Result<Self, Self::Error> {
-        if let Sexp::Primitive(Primitive::LocalNodeTable(table)) = value {
-            Ok(table)
-        } else {
-            Err(())
-        }
-    }
-}
-
-impl<'a> TryFrom<&'a Sexp> for &'a LocalNodeTable {
-    type Error = ();
-
-    fn try_from(value: &'a Sexp) -> Result<Self, Self::Error> {
-        if let Sexp::Primitive(Primitive::LocalNodeTable(table)) = value {
-            Ok(table)
-        } else {
-            Err(())
-        }
-    }
-}
-
-impl<'a> TryFrom<Option<&'a Sexp>> for &'a LocalNodeTable {
-    type Error = ();
-
-    fn try_from(value: Option<&'a Sexp>) -> Result<Self, Self::Error> {
-        if let Some(Sexp::Primitive(Primitive::LocalNodeTable(table))) = value {
-            Ok(table)
-        } else {
-            Err(())
-        }
-    }
-}
-
-impl<'a> TryFrom<Option<&'a mut Sexp>> for &'a mut LocalNodeTable {
-    type Error = ();
-
-    fn try_from(value: Option<&'a mut Sexp>) -> Result<Self, Self::Error> {
-        if let Some(Sexp::Primitive(Primitive::LocalNodeTable(table))) = value {
-            Ok(table)
-        } else {
-            Err(())
-        }
-    }
-}
-
-impl<E> TryFrom<Result<Sexp, E>> for LocalNodeTable {
-    type Error = ();
-
-    fn try_from(value: Result<Sexp, E>) -> Result<Self, Self::Error> {
-        if let Ok(Sexp::Primitive(Primitive::LocalNodeTable(table))) = value {
-            Ok(table)
-        } else {
-            Err(())
-        }
-    }
-}
-
-impl<'a, E> TryFrom<&'a Result<Sexp, E>> for &'a LocalNodeTable {
-    type Error = ();
-
-    fn try_from(value: &'a Result<Sexp, E>) -> Result<Self, Self::Error> {
-        if let Ok(Sexp::Primitive(Primitive::LocalNodeTable(table))) = value {
-            Ok(table)
-        } else {
-            Err(())
-        }
-    }
-}
+impl_try_from!(Sexp, LocalNodeTable, LocalNodeTable;
+               ref Sexp, ref LocalNodeTable, LocalNodeTable;
+               Option<Sexp>, LocalNodeTable, LocalNodeTable;
+               Option<ref Sexp>, ref LocalNodeTable, LocalNodeTable;
+               Option<ref mut Sexp>, ref mut LocalNodeTable, LocalNodeTable;
+               Result<Sexp>, LocalNodeTable, LocalNodeTable;
+               Result<ref Sexp>, ref LocalNodeTable, LocalNodeTable;);

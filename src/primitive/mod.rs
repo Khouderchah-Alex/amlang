@@ -3,6 +3,9 @@
 use std::fmt;
 use std::mem;
 
+#[macro_use]
+mod try_from_helper;
+
 pub mod builtin;
 pub mod node;
 pub mod number;

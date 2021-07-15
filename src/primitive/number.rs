@@ -136,62 +136,9 @@ impl ops::DivAssign for Number {
     }
 }
 
-impl TryFrom<Sexp> for Number {
-    type Error = ();
-
-    fn try_from(value: Sexp) -> Result<Self, Self::Error> {
-        if let Sexp::Primitive(Primitive::Number(number)) = value {
-            Ok(number)
-        } else {
-            Err(())
-        }
-    }
-}
-
-impl<'a> TryFrom<&'a Sexp> for &'a Number {
-    type Error = ();
-
-    fn try_from(value: &'a Sexp) -> Result<Self, Self::Error> {
-        if let Sexp::Primitive(Primitive::Number(number)) = value {
-            Ok(number)
-        } else {
-            Err(())
-        }
-    }
-}
-
-impl<'a> TryFrom<Option<&'a Sexp>> for &'a Number {
-    type Error = ();
-
-    fn try_from(value: Option<&'a Sexp>) -> Result<Self, Self::Error> {
-        if let Some(Sexp::Primitive(Primitive::Number(number))) = value {
-            Ok(number)
-        } else {
-            Err(())
-        }
-    }
-}
-
-impl<E> TryFrom<Result<Sexp, E>> for Number {
-    type Error = ();
-
-    fn try_from(value: Result<Sexp, E>) -> Result<Self, Self::Error> {
-        if let Ok(Sexp::Primitive(Primitive::Number(number))) = value {
-            Ok(number)
-        } else {
-            Err(())
-        }
-    }
-}
-
-impl<'a, E> TryFrom<&'a Result<Sexp, E>> for &'a Number {
-    type Error = ();
-
-    fn try_from(value: &'a Result<Sexp, E>) -> Result<Self, Self::Error> {
-        if let Ok(Sexp::Primitive(Primitive::Number(number))) = value {
-            Ok(number)
-        } else {
-            Err(())
-        }
-    }
-}
+impl_try_from!(Sexp, Number, Number;
+               ref Sexp, ref Number, Number;
+               Option<Sexp>, Number, Number;
+               Option<ref Sexp>, ref Number, Number;
+               Result<Sexp>, Number, Number;
+               Result<ref Sexp>, ref Number, Number;);

@@ -3,7 +3,7 @@ use std::convert::TryFrom;
 use std::fmt;
 
 use super::Primitive;
-use crate::sexp::{HeapSexp, Sexp};
+use crate::sexp::Sexp;
 
 
 /// String which can be used as an identifier (amlang designator).
@@ -92,87 +92,9 @@ impl Borrow<str> for Symbol {
     }
 }
 
-impl TryFrom<Sexp> for Symbol {
-    type Error = ();
-
-    fn try_from(value: Sexp) -> Result<Self, Self::Error> {
-        if let Sexp::Primitive(Primitive::Symbol(symbol)) = value {
-            Ok(symbol)
-        } else {
-            Err(())
-        }
-    }
-}
-
-impl<'a> TryFrom<&'a Sexp> for &'a Symbol {
-    type Error = ();
-
-    fn try_from(value: &'a Sexp) -> Result<Self, Self::Error> {
-        if let Sexp::Primitive(Primitive::Symbol(symbol)) = value {
-            Ok(symbol)
-        } else {
-            Err(())
-        }
-    }
-}
-
-impl<'a> TryFrom<Option<&'a Sexp>> for &'a Symbol {
-    type Error = ();
-
-    fn try_from(value: Option<&'a Sexp>) -> Result<Self, Self::Error> {
-        if let Some(Sexp::Primitive(Primitive::Symbol(symbol))) = value {
-            Ok(symbol)
-        } else {
-            Err(())
-        }
-    }
-}
-
-impl TryFrom<Option<Sexp>> for Symbol {
-    type Error = ();
-
-    fn try_from(value: Option<Sexp>) -> Result<Self, Self::Error> {
-        if let Some(Sexp::Primitive(Primitive::Symbol(symbol))) = value {
-            Ok(symbol)
-        } else {
-            Err(())
-        }
-    }
-}
-
-impl TryFrom<Option<HeapSexp>> for Symbol {
-    type Error = ();
-
-    fn try_from(value: Option<HeapSexp>) -> Result<Self, Self::Error> {
-        if let Some(heap) = value {
-            if let Sexp::Primitive(Primitive::Symbol(symbol)) = *heap {
-                return Ok(symbol);
-            }
-        }
-        Err(())
-    }
-}
-
-impl<E> TryFrom<Result<Sexp, E>> for Symbol {
-    type Error = ();
-
-    fn try_from(value: Result<Sexp, E>) -> Result<Self, Self::Error> {
-        if let Ok(Sexp::Primitive(Primitive::Symbol(symbol))) = value {
-            Ok(symbol)
-        } else {
-            Err(())
-        }
-    }
-}
-
-impl<'a, E> TryFrom<&'a Result<Sexp, E>> for &'a Symbol {
-    type Error = ();
-
-    fn try_from(value: &'a Result<Sexp, E>) -> Result<Self, Self::Error> {
-        if let Ok(Sexp::Primitive(Primitive::Symbol(symbol))) = value {
-            Ok(symbol)
-        } else {
-            Err(())
-        }
-    }
-}
+impl_try_from!(Sexp, Symbol, Symbol;
+               ref Sexp, ref Symbol, Symbol;
+               Option<Sexp>, Symbol, Symbol;
+               Option<ref Sexp>, ref Symbol, Symbol;
+               Result<Sexp>, Symbol, Symbol;
+               Result<ref Sexp>, ref Symbol, Symbol;);

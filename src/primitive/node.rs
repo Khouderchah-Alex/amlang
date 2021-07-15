@@ -36,17 +36,12 @@ impl fmt::Display for Node {
     }
 }
 
-impl TryFrom<Sexp> for Node {
-    type Error = ();
 
-    fn try_from(value: Sexp) -> Result<Self, Self::Error> {
-        if let Sexp::Primitive(Primitive::Node(node)) = value {
-            Ok(node)
-        } else {
-            Err(())
-        }
-    }
-}
+impl_try_from!(Sexp, Node, Node;
+               // Prefer not to use this but need consistency for sexp_conversion.
+               ref Sexp, ref Node, Node;
+               Option<Sexp>, Node, Node;
+               Result<Sexp>, Node, Node;);
 
 impl<'a> TryFrom<&'a Sexp> for Node {
     type Error = ();
@@ -60,37 +55,12 @@ impl<'a> TryFrom<&'a Sexp> for Node {
     }
 }
 
-// Prefer not to use this but need consistency for sexp_conversion.
-impl<'a> TryFrom<&'a Sexp> for &'a Node {
-    type Error = ();
-
-    fn try_from(value: &'a Sexp) -> Result<Self, Self::Error> {
-        if let Sexp::Primitive(Primitive::Node(node)) = value {
-            Ok(node)
-        } else {
-            Err(())
-        }
-    }
-}
-
 impl<'a> TryFrom<Option<&'a Sexp>> for Node {
     type Error = ();
 
     fn try_from(value: Option<&'a Sexp>) -> Result<Self, Self::Error> {
         if let Some(Sexp::Primitive(Primitive::Node(node))) = value {
             Ok(*node)
-        } else {
-            Err(())
-        }
-    }
-}
-
-impl<E> TryFrom<Result<Sexp, E>> for Node {
-    type Error = ();
-
-    fn try_from(value: Result<Sexp, E>) -> Result<Self, Self::Error> {
-        if let Ok(Sexp::Primitive(Primitive::Node(node))) = value {
-            Ok(node)
         } else {
             Err(())
         }
