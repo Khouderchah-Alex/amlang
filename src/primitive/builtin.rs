@@ -50,9 +50,10 @@ impl fmt::Display for BuiltIn {
 }
 
 
-impl_try_from!(Sexp, BuiltIn, BuiltIn;
-               ref Sexp, ref BuiltIn, BuiltIn;
-               Option<Sexp>, BuiltIn, BuiltIn;
-               Option<ref Sexp>, ref BuiltIn, BuiltIn;
-               Result<Sexp>, BuiltIn, BuiltIn;
-               Result<ref Sexp>, ref BuiltIn, BuiltIn;);
+impl_try_from!(Sexp              ->  BuiltIn,      BuiltIn;
+               ref Sexp          ->  ref BuiltIn,  BuiltIn;
+               Option<Sexp>      ->  BuiltIn,      BuiltIn;
+               Option<ref Sexp>  ->  ref BuiltIn,  BuiltIn;
+               Result<Sexp>      ->  BuiltIn,      BuiltIn;
+               Result<ref Sexp>  ->  ref BuiltIn,  BuiltIn;
+);

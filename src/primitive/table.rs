@@ -60,18 +60,20 @@ impl<K: Ord, V> Default for Table<K, V> {
 }
 
 
-impl_try_from!(Sexp, SymbolTable, SymbolTable;
-               ref Sexp, ref SymbolTable, SymbolTable;
-               Option<Sexp>, SymbolTable, SymbolTable;
-               Option<ref Sexp>, ref SymbolTable, SymbolTable;
-               Option<ref mut Sexp>, ref mut SymbolTable, SymbolTable;
-               Result<Sexp>, SymbolTable, SymbolTable;
-               Result<ref Sexp>, ref SymbolTable, SymbolTable;);
+impl_try_from!(Sexp                 ->  SymbolTable,          SymbolTable;
+               ref Sexp             ->  ref SymbolTable,      SymbolTable;
+               Option<Sexp>         ->  SymbolTable,          SymbolTable;
+               Option<ref Sexp>     ->  ref SymbolTable,      SymbolTable;
+               Option<ref mut Sexp> ->  ref mut SymbolTable,  SymbolTable;
+               Result<Sexp>         ->  SymbolTable,          SymbolTable;
+               Result<ref Sexp>     ->  ref SymbolTable,      SymbolTable;
+);
 
-impl_try_from!(Sexp, LocalNodeTable, LocalNodeTable;
-               ref Sexp, ref LocalNodeTable, LocalNodeTable;
-               Option<Sexp>, LocalNodeTable, LocalNodeTable;
-               Option<ref Sexp>, ref LocalNodeTable, LocalNodeTable;
-               Option<ref mut Sexp>, ref mut LocalNodeTable, LocalNodeTable;
-               Result<Sexp>, LocalNodeTable, LocalNodeTable;
-               Result<ref Sexp>, ref LocalNodeTable, LocalNodeTable;);
+impl_try_from!(Sexp                 ->  LocalNodeTable,          LocalNodeTable;
+               ref Sexp             ->  ref LocalNodeTable,      LocalNodeTable;
+               Option<Sexp>         ->  LocalNodeTable,          LocalNodeTable;
+               Option<ref Sexp>     ->  ref LocalNodeTable,      LocalNodeTable;
+               Option<ref mut Sexp> ->  ref mut LocalNodeTable,  LocalNodeTable;
+               Result<Sexp>         ->  LocalNodeTable,          LocalNodeTable;
+               Result<ref Sexp>     ->  ref LocalNodeTable,      LocalNodeTable;
+);

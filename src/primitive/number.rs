@@ -136,9 +136,11 @@ impl ops::DivAssign for Number {
     }
 }
 
-impl_try_from!(Sexp, Number, Number;
-               ref Sexp, ref Number, Number;
-               Option<Sexp>, Number, Number;
-               Option<ref Sexp>, ref Number, Number;
-               Result<Sexp>, Number, Number;
-               Result<ref Sexp>, ref Number, Number;);
+
+impl_try_from!(Sexp              ->  Number,      Number;
+               ref Sexp          ->  ref Number,  Number;
+               Option<Sexp>      ->  Number,      Number;
+               Option<ref Sexp>  ->  ref Number,  Number;
+               Result<Sexp>      ->  Number,      Number;
+               Result<ref Sexp>  ->  ref Number,  Number;
+);

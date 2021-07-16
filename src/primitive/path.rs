@@ -30,9 +30,10 @@ impl fmt::Display for Path {
 }
 
 
-impl_try_from!(Sexp, Path, Path;
-               ref Sexp, ref Path, Path;
-               Option<Sexp>, Path, Path;
-               Option<ref Sexp>, ref Path, Path;
-               Result<Sexp>, Path, Path;
-               Result<ref Sexp>, ref Path, Path;);
+impl_try_from!(Sexp              ->  Path,      Path;
+               ref Sexp          ->  ref Path,  Path;
+               Option<Sexp>      ->  Path,      Path;
+               Option<ref Sexp>  ->  ref Path,  Path;
+               Result<Sexp>      ->  Path,      Path;
+               Result<ref Sexp>  ->  ref Path,  Path;
+);

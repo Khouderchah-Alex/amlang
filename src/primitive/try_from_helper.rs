@@ -1,5 +1,5 @@
 macro_rules! impl_try_from {
-    ($from:ident, $to:ident, $name:ident; $($tail:tt)*) => {
+    ($from:ident -> $to:ident, $name:ident; $($tail:tt)*) => {
         impl TryFrom<$from> for $to {
             type Error = ();
 
@@ -9,7 +9,7 @@ macro_rules! impl_try_from {
         }
         impl_try_from!($($tail)*);
     };
-    (ref $from:ident, ref $to:ident, $name:ident; $($tail:tt)*) => {
+    (ref $from:ident -> ref $to:ident, $name:ident; $($tail:tt)*) => {
         impl<'a> TryFrom<&'a $from> for &'a $to {
             type Error = ();
 
@@ -19,7 +19,7 @@ macro_rules! impl_try_from {
         }
         impl_try_from!($($tail)*);
     };
-    (Option<$from:ident>, $to:ident, $name:ident; $($tail:tt)*) => {
+    (Option<$from:ident> -> $to:ident, $name:ident; $($tail:tt)*) => {
         impl TryFrom<Option<$from>> for $to {
             type Error = ();
 
@@ -33,7 +33,7 @@ macro_rules! impl_try_from {
         }
         impl_try_from!($($tail)*);
     };
-    (Option<ref $from:ident>, ref $to:ident, $name:ident; $($tail:tt)*) => {
+    (Option<ref $from:ident> -> ref $to:ident, $name:ident; $($tail:tt)*) => {
         impl<'a> TryFrom<Option<&'a $from>> for &'a $to {
             type Error = ();
 
@@ -47,7 +47,7 @@ macro_rules! impl_try_from {
         }
         impl_try_from!($($tail)*);
     };
-    (Option<ref mut $from:ident>, ref mut $to:ident, $name:ident; $($tail:tt)*) => {
+    (Option<ref mut $from:ident> -> ref mut $to:ident, $name:ident; $($tail:tt)*) => {
         impl<'a> TryFrom<Option<&'a mut $from>> for &'a mut $to {
             type Error = ();
 
@@ -61,7 +61,7 @@ macro_rules! impl_try_from {
         }
         impl_try_from!($($tail)*);
     };
-    (Result<$from:ident>, $to:ident, $name:ident; $($tail:tt)*) => {
+    (Result<$from:ident> -> $to:ident, $name:ident; $($tail:tt)*) => {
         impl<E> TryFrom<Result<$from, E>> for $to {
             type Error = ();
 
@@ -75,7 +75,7 @@ macro_rules! impl_try_from {
         }
         impl_try_from!($($tail)*);
     };
-    (Result<ref $from:ident>, ref $to:ident, $name:ident; $($tail:tt)*) => {
+    (Result<ref $from:ident> -> ref $to:ident, $name:ident; $($tail:tt)*) => {
         impl<'a, E> TryFrom<Result<&'a $from, E>> for &'a $to {
             type Error = ();
 
