@@ -125,6 +125,7 @@ impl EnvManager {
             // TODO(flex) Find more flexible approch to bootstrapping these nodes.
             c.lambda = LocalNode::new(13);
             c.apply = LocalNode::new(33);
+            c.branch = LocalNode::new(41);
         }
 
         // Bootstrap lang env.
@@ -158,6 +159,7 @@ impl EnvManager {
                            eval: "eval",
                            exec: "exec",
                            import: "import",
+                           branch: "if",
         );
         info!("Lang env bootstrapping complete.");
 
@@ -528,6 +530,22 @@ impl EnvManager {
                     }
                     let body_node = self.parse_symbol(&body)?;
                     return Ok(Procedure::Abstraction(param_nodes, body_node).into());
+                } else if node.local() == context.branch {
+                    if cdr.is_none() {
+                        return Err(EvalErr(function::EvalErr::WrongArgumentCount {
+                            given: 0,
+                            expected: function::ExpectedCount::Exactly(3),
+                        }));
+                    }
+
+                    let (pred, a, b) = break_by_types!(*cdr.unwrap(), Symbol, Symbol, Symbol)
+                        .map_err(|e| EvalErr(e))?;
+                    return Ok(Procedure::Branch(
+                        self.parse_symbol(&pred)?,
+                        self.parse_symbol(&a)?,
+                        self.parse_symbol(&b)?,
+                    )
+                    .into());
                 }
             }
         }

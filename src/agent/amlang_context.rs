@@ -30,6 +30,7 @@ pub struct AmlangContext {
     pub eval: LocalNode,
     pub exec: LocalNode,
     pub import: LocalNode,
+    pub branch: LocalNode,
 }
 
 
@@ -60,6 +61,7 @@ impl AmlangContext {
             eval: designation.clone(),
             exec: designation.clone(),
             import: designation.clone(),
+            branch: designation.clone(),
         }
     }
 

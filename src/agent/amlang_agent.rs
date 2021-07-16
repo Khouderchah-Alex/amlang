@@ -14,7 +14,7 @@ use crate::function::{
 use crate::model::{Eval, Model};
 use crate::parser::parse_sexp;
 use crate::primitive::procedure::Procedure;
-use crate::primitive::{Node, Primitive, Symbol, SymbolTable};
+use crate::primitive::{Node, Number, Primitive, Symbol, SymbolTable};
 use crate::sexp::{Cons, HeapSexp, Sexp, SexpIntoIter};
 use crate::token::interactive_stream::InteractiveStream;
 
@@ -85,6 +85,20 @@ impl AmlangAgent {
                     let concretized_nodes =
                         arg_nodes.into_iter().map(concretize).collect::<Vec<_>>();
                     self.apply(concretize(proc_node), concretized_nodes, cont)
+                }
+                Procedure::Branch(pred, a, b) => {
+                    let p_des = self
+                        .agent_state
+                        .designate(Primitive::Node(concretize(pred)))?;
+                    let a_des = self.agent_state.designate(Primitive::Node(concretize(a)))?;
+                    let b_des = self.agent_state.designate(Primitive::Node(concretize(b)))?;
+
+                    let cond = self.exec(p_des, cont)?;
+                    // TODO(func) Integrate actual boolean type.
+                    if cond != Number::Integer(1).into() {
+                        return Ok(self.exec(b_des, cont)?);
+                    }
+                    Ok(self.exec(a_des, cont)?)
                 }
                 lambda @ Procedure::Abstraction(..) => Ok(lambda.into()),
                 _ => panic!("Unsupported procedure type: {:?}", proc),
@@ -457,6 +471,18 @@ impl Eval for AmlangAgent {
                                 .insert_structure(proc.into())
                                 .globalize(&self.agent_state)
                                 .into());
+                        }
+                        _ if Node::new(context.lang_env(), context.branch) == node => {
+                            let args = self.evlis(cdr)?;
+                            if args.len() != 3 {
+                                return Err(WrongArgumentCount {
+                                    given: args.len(),
+                                    expected: ExpectedCount::Exactly(3),
+                                });
+                            }
+
+                            let proc = Procedure::Branch(args[0], args[1], args[2]);
+                            return Ok(proc.into());
                         }
                         _ => {
                             let args = self.evlis(cdr)?;

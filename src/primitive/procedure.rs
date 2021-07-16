@@ -11,14 +11,7 @@ pub enum Procedure {
     Application(Node, Vec<Node>),
     Abstraction(Vec<Node>, Node),
     Sequence(Vec<Node>),
-    Branch(Box<Branch>),
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct Branch {
-    cond: Node,
-    a: Node,
-    b: Node,
+    Branch(Node, Node, Node), // Pred, A, B.
 }
 
 
@@ -33,6 +26,10 @@ impl Model for Procedure {
             Procedure::Abstraction(params, body) => {
                 let lambda_node = Node::new(context.lang_env(), context.lambda);
                 list!(lambda_node, params, *body,)
+            }
+            Procedure::Branch(pred, a, b) => {
+                let branch_node = Node::new(context.lang_env(), context.branch);
+                list!(branch_node, *pred, *a, *b,)
             }
             _ => panic!(),
         }
