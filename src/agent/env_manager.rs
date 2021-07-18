@@ -160,6 +160,7 @@ impl EnvManager {
                            exec: "exec",
                            import: "import",
                            branch: "if",
+                           env_find: "env_find",
         );
         info!("Lang env bootstrapping complete.");
 

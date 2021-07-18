@@ -14,7 +14,7 @@ use crate::function::{
 use crate::model::{Eval, Model};
 use crate::parser::parse_sexp;
 use crate::primitive::procedure::Procedure;
-use crate::primitive::{Node, Number, Primitive, Symbol, SymbolTable};
+use crate::primitive::{AmString, Node, Number, Primitive, Symbol, SymbolTable};
 use crate::sexp::{Cons, HeapSexp, Sexp, SexpIntoIter};
 use crate::token::interactive_stream::InteractiveStream;
 
@@ -285,6 +285,31 @@ impl AmlangAgent {
                 let original = self.exec_to_node(arg_nodes[0], cont)?;
                 let imported = self.agent_state.import(original)?;
                 return Ok(imported.into());
+            }
+            _ if context.env_find == special_node => {
+                if arg_nodes.len() != 1 {
+                    return Err(WrongArgumentCount {
+                        given: arg_nodes.len(),
+                        expected: ExpectedCount::Exactly(1),
+                    });
+                }
+
+                let des = self.agent_state.designate(Primitive::Node(arg_nodes[0]))?;
+                let path = match <&AmString>::try_from(&des) {
+                    Ok(path) => path,
+                    _ => {
+                        return Err(InvalidArgument {
+                            given: des.into(),
+                            expected: Cow::Borrowed("Node containing string"),
+                        });
+                    }
+                };
+
+                if let Some(lnode) = self.agent_state.find_env(path.as_str()) {
+                    Ok(Node::new(LocalNode::default(), lnode).into())
+                } else {
+                    Ok(Sexp::default())
+                }
             }
             _ if context.apply == special_node => {
                 let (proc_node, args_node) = apply_wrapper(&arg_nodes)?;
