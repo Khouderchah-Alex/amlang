@@ -4,7 +4,7 @@ use std::convert::TryFrom;
 use std::fmt;
 use std::str::FromStr;
 
-use crate::cons_list::ConsList;
+use super::cons_list::ConsList;
 use crate::environment::Environment;
 use crate::function::{EvalErr, ExpectedCount};
 use crate::parser::{parse_sexp, ParseError};

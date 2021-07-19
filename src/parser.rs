@@ -3,9 +3,9 @@
 use std::fmt;
 use std::iter::Peekable;
 
-use crate::cons_list::ConsList;
 use crate::primitive::symbol::ToSymbol;
 use crate::primitive::symbol_policies::policy_base;
+use crate::sexp::cons_list::ConsList;
 use crate::sexp::HeapSexp;
 use crate::token::{Token, TokenInfo};
 

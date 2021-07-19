@@ -2,19 +2,17 @@ use std::env;
 use std::path::Path;
 
 #[macro_use]
-mod sexp_conversion;
+mod sexp;
 
 mod agent;
 #[cfg(test)]
 mod append_vec;
 mod builtins;
-mod cons_list;
 mod environment;
 mod function;
 mod model;
 mod parser;
 mod primitive;
-mod sexp;
 mod token;
 
 use crate::agent::agent::Agent;
