@@ -479,6 +479,8 @@ impl EnvManager {
     ) -> Result<Sexp, DeserializeError> {
         if let Ok(sym) = <&Symbol>::try_from(&structure) {
             return Ok(self.parse_symbol(sym)?.into());
+        } else if let Ok(s) = <&AmString>::try_from(&structure) {
+            return Ok(s.clone().into());
         }
 
         let (command, cdr) =
