@@ -15,8 +15,10 @@ use self::TokenizerState::*;
 pub struct Tokenizer {
     tokens: VecDeque<TokenInfo>,
     line_count: usize,
-    depth: usize,
     state: TokenizerState,
+
+    depth: usize,
+    started_quote: bool,
 }
 
 #[derive(Debug)]
@@ -24,7 +26,7 @@ pub enum TokenizeError {
     InvalidSymbol(SymbolError),
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 enum TokenizerState {
     Base,
     InString,
@@ -36,8 +38,10 @@ impl Tokenizer {
         Self {
             tokens: Default::default(),
             line_count: 0,
-            depth: 0,
             state: TokenizerState::Base,
+
+            depth: 0,
+            started_quote: false,
         }
     }
 
@@ -47,7 +51,9 @@ impl Tokenizer {
     }
 
     pub fn depth(&self) -> usize {
-        self.depth
+        let q = self.started_quote || self.state == TokenizerState::InString;
+        // Don't return 0 if in quote.
+        std::cmp::max(self.depth, q as usize)
     }
 
     // TODO(func) Reflect depth from quoting as well.
@@ -72,7 +78,20 @@ impl Tokenizer {
                             empty = true;
                         }
                         continue;
+                    } else if c == ';' {
+                        if !empty {
+                            self.push_token(&l[start..i], symbol_policy)?;
+                        }
+                        self.tokens.push_back(TokenInfo {
+                            token: Token::Comment(l[i..].to_string()),
+                            line: self.line_count,
+                        });
+                        break;
                     }
+
+                    // Once a quote has been started, any non-whitespace/comment
+                    // token will suffice as far as depth calculation goes.
+                    self.started_quote = false;
 
                     match c {
                         '(' | ')' | '\'' => {
@@ -90,23 +109,16 @@ impl Tokenizer {
                                     self.depth = self.depth.saturating_sub(1);
                                     Token::RightParen
                                 }
-                                '\'' => Token::Quote,
+                                '\'' => {
+                                    self.started_quote = true;
+                                    Token::Quote
+                                }
                                 _ => panic!(),
                             };
                             self.tokens.push_back(TokenInfo {
                                 token,
                                 line: self.line_count,
                             });
-                        }
-                        ';' => {
-                            if !empty {
-                                self.push_token(&l[start..i], symbol_policy)?;
-                            }
-                            self.tokens.push_back(TokenInfo {
-                                token: Token::Comment(l[i..].to_string()),
-                                line: self.line_count,
-                            });
-                            break;
                         }
                         '"' => {
                             if !empty {
