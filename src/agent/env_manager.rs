@@ -393,6 +393,7 @@ impl EnvManager {
         depth: usize,
     ) -> std::io::Result<()> {
         match primitive {
+            Primitive::AmString(s) => write!(w, "\"{}\"", s.clone().to_escaped()),
             Primitive::Symbol(symbol) => write!(w, "{}", symbol.as_str()),
             Primitive::Path(path) => {
                 write!(w, "(__path \"{}\")", path.as_std_path().to_string_lossy())

@@ -30,6 +30,7 @@ pub enum TokenizeError {
 enum TokenizerState {
     Base,
     InString(String),
+    InStringEscaped(String),
 }
 
 
@@ -51,7 +52,7 @@ impl Tokenizer {
     }
 
     pub fn depth(&self) -> usize {
-        let q = self.started_quote || matches!(self.state, TokenizerState::InString(_));
+        let q = self.started_quote || matches!(self.state, TokenizerState::InString(..));
         // Don't return 0 if in quote.
         std::cmp::max(self.depth, q as usize)
     }
@@ -134,26 +135,59 @@ impl Tokenizer {
                     }
                 }
                 InString(s) => {
-                    // TODO(func) Allow for escaping.
-                    if c == '"' {
-                        s.push_str(&line.as_ref()[start..i]);
-                        self.tokens.push_back(TokenInfo {
-                            token: Token::Primitive(AmString(AmString::new(s))),
-                            line: self.line_count,
-                        });
-
-                        self.state = Base;
-                        empty = true;
+                    if empty {
+                        empty = false;
+                        start = i;
                     }
+                    match c {
+                        '\\' => {
+                            s.push_str(&line.as_ref()[start..i]);
+                            let mut new = String::default();
+                            std::mem::swap(s, &mut new);
+                            self.state = InStringEscaped(new);
+                        }
+                        '"' => {
+                            s.push_str(&line.as_ref()[start..i]);
+                            self.tokens.push_back(TokenInfo {
+                                token: Token::Primitive(AmString(AmString::new(s))),
+                                line: self.line_count,
+                            });
+
+                            self.state = Base;
+                            empty = true;
+                        }
+                        _ => {}
+                    }
+                }
+                InStringEscaped(s) => {
+                    // TODO(func) allow for decoding of unicode.
+                    s.push(AmString::unescape_char(c));
+
+                    empty = true;
+                    let mut new = String::default();
+                    std::mem::swap(s, &mut new);
+                    self.state = InString(new);
                 }
             }
         }
 
-        if let InString(s) = &mut self.state {
-            s.push_str(&line.as_ref()[start..]);
-            s.push('\n');
-        } else if !empty {
-            self.push_token(&l[start..], symbol_policy)?;
+        // EOL handling.
+        match &mut self.state {
+            InString(s) => {
+                s.push_str(&line.as_ref()[start..]);
+                s.push('\n');
+            }
+            InStringEscaped(s) => {
+                // \ followed by EOL simply means ignore the newline.
+                let mut new = String::default();
+                std::mem::swap(s, &mut new);
+                self.state = InString(new);
+            }
+            _ => {
+                if !empty {
+                    self.push_token(&l[start..], symbol_policy)?;
+                }
+            }
         }
 
         self.line_count += 1;

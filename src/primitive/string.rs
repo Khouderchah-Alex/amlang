@@ -13,8 +13,26 @@ impl AmString {
         Self(s.as_ref().to_string())
     }
 
+    pub fn unescape_char(c: char) -> char {
+        match c {
+            't' => '\t',
+            'r' => '\r',
+            'n' => '\n',
+            // TODO(func) decode escape_unicodes for symmetry with escape_char.
+            _ => c,
+        }
+    }
+
+    pub fn escape_char(c: char) -> String {
+        c.escape_default().to_string()
+    }
+
     pub fn as_str(&self) -> &str {
         self.0.as_str()
+    }
+
+    pub fn to_escaped(self) -> String {
+        self.as_str().chars().map(AmString::escape_char).collect()
     }
 }
 
