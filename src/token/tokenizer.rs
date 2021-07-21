@@ -1,6 +1,7 @@
 //! Module for breaking Amlang text into tokens.
 
 use std::collections::VecDeque;
+use std::fmt;
 
 use super::token::{Token, TokenInfo};
 use crate::primitive::symbol::{SymbolError, ToSymbol};
@@ -22,15 +23,22 @@ pub struct Tokenizer {
 }
 
 #[derive(Debug)]
-pub enum TokenizeError {
+pub struct TokenizeError {
+    line: usize,
+    col: usize,
+    kind: ErrorKind,
+}
+
+#[derive(Debug)]
+enum ErrorKind {
     InvalidSymbol(SymbolError),
 }
 
 #[derive(Debug)]
 enum TokenizerState {
     Base,
-    InString(String),
-    InStringEscaped(String),
+    InString(String, usize),
+    InStringEscaped(String, usize),
 }
 
 
@@ -73,17 +81,18 @@ impl Tokenizer {
                 Base => {
                     if c.is_whitespace() {
                         if !empty {
-                            self.push_token(&l[start..i], symbol_policy)?;
+                            self.push_token(&l[start..i], start, symbol_policy)?;
                             empty = true;
                         }
                         continue;
                     } else if c == ';' {
                         if !empty {
-                            self.push_token(&l[start..i], symbol_policy)?;
+                            self.push_token(&l[start..i], start, symbol_policy)?;
                         }
                         self.tokens.push_back(TokenInfo {
                             token: Token::Comment(l[i..].to_string()),
                             line: self.line_count,
+                            col: i,
                         });
                         break;
                     }
@@ -95,7 +104,7 @@ impl Tokenizer {
                     match c {
                         '(' | ')' | '\'' => {
                             if !empty {
-                                self.push_token(&l[start..i], symbol_policy)?;
+                                self.push_token(&l[start..i], start, symbol_policy)?;
                                 empty = true;
                             }
 
@@ -117,14 +126,15 @@ impl Tokenizer {
                             self.tokens.push_back(TokenInfo {
                                 token,
                                 line: self.line_count,
+                                col: i,
                             });
                         }
                         '"' => {
                             if !empty {
-                                self.push_token(&l[start..i], symbol_policy)?;
+                                self.push_token(&l[start..i], start, symbol_policy)?;
                             }
                             start = i + 1;
-                            self.state = InString(String::default());
+                            self.state = InString(String::default(), start);
                         }
                         _ => {
                             if empty {
@@ -134,7 +144,7 @@ impl Tokenizer {
                         }
                     }
                 }
-                InString(s) => {
+                InString(s, col) => {
                     if empty {
                         empty = false;
                         start = i;
@@ -144,13 +154,14 @@ impl Tokenizer {
                             s.push_str(&line.as_ref()[start..i]);
                             let mut new = String::default();
                             std::mem::swap(s, &mut new);
-                            self.state = InStringEscaped(new);
+                            self.state = InStringEscaped(new, *col);
                         }
                         '"' => {
                             s.push_str(&line.as_ref()[start..i]);
                             self.tokens.push_back(TokenInfo {
                                 token: Token::Primitive(AmString(AmString::new(s))),
                                 line: self.line_count,
+                                col: *col,
                             });
 
                             self.state = Base;
@@ -159,33 +170,33 @@ impl Tokenizer {
                         _ => {}
                     }
                 }
-                InStringEscaped(s) => {
+                InStringEscaped(s, col) => {
                     // TODO(func) allow for decoding of unicode.
                     s.push(AmString::unescape_char(c));
 
                     empty = true;
                     let mut new = String::default();
                     std::mem::swap(s, &mut new);
-                    self.state = InString(new);
+                    self.state = InString(new, *col);
                 }
             }
         }
 
         // EOL handling.
         match &mut self.state {
-            InString(s) => {
+            InString(s, ..) => {
                 s.push_str(&line.as_ref()[start..]);
                 s.push('\n');
             }
-            InStringEscaped(s) => {
+            InStringEscaped(s, col) => {
                 // \ followed by EOL simply means ignore the newline.
                 let mut new = String::default();
                 std::mem::swap(s, &mut new);
-                self.state = InString(new);
+                self.state = InString(new, *col);
             }
             _ => {
                 if !empty {
-                    self.push_token(&l[start..], symbol_policy)?;
+                    self.push_token(&l[start..], start, symbol_policy)?;
                 }
             }
         }
@@ -198,6 +209,7 @@ impl Tokenizer {
     fn push_token<SymbolInfo, SymbolPolicy>(
         &mut self,
         ptoken: &str,
+        start: usize,
         symbol_policy: &SymbolPolicy,
     ) -> Result<(), TokenizeError>
     where
@@ -209,23 +221,42 @@ impl Tokenizer {
         } else {
             match ptoken.to_symbol(symbol_policy) {
                 Ok(symbol) => Token::Primitive(Symbol(symbol)),
-                Err(err) => return Err(TokenizeError::InvalidSymbol(err)),
+                Err(err) => {
+                    return Err(TokenizeError {
+                        line: self.line_count,
+                        col: start,
+                        kind: ErrorKind::InvalidSymbol(err),
+                    });
+                }
             }
         };
 
         self.tokens.push_back(TokenInfo {
             token,
             line: self.line_count,
+            col: start,
         });
         Ok(())
     }
 }
+
 
 impl Iterator for Tokenizer {
     type Item = TokenInfo;
 
     fn next(&mut self) -> Option<TokenInfo> {
         self.tokens.pop_front()
+    }
+}
+
+
+impl fmt::Display for TokenizeError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "[Tokenize Error]: {:?} @ ({}, {})",
+            self.kind, self.line, self.col
+        )
     }
 }
 

@@ -15,13 +15,14 @@ pub enum Token {
 pub struct TokenInfo {
     pub token: Token,
     pub line: usize,
+    pub col: usize,
 }
 
 impl fmt::Display for TokenInfo {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self.token {
-            Token::Primitive(p) => write!(f, "{} @ line {}", p, self.line),
-            _ => write!(f, "{:?} @ line {}", self.token, self.line),
+            Token::Primitive(p) => write!(f, "{} @ ({}, {})", p, self.line, self.col),
+            _ => write!(f, "{:?} @ ({}, {})", self.token, self.line, self.col),
         }
     }
 }

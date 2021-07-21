@@ -66,7 +66,7 @@ impl Iterator for InteractiveStream {
                     self.curr_expr += &line;
                     // TODO(func) Make generic over policy.
                     if let Err(err) = self.tokenizer.tokenize_line(&line, &policy_base) {
-                        println!("[Tokenize Error]: {:?}", err);
+                        println!("{}", err);
                         println!("");
                         self.tokenizer.clear();
                         continue;
@@ -81,7 +81,7 @@ impl Iterator for InteractiveStream {
                     return None;
                 }
                 Err(err) => {
-                    println!("[Tokenize Error]: {:?}", err);
+                    println!("[Readline Error]: {:?}", err);
                     println!("");
                     self.tokenizer.clear();
                     continue;
