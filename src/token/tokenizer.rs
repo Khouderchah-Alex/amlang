@@ -26,10 +26,10 @@ pub enum TokenizeError {
     InvalidSymbol(SymbolError),
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug)]
 enum TokenizerState {
     Base,
-    InString,
+    InString(String),
 }
 
 
@@ -51,12 +51,11 @@ impl Tokenizer {
     }
 
     pub fn depth(&self) -> usize {
-        let q = self.started_quote || self.state == TokenizerState::InString;
+        let q = self.started_quote || matches!(self.state, TokenizerState::InString(_));
         // Don't return 0 if in quote.
         std::cmp::max(self.depth, q as usize)
     }
 
-    // TODO(func) Reflect depth from quoting as well.
     pub fn tokenize_line<S: AsRef<str>, SymbolInfo, SymbolPolicy>(
         &mut self,
         line: S,
@@ -65,12 +64,11 @@ impl Tokenizer {
     where
         SymbolPolicy: Fn(&str) -> Result<SymbolInfo, SymbolError>,
     {
-        // TODO(func) Allow for multi-line strings.
         let mut start: usize = 0;
         let mut empty = true;
         let l = line.as_ref();
         for (i, c) in l.char_indices() {
-            match self.state {
+            match &mut self.state {
                 Base => {
                     if c.is_whitespace() {
                         if !empty {
@@ -125,7 +123,7 @@ impl Tokenizer {
                                 self.push_token(&l[start..i], symbol_policy)?;
                             }
                             start = i + 1;
-                            self.state = InString;
+                            self.state = InString(String::default());
                         }
                         _ => {
                             if empty {
@@ -135,13 +133,12 @@ impl Tokenizer {
                         }
                     }
                 }
-                InString => {
+                InString(s) => {
                     // TODO(func) Allow for escaping.
                     if c == '"' {
+                        s.push_str(&line.as_ref()[start..i]);
                         self.tokens.push_back(TokenInfo {
-                            token: Token::Primitive(AmString(AmString::new(
-                                line.as_ref()[start..i].to_string(),
-                            ))),
+                            token: Token::Primitive(AmString(AmString::new(s))),
                             line: self.line_count,
                         });
 
@@ -152,11 +149,14 @@ impl Tokenizer {
             }
         }
 
-        if !empty {
+        if let InString(s) = &mut self.state {
+            s.push_str(&line.as_ref()[start..]);
+            s.push('\n');
+        } else if !empty {
             self.push_token(&l[start..], symbol_policy)?;
         }
-        self.line_count += 1;
 
+        self.line_count += 1;
         Ok(())
     }
 
