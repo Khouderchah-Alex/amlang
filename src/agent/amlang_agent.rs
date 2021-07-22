@@ -594,6 +594,12 @@ impl AmlangAgent {
                         .node_structure(node.local())
                     {
                         write!(w, "{}->", node)?;
+                        // Subtle: Cloning of Env doesn't actually copy data. In
+                        // this case, the resulting Env object will be invalid
+                        // and should only stand as a placeholder to determine
+                        // typing.
+                        //
+                        // TODO(func) SharedEnv impl.
                         structure.clone()
                     } else {
                         return write!(w, "{}", node);

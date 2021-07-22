@@ -135,6 +135,11 @@ impl EnvState {
                     .unwrap()
                     .node_structure(node.local())
                 {
+                    // Subtle: Cloning of Env doesn't actually copy data. In
+                    // this case, the resulting Env object will be invalid and
+                    // should only stand as a placeholder to determine typing.
+                    //
+                    // TODO(func) SharedEnv impl.
                     Ok(structure.clone())
                 } else if let Some(triple) = self
                     .access_env(node.env())

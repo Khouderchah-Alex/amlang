@@ -253,6 +253,11 @@ impl EnvManager {
         for node in self.env_state().env().all_nodes() {
             write!(&mut w, "\n    ")?;
 
+            // Subtle: Cloning of Env doesn't actually copy data. In this case,
+            // the resulting Env object will be invalid and should only stand as
+            // a placeholder to determine typing.
+            //
+            // TODO(func) SharedEnv impl.
             let s = self.env_state().env().node_structure(node).cloned();
             let (write_structure, add_quote) = match &s {
                 Some(sexp) => match sexp {
