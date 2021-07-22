@@ -1,4 +1,4 @@
-use log::{info, warn};
+use log::{debug, info, warn};
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::fs::File;
@@ -337,6 +337,14 @@ impl EnvManager {
             "Loaded env {} from \"{}\".",
             self.env_state().pos().env(),
             in_path.as_ref().to_string_lossy()
+        );
+        debug!(
+            "  Node count:    {}",
+            self.env_state().env().all_nodes().len()
+        );
+        debug!(
+            "  Triple count:  {}",
+            self.env_state().env().match_all().len()
         );
         Ok(())
     }

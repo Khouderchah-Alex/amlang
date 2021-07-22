@@ -1,6 +1,6 @@
 //! Thread-unsafe in-memory Environment.
 
-use log::debug;
+use log::trace;
 use std::collections::BTreeSet;
 use std::fmt::Debug;
 
@@ -72,20 +72,20 @@ impl MemEnvironment {
     }
 
     fn node_unchecked(&self, node: LocalNode) -> &Node {
-        debug!("Env {}: node lookup: {}", self.env_id(), node.id());
+        trace!("Env {}: node lookup: {}", self.env_id(), node.id());
         &self.nodes[node_index_unchecked(node.id())]
     }
     fn node_mut_unchecked(&mut self, node: LocalNode) -> &mut Node {
-        debug!("Env {}: node mut lookup: {}", self.env_id(), node.id());
+        trace!("Env {}: node mut lookup: {}", self.env_id(), node.id());
         &mut self.nodes[node_index_unchecked(node.id())]
     }
 
     fn triple_unchecked(&self, triple: LocalNode) -> &Triple {
-        debug!("Env {}: triple lookup: {}", self.env_id(), triple.id());
+        trace!("Env {}: triple lookup: {}", self.env_id(), triple.id());
         &self.triples[triple_index_unchecked(triple.id())]
     }
     fn triple_mut_unchecked(&mut self, triple: LocalNode) -> &mut Triple {
-        debug!("Env {}: triple mut lookup: {}", self.env_id(), triple.id());
+        trace!("Env {}: triple mut lookup: {}", self.env_id(), triple.id());
         &mut self.triples[triple_index_unchecked(triple.id())]
     }
 
