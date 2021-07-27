@@ -113,6 +113,12 @@ impl EnvState {
 
     pub fn resolve(&mut self, name: &Symbol) -> Result<Node, EvalErr> {
         let designation = self.designation();
+        // Always get self_* nodes from current env.
+        match name.as_str() {
+            "self_env" => return Ok(Node::new(self.pos().env(), LocalNode::default())),
+            "self_des" => return Ok(Node::new(self.pos().env(), designation)),
+            _ => {}
+        }
 
         for i in 0..self.designation_chain.len() {
             let env = self.access_env(self.designation_chain[i]).unwrap();
