@@ -1,6 +1,7 @@
-//! Module for representing symbol tables.
+//! Module for representing table primitives.
 
 use std::borrow::Borrow;
+use std::collections::btree_map::Entry;
 use std::collections::BTreeMap;
 use std::convert::TryFrom;
 
@@ -44,6 +45,10 @@ impl<K: Ord, V: Copy> Table<K, V> {
 
     pub fn insert(&mut self, k: K, v: V) -> Option<V> {
         self.map.insert(k, v)
+    }
+
+    pub fn entry(&mut self, k: K) -> Entry<K, V> {
+        self.map.entry(k)
     }
 
     pub fn as_map(&self) -> &BTreeMap<K, V> {
