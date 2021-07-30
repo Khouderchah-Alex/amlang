@@ -1,7 +1,9 @@
 use std::borrow::Cow;
 use std::collections::HashMap;
 
-use crate::function::{Args, EvalErr, ExpectedCount, Ret};
+use crate::function::{EvalErr, ExpectedCount};
+use crate::model::Ret;
+use crate::primitive::builtin::Args;
 use crate::primitive::{BuiltIn, Number, Primitive};
 use crate::sexp::{self, Sexp};
 

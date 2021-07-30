@@ -9,9 +9,9 @@ use super::env_state::EnvState;
 use crate::environment::LocalNode;
 use crate::function::{
     EvalErr::{self, *},
-    ExpectedCount, Func, Ret,
+    ExpectedCount,
 };
-use crate::model::{Eval, Model};
+use crate::model::{Eval, Model, Ret};
 use crate::parser::parse_sexp;
 use crate::primitive::procedure::Procedure;
 use crate::primitive::{AmString, Continuation, Node, Number, Primitive, Symbol, SymbolTable};

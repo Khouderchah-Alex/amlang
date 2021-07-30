@@ -1,5 +1,3 @@
-//! Basic blocks for procedural representation.
-
 use std::borrow::Cow;
 use std::fmt;
 
@@ -8,13 +6,6 @@ use self::ExpectedCount::*;
 use crate::primitive::Symbol;
 use crate::sexp::Sexp;
 
-
-pub type Args = Vec<Sexp>;
-pub type Ret = Result<Sexp, EvalErr>;
-
-pub trait Func {
-    fn call(self: &Self, args: Args) -> Ret;
-}
 
 #[derive(Debug)]
 pub enum EvalErr {

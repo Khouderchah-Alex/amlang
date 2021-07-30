@@ -14,8 +14,8 @@ use crate::builtins::generate_builtin_map;
 use crate::environment::environment::EnvObject;
 use crate::environment::mem_environment::MemEnvironment;
 use crate::environment::LocalNode;
-use crate::function::{self, Ret};
-use crate::model::{Eval, Model};
+use crate::function;
+use crate::model::{Eval, Model, Ret};
 use crate::parser::{self, parse_sexp};
 use crate::primitive::symbol_policies::{policy_admin, AdminSymbolInfo};
 use crate::primitive::{

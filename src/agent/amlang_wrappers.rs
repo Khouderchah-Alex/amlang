@@ -3,8 +3,9 @@ use std::convert::TryFrom;
 
 use crate::function::{
     EvalErr::{self, *},
-    ExpectedCount, Ret,
+    ExpectedCount,
 };
+use crate::model::Ret;
 use crate::primitive::{Node, Primitive, Symbol};
 use crate::sexp::{Cons, HeapSexp, Sexp};
 

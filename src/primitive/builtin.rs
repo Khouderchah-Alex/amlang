@@ -3,10 +3,12 @@
 use std::convert::TryFrom;
 use std::fmt;
 
-use crate::function::{Args, Func, Ret};
+use crate::model::Ret;
 use crate::primitive::Primitive;
 use crate::sexp::Sexp;
 
+
+pub type Args = Vec<Sexp>;
 
 #[derive(Clone, Copy)]
 pub struct BuiltIn {
@@ -22,11 +24,8 @@ impl BuiltIn {
     pub fn name(&self) -> &'static str {
         self.name
     }
-}
 
-
-impl Func for BuiltIn {
-    fn call(&self, args: Args) -> Ret {
+    pub fn call(&self, args: Args) -> Ret {
         (self.fun)(args)
     }
 }
