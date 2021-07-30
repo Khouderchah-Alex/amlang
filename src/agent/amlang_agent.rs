@@ -70,27 +70,20 @@ impl AmlangAgent {
     }
 
     fn exec(&mut self, meaning: Sexp) -> Ret {
-        let concretize = |node| {
-            if let Some(new_node) = self.cont.lookup(&node) {
-                debug!("concretizing: {} -> {}", node, new_node);
-                new_node.clone()
-            } else {
-                node
-            }
-        };
-
         match meaning {
             Sexp::Primitive(Primitive::Procedure(proc)) => match proc {
                 Procedure::Application(proc_node, arg_nodes) => {
-                    let concretized_nodes =
-                        arg_nodes.into_iter().map(concretize).collect::<Vec<_>>();
-                    let cproc = concretize(proc_node);
+                    let concretized_nodes = arg_nodes
+                        .into_iter()
+                        .map(|n| self.concretize(n))
+                        .collect::<Vec<_>>();
+                    let cproc = self.concretize(proc_node);
                     self.apply(cproc, concretized_nodes)
                 }
                 Procedure::Branch(pred, a, b) => {
-                    let cpred = concretize(pred);
-                    let ca = concretize(a);
-                    let cb = concretize(b);
+                    let cpred = self.concretize(pred);
+                    let ca = self.concretize(a);
+                    let cb = self.concretize(b);
                     let p_des = self.agent_state.designate(Primitive::Node(cpred))?;
                     let a_des = self.agent_state.designate(Primitive::Node(ca))?;
                     let b_des = self.agent_state.designate(Primitive::Node(cb))?;
@@ -164,15 +157,7 @@ impl AmlangAgent {
                 let body = self.agent_state.designate(Primitive::Node(body_node))?;
                 let result = self.exec(body)?;
                 let res = if let Ok(node) = <Node>::try_from(&result) {
-                    let concretize = |node| {
-                        if let Some(new_node) = self.cont.lookup(&node) {
-                            debug!("concretizing: {} -> {}", node, new_node);
-                            new_node.clone()
-                        } else {
-                            node
-                        }
-                    };
-                    Ok(concretize(node).into())
+                    Ok(self.concretize(node).into())
                 } else {
                     Ok(result)
                 };
@@ -397,6 +382,15 @@ impl AmlangAgent {
                 Ok(args)
             }
         };
+    }
+
+    fn concretize(&self, node: Node) -> Node {
+        if let Some(new_node) = self.cont.lookup(&node) {
+            debug!("concretizing: {} -> {}", node, new_node);
+            new_node
+        } else {
+            node
+        }
     }
 
     fn push_cont(&mut self) {
