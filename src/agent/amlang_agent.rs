@@ -32,10 +32,12 @@ impl AmlangAgent {
         let lang_env = agent_state.context().lang_env();
         agent_state.designation_chain_mut().push_front(lang_env);
 
+        // TODO(func) Use repr of Agent run.
+        let root_context = Node::new(lang_env, LocalNode::default());
         Self {
             agent_state,
             history_state,
-            cont: Box::new(Continuation::default()),
+            cont: Continuation::new_front(None, root_context),
             eval_symbols: SymbolTable::default(),
         }
     }
@@ -136,7 +138,7 @@ impl AmlangAgent {
                     });
                 }
 
-                self.push_cont();
+                self.push_cont(proc_node);
 
                 let mut args = Vec::with_capacity(arg_nodes.len());
                 for (i, node) in arg_nodes.into_iter().enumerate() {
@@ -148,8 +150,6 @@ impl AmlangAgent {
                     };
                     args.push(arg);
 
-                    // TODO(func) Use actual deep continuation
-                    // representation (including popping off).
                     self.cont.insert(params[i], node);
                     debug!("cont insert: {} -> {}", params[i], node);
                 }
@@ -393,14 +393,16 @@ impl AmlangAgent {
         }
     }
 
-    fn push_cont(&mut self) {
-        let mut old_cont = Continuation::new_front(None);
+    fn push_cont(&mut self, new_context: Node) {
+        let mut old_cont = Continuation::new_front(None, new_context);
         std::mem::swap(&mut old_cont, &mut self.cont);
         self.cont.set_next(Some(old_cont));
     }
 
     fn pop_cont(&mut self) {
-        let mut old_cont = Continuation::new_front(None);
+        // TODO(func) Use repr of Agent run for context.
+        let root_context = Node::new(self.env_state().context().lang_env, LocalNode::default());
+        let mut old_cont = Continuation::new_front(None, root_context);
         std::mem::swap(&mut old_cont, &mut self.cont);
         if let Some(c) = old_cont.pop_front() {
             self.cont = c;

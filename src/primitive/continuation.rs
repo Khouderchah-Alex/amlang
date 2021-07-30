@@ -8,18 +8,21 @@ use crate::sexp::Sexp;
 
 
 // TODO(func) Allow for more than dynamic Node lookups (e.g. static tables).
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Continuation {
-    map: Table<Node, Node>,
     next: Option<Box<Continuation>>,
-    // TODO(func) Add "location" info.
+
+    context: Node,
+    map: Table<Node, Node>,
 }
 
 impl Continuation {
-    pub fn new_front(next: Option<Box<Continuation>>) -> Box<Self> {
+    pub fn new_front(next: Option<Box<Continuation>>, context: Node) -> Box<Self> {
         Box::new(Self {
+            next,
+
+            context,
             map: Default::default(),
-            next: next,
         })
     }
 
@@ -70,7 +73,7 @@ impl Continuation {
 
 impl fmt::Display for Continuation {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "[Cont depth: {}]", self.depth())
+        write!(f, "[Cont @ {}, depth {}]", self.context, self.depth())
     }
 }
 
