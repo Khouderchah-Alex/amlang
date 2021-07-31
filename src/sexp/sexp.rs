@@ -6,7 +6,7 @@ use std::str::FromStr;
 
 use super::cons_list::ConsList;
 use crate::environment::Environment;
-use crate::function::{EvalErr, ExpectedCount};
+use crate::lang_err::{ExpectedCount, LangErr};
 use crate::parser::{parse_sexp, ParseError};
 use crate::primitive::symbol_policies::policy_base;
 use crate::primitive::{
@@ -407,26 +407,26 @@ impl<'a, E> TryFrom<&'a Result<Sexp, E>> for &'a Cons {
 }
 
 impl TryFrom<Sexp> for SexpIntoIter {
-    type Error = EvalErr;
+    type Error = LangErr;
 
     fn try_from(value: Sexp) -> Result<Self, Self::Error> {
         match value {
-            Sexp::Primitive(primitive) => Err(EvalErr::InvalidSexp(primitive.clone().into())),
+            Sexp::Primitive(primitive) => Err(LangErr::InvalidSexp(primitive.clone().into())),
             Sexp::Cons(cons) => Ok(cons.into_iter()),
         }
     }
 }
 
 impl TryFrom<Option<HeapSexp>> for SexpIntoIter {
-    type Error = EvalErr;
+    type Error = LangErr;
 
     fn try_from(value: Option<HeapSexp>) -> Result<Self, Self::Error> {
         match value {
             Some(sexp) => match *sexp {
-                Sexp::Primitive(primitive) => Err(EvalErr::InvalidSexp(primitive.clone().into())),
+                Sexp::Primitive(primitive) => Err(LangErr::InvalidSexp(primitive.clone().into())),
                 Sexp::Cons(cons) => Ok(cons.into_iter()),
             },
-            None => Err(EvalErr::WrongArgumentCount {
+            None => Err(LangErr::WrongArgumentCount {
                 given: 0,
                 expected: ExpectedCount::AtLeast(1),
             }),

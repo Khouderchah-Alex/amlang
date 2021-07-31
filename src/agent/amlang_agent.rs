@@ -7,9 +7,9 @@ use super::agent::Agent;
 use super::amlang_wrappers::*;
 use super::env_state::EnvState;
 use crate::environment::LocalNode;
-use crate::function::{
-    EvalErr::{self, *},
+use crate::lang_err::{
     ExpectedCount,
+    LangErr::{self, *},
 };
 use crate::model::{Eval, Model, Ret};
 use crate::parser::parse_sexp;
@@ -42,7 +42,7 @@ impl AmlangAgent {
         }
     }
 
-    fn make_procedure(&mut self, params: Vec<Symbol>, body: Sexp) -> Result<Procedure, EvalErr> {
+    fn make_procedure(&mut self, params: Vec<Symbol>, body: Sexp) -> Result<Procedure, LangErr> {
         let mut surface = Vec::new();
         for symbol in params {
             let node = self
@@ -172,7 +172,7 @@ impl AmlangAgent {
         }
     }
 
-    fn exec_to_node(&mut self, node: Node) -> Result<Node, EvalErr> {
+    fn exec_to_node(&mut self, node: Node) -> Result<Node, LangErr> {
         let desig = self.agent_state.designate(Primitive::Node(node))?;
         let e = self.exec(desig)?;
         if let Ok(new_node) = Node::try_from(&e) {
@@ -354,7 +354,7 @@ impl AmlangAgent {
         }
     }
 
-    fn evlis(&mut self, structures: Option<HeapSexp>) -> Result<Vec<Node>, EvalErr> {
+    fn evlis(&mut self, structures: Option<HeapSexp>) -> Result<Vec<Node>, LangErr> {
         if structures.is_none() {
             return Ok(vec![]);
         }

@@ -14,7 +14,7 @@ use crate::builtins::generate_builtin_map;
 use crate::environment::environment::EnvObject;
 use crate::environment::mem_environment::MemEnvironment;
 use crate::environment::LocalNode;
-use crate::function;
+use crate::lang_err;
 use crate::model::{Eval, Model, Ret};
 use crate::parser::{self, parse_sexp};
 use crate::primitive::symbol_policies::{policy_admin, AdminSymbolInfo};
@@ -41,7 +41,7 @@ pub enum DeserializeError {
     UnexpectedCommand(Sexp),
     ExpectedSymbol,
     UnrecognizedBuiltIn(Symbol),
-    EvalErr(function::EvalErr),
+    LangErr(lang_err::LangErr),
 }
 
 // Consumes manager and replaces placeholder'd context nodes through
@@ -67,7 +67,7 @@ macro_rules! bootstrap_context {
                 if let Some(node) = table.lookup(s) {
                     Ok(node.local())
                 } else {
-                    Err(EvalErr(function::EvalErr::UnboundSymbol(s.to_symbol_or_panic(policy_admin))))
+                    Err(LangErr(lang_err::LangErr::UnboundSymbol(s.to_symbol_or_panic(policy_admin))))
                 }
             };
             (
@@ -442,12 +442,12 @@ impl EnvManager {
     fn deserialize_nodes(&mut self, structure: HeapSexp) -> Result<(), DeserializeError> {
         let builtins = generate_builtin_map();
         let (command, remainder) =
-            break_by_types!(*structure, Symbol; remainder).map_err(|e| EvalErr(e))?;
+            break_by_types!(*structure, Symbol; remainder).map_err(|e| LangErr(e))?;
         if command.as_str() != "nodes" {
             return Err(UnexpectedCommand(command.into()));
         }
 
-        let iter = SexpIntoIter::try_from(remainder).map_err(|e| EvalErr(e))?;
+        let iter = SexpIntoIter::try_from(remainder).map_err(|e| LangErr(e))?;
         for entry in iter.skip(2) {
             match *entry {
                 Sexp::Primitive(primitive) => {
@@ -459,7 +459,7 @@ impl EnvManager {
                 }
                 Sexp::Cons(cons) => {
                     let (_name, command) =
-                        break_by_types!(cons.into(), Symbol, Sexp).map_err(|e| EvalErr(e))?;
+                        break_by_types!(cons.into(), Symbol, Sexp).map_err(|e| LangErr(e))?;
                     let structure = self.eval_structure(command, &builtins)?;
                     self.env_state().env().insert_structure(structure);
                 }
@@ -471,7 +471,7 @@ impl EnvManager {
     fn parse_symbol(&mut self, sym: &Symbol) -> Result<Node, DeserializeError> {
         match policy_admin(sym.as_str()).unwrap() {
             AdminSymbolInfo::Identifier => {
-                Err(EvalErr(function::EvalErr::UnboundSymbol(sym.clone())))
+                Err(LangErr(lang_err::LangErr::UnboundSymbol(sym.clone())))
             }
             AdminSymbolInfo::LocalNode(node) => Ok(node.globalize(self.env_state())),
             AdminSymbolInfo::LocalTriple(idx) => {
@@ -498,7 +498,7 @@ impl EnvManager {
         }
 
         let (command, cdr) =
-            break_by_types!(structure, Symbol; remainder).map_err(|e| EvalErr(e))?;
+            break_by_types!(structure, Symbol; remainder).map_err(|e| LangErr(e))?;
 
         if let Ok(node) = self.parse_symbol(&command) {
             let context = self.env_state().context();
@@ -509,54 +509,54 @@ impl EnvManager {
             if node.env() == context.lang_env() {
                 if node.local() == context.apply {
                     if cdr.is_none() {
-                        return Err(EvalErr(function::EvalErr::WrongArgumentCount {
+                        return Err(LangErr(lang_err::LangErr::WrongArgumentCount {
                             given: 0,
-                            expected: function::ExpectedCount::Exactly(2),
+                            expected: lang_err::ExpectedCount::Exactly(2),
                         }));
                     }
 
                     let (func, args) =
-                        break_by_types!(*cdr.unwrap(), Symbol, Cons).map_err(|e| EvalErr(e))?;
+                        break_by_types!(*cdr.unwrap(), Symbol, Cons).map_err(|e| LangErr(e))?;
                     let fnode = self.parse_symbol(&func)?;
                     let mut arg_nodes = Vec::with_capacity(args.iter().count());
                     for arg in args {
                         if let Ok(sym) = <&Symbol>::try_from(&*arg) {
                             arg_nodes.push(self.parse_symbol(sym)?);
                         } else {
-                            return Err(EvalErr(function::EvalErr::InvalidSexp(*arg)));
+                            return Err(LangErr(lang_err::LangErr::InvalidSexp(*arg)));
                         }
                     }
                     return Ok(Procedure::Application(fnode, arg_nodes).into());
                 } else if node.local() == context.lambda {
                     if cdr.is_none() {
-                        return Err(EvalErr(function::EvalErr::WrongArgumentCount {
+                        return Err(LangErr(lang_err::LangErr::WrongArgumentCount {
                             given: 0,
-                            expected: function::ExpectedCount::AtLeast(2),
+                            expected: lang_err::ExpectedCount::AtLeast(2),
                         }));
                     }
 
                     let (params, body) =
-                        break_by_types!(*cdr.unwrap(), Cons, Symbol).map_err(|e| EvalErr(e))?;
+                        break_by_types!(*cdr.unwrap(), Cons, Symbol).map_err(|e| LangErr(e))?;
                     let mut param_nodes = Vec::with_capacity(params.iter().count());
                     for param in params {
                         if let Ok(sym) = <&Symbol>::try_from(&*param) {
                             param_nodes.push(self.parse_symbol(sym)?);
                         } else {
-                            return Err(EvalErr(function::EvalErr::InvalidSexp(*param)));
+                            return Err(LangErr(lang_err::LangErr::InvalidSexp(*param)));
                         }
                     }
                     let body_node = self.parse_symbol(&body)?;
                     return Ok(Procedure::Abstraction(param_nodes, body_node).into());
                 } else if node.local() == context.branch {
                     if cdr.is_none() {
-                        return Err(EvalErr(function::EvalErr::WrongArgumentCount {
+                        return Err(LangErr(lang_err::LangErr::WrongArgumentCount {
                             given: 0,
-                            expected: function::ExpectedCount::Exactly(3),
+                            expected: lang_err::ExpectedCount::Exactly(3),
                         }));
                     }
 
                     let (pred, a, b) = break_by_types!(*cdr.unwrap(), Symbol, Symbol, Symbol)
-                        .map_err(|e| EvalErr(e))?;
+                        .map_err(|e| LangErr(e))?;
                     return Ok(Procedure::Branch(
                         self.parse_symbol(&pred)?,
                         self.parse_symbol(&a)?,
@@ -568,9 +568,9 @@ impl EnvManager {
         }
 
         match command.as_str() {
-            "quote" => Ok(quote_wrapper(cdr).map_err(|e| EvalErr(e))?),
+            "quote" => Ok(quote_wrapper(cdr).map_err(|e| LangErr(e))?),
             "__builtin" => {
-                if let Ok(sym) = <Symbol>::try_from(quote_wrapper(cdr).map_err(|e| EvalErr(e))?) {
+                if let Ok(sym) = <Symbol>::try_from(quote_wrapper(cdr).map_err(|e| LangErr(e))?) {
                     if let Some(builtin) = builtins.get(sym.as_str()) {
                         Ok(builtin.clone().into())
                     } else {
@@ -584,7 +584,7 @@ impl EnvManager {
             // turned into structured nodes.
             "__env" => Ok(Sexp::default()),
             "__path" => {
-                let (path,) = break_by_types!(*cdr.unwrap(), AmString).map_err(|e| EvalErr(e))?;
+                let (path,) = break_by_types!(*cdr.unwrap(), AmString).map_err(|e| LangErr(e))?;
                 Ok(Path::new(path.as_str().into()).into())
             }
             _ => panic!("{}", command),
@@ -593,20 +593,20 @@ impl EnvManager {
 
     fn deserialize_triples(&mut self, structure: HeapSexp) -> Result<(), DeserializeError> {
         let (command, remainder) =
-            break_by_types!(*structure, Symbol; remainder).map_err(|e| EvalErr(e))?;
+            break_by_types!(*structure, Symbol; remainder).map_err(|e| LangErr(e))?;
         if command.as_str() != "triples" {
             return Err(UnexpectedCommand(command.into()));
         }
 
         let iter = match SexpIntoIter::try_from(remainder) {
             Ok(iter) => iter,
-            Err(function::EvalErr::WrongArgumentCount { .. }) => return Ok(()),
-            Err(err) => return Err(DeserializeError::EvalErr(err)),
+            Err(lang_err::LangErr::WrongArgumentCount { .. }) => return Ok(()),
+            Err(err) => return Err(DeserializeError::LangErr(err)),
         };
 
         for entry in iter {
             let (s, p, o) =
-                break_by_types!(*entry, Symbol, Symbol, Symbol).map_err(|e| EvalErr(e))?;
+                break_by_types!(*entry, Symbol, Symbol, Symbol).map_err(|e| LangErr(e))?;
 
             let subject = self.parse_symbol(&s)?;
             let predicate = self.parse_symbol(&p)?;

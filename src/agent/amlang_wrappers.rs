@@ -1,9 +1,9 @@
 use std::borrow::Cow;
 use std::convert::TryFrom;
 
-use crate::function::{
-    EvalErr::{self, *},
+use crate::lang_err::{
     ExpectedCount,
+    LangErr::{self, *},
 };
 use crate::model::Ret;
 use crate::primitive::{Node, Primitive, Symbol};
@@ -22,7 +22,7 @@ pub fn quote_wrapper(args: Option<HeapSexp>) -> Ret {
     Ok(val)
 }
 
-pub fn make_procedure_wrapper(args: Option<HeapSexp>) -> Result<(Vec<Symbol>, Sexp), EvalErr> {
+pub fn make_procedure_wrapper(args: Option<HeapSexp>) -> Result<(Vec<Symbol>, Sexp), LangErr> {
     if args.is_none() {
         return Err(WrongArgumentCount {
             given: 0,
@@ -61,7 +61,7 @@ pub fn make_procedure_wrapper(args: Option<HeapSexp>) -> Result<(Vec<Symbol>, Se
     };
 }
 
-pub fn tell_wrapper(args: &Vec<Node>) -> Result<(Node, Node, Node), EvalErr> {
+pub fn tell_wrapper(args: &Vec<Node>) -> Result<(Node, Node, Node), LangErr> {
     if args.len() != 3 {
         return Err(WrongArgumentCount {
             given: args.len(),
@@ -75,7 +75,7 @@ pub fn tell_wrapper(args: &Vec<Node>) -> Result<(Node, Node, Node), EvalErr> {
     Ok((subject, predicate, object))
 }
 
-pub fn def_wrapper(args: &Vec<Node>) -> Result<(Node, Option<Node>), EvalErr> {
+pub fn def_wrapper(args: &Vec<Node>) -> Result<(Node, Option<Node>), LangErr> {
     if args.len() < 1 {
         return Err(WrongArgumentCount {
             given: args.len(),
@@ -93,7 +93,7 @@ pub fn def_wrapper(args: &Vec<Node>) -> Result<(Node, Option<Node>), EvalErr> {
     Ok((name, structure))
 }
 
-pub fn apply_wrapper(args: &Vec<Node>) -> Result<(Node, Node), EvalErr> {
+pub fn apply_wrapper(args: &Vec<Node>) -> Result<(Node, Node), LangErr> {
     if args.len() != 2 {
         return Err(WrongArgumentCount {
             given: args.len(),

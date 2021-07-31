@@ -1,14 +1,14 @@
 use std::borrow::Cow;
 use std::fmt;
 
-use self::EvalErr::*;
 use self::ExpectedCount::*;
+use self::LangErr::*;
 use crate::primitive::Symbol;
 use crate::sexp::Sexp;
 
 
 #[derive(Debug)]
-pub enum EvalErr {
+pub enum LangErr {
     InvalidArgument {
         given: Sexp,
         expected: Cow<'static, str>,
@@ -35,7 +35,7 @@ pub enum ExpectedCount {
 }
 
 
-impl fmt::Display for EvalErr {
+impl fmt::Display for LangErr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "[Eval Error] ")?;
         let res = match self {

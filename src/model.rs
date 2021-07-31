@@ -1,9 +1,9 @@
 use crate::agent::env_state::EnvState;
-use crate::function::EvalErr;
+use crate::lang_err::LangErr;
 use crate::sexp::{HeapSexp, Sexp};
 
 
-pub type Ret = Result<Sexp, EvalErr>;
+pub type Ret = Result<Sexp, LangErr>;
 
 /// Meaning of Structures.
 pub trait Eval {

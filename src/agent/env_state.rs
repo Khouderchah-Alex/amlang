@@ -6,7 +6,7 @@ use std::sync::Arc;
 use super::amlang_context::AmlangContext;
 use crate::environment::environment::{EnvObject, TripleSet};
 use crate::environment::LocalNode;
-use crate::function::EvalErr::{self, *};
+use crate::lang_err::LangErr::{self, *};
 use crate::model::Model;
 use crate::primitive::symbol_policies::policy_admin;
 use crate::primitive::{LocalNodeTable, Node, Path, Primitive, Symbol, SymbolTable, ToSymbol};
@@ -111,7 +111,7 @@ impl EnvState {
         None
     }
 
-    pub fn resolve(&mut self, name: &Symbol) -> Result<Node, EvalErr> {
+    pub fn resolve(&mut self, name: &Symbol) -> Result<Node, LangErr> {
         let designation = self.designation();
         // Always get self_* nodes from current env.
         match name.as_str() {
@@ -127,10 +127,10 @@ impl EnvState {
                 return Ok(node);
             }
         }
-        Err(EvalErr::UnboundSymbol(name.clone()))
+        Err(LangErr::UnboundSymbol(name.clone()))
     }
 
-    pub fn designate(&mut self, designator: Primitive) -> Result<Sexp, EvalErr> {
+    pub fn designate(&mut self, designator: Primitive) -> Result<Sexp, LangErr> {
         match designator {
             // Symbol -> Node
             Primitive::Symbol(symbol) => Ok(self.resolve(&symbol)?.into()),
@@ -165,7 +165,7 @@ impl EnvState {
         }
     }
 
-    pub fn name_node(&mut self, name: LocalNode, node: LocalNode) -> Result<Node, EvalErr> {
+    pub fn name_node(&mut self, name: LocalNode, node: LocalNode) -> Result<Node, LangErr> {
         let name_sexp = self.env().node_structure(name);
         let symbol = if let Ok(symbol) = <Symbol>::try_from(name_sexp.cloned()) {
             symbol
@@ -209,14 +209,14 @@ impl EnvState {
         subject: LocalNode,
         predicate: LocalNode,
         object: LocalNode,
-    ) -> Result<Sexp, EvalErr> {
+    ) -> Result<Sexp, LangErr> {
         if let Some(triple) = self
             .env()
             .match_triple(subject, predicate, object)
             .iter()
             .next()
         {
-            return Err(EvalErr::DuplicateTriple(*triple.generate_structure(self)));
+            return Err(LangErr::DuplicateTriple(*triple.generate_structure(self)));
         }
 
         let triple = self.env().insert_triple(subject, predicate, object);
@@ -228,7 +228,7 @@ impl EnvState {
         subject: LocalNode,
         predicate: LocalNode,
         object: LocalNode,
-    ) -> Result<Sexp, EvalErr> {
+    ) -> Result<Sexp, LangErr> {
         let res = if subject == self.context.placeholder {
             if predicate == self.context.placeholder {
                 if object == self.context.placeholder {
@@ -269,7 +269,7 @@ impl EnvState {
         Ok(res.into())
     }
 
-    pub fn import(&mut self, original: Node) -> Result<Node, EvalErr> {
+    pub fn import(&mut self, original: Node) -> Result<Node, LangErr> {
         if original.env() == self.pos().env() {
             return Err(InvalidArgument {
                 given: original.into(),

@@ -9,7 +9,7 @@ pub mod agent;
 pub mod append_vec;
 pub mod builtins;
 pub mod environment;
-pub mod function;
+pub mod lang_err;
 pub mod model;
 pub mod parser;
 pub mod primitive;
