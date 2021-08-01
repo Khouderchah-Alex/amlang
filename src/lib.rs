@@ -2,6 +2,8 @@ use std::env;
 use std::path::Path;
 
 #[macro_use]
+pub mod lang_err;
+#[macro_use]
 pub mod sexp;
 
 pub mod agent;
@@ -9,7 +11,6 @@ pub mod agent;
 pub mod append_vec;
 pub mod builtins;
 pub mod environment;
-pub mod lang_err;
 pub mod model;
 pub mod parser;
 pub mod primitive;

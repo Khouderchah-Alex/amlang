@@ -1,14 +1,29 @@
 use std::borrow::Cow;
 use std::fmt;
 
+use self::ErrKind::*;
 use self::ExpectedCount::*;
-use self::LangErr::*;
-use crate::primitive::Symbol;
+use crate::primitive::{Continuation, Symbol};
 use crate::sexp::Sexp;
 
 
+macro_rules! err {
+    ($($kind:tt)+) => {
+        Err(crate::lang_err::LangErr::empty_context(
+            crate::lang_err::ErrKind::$($kind)+,
+        ))
+    };
+}
+
+
 #[derive(Debug)]
-pub enum LangErr {
+pub struct LangErr {
+    cont: Option<Box<Continuation>>,
+    pub kind: ErrKind,
+}
+
+#[derive(Debug)]
+pub enum ErrKind {
     InvalidArgument {
         given: Sexp,
         expected: Cow<'static, str>,
@@ -34,11 +49,25 @@ pub enum ExpectedCount {
     AtMost(usize),
 }
 
+impl LangErr {
+    // Prefer using err! for convenience.
+    pub fn empty_context(kind: ErrKind) -> Self {
+        Self { cont: None, kind }
+    }
+
+    pub fn with_context(cont: Box<Continuation>, kind: ErrKind) -> Self {
+        Self {
+            cont: Some(cont),
+            kind,
+        }
+    }
+}
+
 
 impl fmt::Display for LangErr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "[Eval Error] ")?;
-        let res = match self {
+        write!(f, "[Lang Error] ")?;
+        let res = match &self.kind {
             InvalidArgument { given, expected } => write!(
                 f,
                 "Invalid argument: given {}, expected {}",

@@ -1,6 +1,6 @@
 use std::convert::TryFrom;
 
-use crate::lang_err::LangErr;
+use crate::lang_err::{ErrKind::*, LangErr};
 use crate::primitive::{Node, Number, Symbol};
 use crate::sexp::{Cons, Sexp};
 
@@ -39,7 +39,11 @@ fn list_sexp() {
 #[test]
 fn wrong_type() {
     let original = "(lambda (a b) ing)".parse::<Sexp>().unwrap();
-    if let Err(LangErr::InvalidArgument { .. }) = break_by_types!(original, Node, Sexp, Symbol) {
+    if let Err(LangErr {
+        kind: InvalidArgument { .. },
+        ..
+    }) = break_by_types!(original, Node, Sexp, Symbol)
+    {
     } else {
         panic!();
     }
@@ -48,8 +52,10 @@ fn wrong_type() {
 #[test]
 fn extra_arguments() {
     let original = "(test ing 1 2)".parse::<Sexp>().unwrap();
-    if let Err(LangErr::WrongArgumentCount { given: 4, .. }) =
-        break_by_types!(original, Symbol, Symbol)
+    if let Err(LangErr {
+        kind: WrongArgumentCount { given: 4, .. },
+        ..
+    }) = break_by_types!(original, Symbol, Symbol)
     {
     } else {
         panic!();
@@ -59,8 +65,10 @@ fn extra_arguments() {
 #[test]
 fn missing_arguments() {
     let original = "(test)".parse::<Sexp>().unwrap();
-    if let Err(LangErr::WrongArgumentCount { given: 1, .. }) =
-        break_by_types!(original, Symbol, Symbol, Symbol)
+    if let Err(LangErr {
+        kind: WrongArgumentCount { given: 1, .. },
+        ..
+    }) = break_by_types!(original, Symbol, Symbol, Symbol)
     {
     } else {
         panic!();

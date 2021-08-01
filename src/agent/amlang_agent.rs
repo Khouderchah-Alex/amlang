@@ -7,10 +7,7 @@ use super::agent::Agent;
 use super::amlang_wrappers::*;
 use super::env_state::EnvState;
 use crate::environment::LocalNode;
-use crate::lang_err::{
-    ExpectedCount,
-    LangErr::{self, *},
-};
+use crate::lang_err::{ExpectedCount, LangErr};
 use crate::model::{Eval, Model, Ret};
 use crate::parser::parse_sexp;
 use crate::primitive::procedure::Procedure;
@@ -57,7 +54,7 @@ impl AmlangAgent {
 
         let cons = match body {
             Sexp::Primitive(primitive) => {
-                return Err(InvalidSexp(primitive.clone().into()));
+                return err!(InvalidSexp(primitive.clone().into()));
             }
             Sexp::Cons(cons) => cons,
         };
@@ -110,7 +107,7 @@ impl AmlangAgent {
                 if node.env() == self.agent_state.context().lang_env() {
                     self.apply_special(node.local(), arg_nodes)
                 } else {
-                    Err(InvalidArgument {
+                    err!(InvalidArgument {
                         given: node.into(),
                         expected: Cow::Borrowed("Procedure or special Amlang Node"),
                     })
@@ -131,7 +128,7 @@ impl AmlangAgent {
             }
             Sexp::Primitive(Primitive::Procedure(Procedure::Abstraction(params, body_node))) => {
                 if arg_nodes.len() != params.len() {
-                    return Err(WrongArgumentCount {
+                    return err!(WrongArgumentCount {
                         given: arg_nodes.len(),
                         // TODO(func) support variable arity.
                         expected: ExpectedCount::Exactly(params.len()),
@@ -165,7 +162,7 @@ impl AmlangAgent {
                 self.pop_cont();
                 res
             }
-            not_proc @ _ => Err(InvalidArgument {
+            not_proc @ _ => err!(InvalidArgument {
                 given: not_proc.clone(),
                 expected: Cow::Borrowed("Procedure"),
             }),
@@ -238,7 +235,7 @@ impl AmlangAgent {
             }
             _ if context.curr == special_node => {
                 if arg_nodes.len() > 0 {
-                    return Err(WrongArgumentCount {
+                    return err!(WrongArgumentCount {
                         given: arg_nodes.len(),
                         expected: ExpectedCount::Exactly(0),
                     });
@@ -248,7 +245,7 @@ impl AmlangAgent {
             }
             _ if context.jump == special_node => {
                 if arg_nodes.len() != 1 {
-                    return Err(WrongArgumentCount {
+                    return err!(WrongArgumentCount {
                         given: arg_nodes.len(),
                         expected: ExpectedCount::Exactly(1),
                     });
@@ -262,7 +259,7 @@ impl AmlangAgent {
             }
             _ if context.import == special_node => {
                 if arg_nodes.len() != 1 {
-                    return Err(WrongArgumentCount {
+                    return err!(WrongArgumentCount {
                         given: arg_nodes.len(),
                         expected: ExpectedCount::Exactly(1),
                     });
@@ -275,7 +272,7 @@ impl AmlangAgent {
             }
             _ if context.env_find == special_node => {
                 if arg_nodes.len() != 1 {
-                    return Err(WrongArgumentCount {
+                    return err!(WrongArgumentCount {
                         given: arg_nodes.len(),
                         expected: ExpectedCount::Exactly(1),
                     });
@@ -285,7 +282,7 @@ impl AmlangAgent {
                 let path = match <&AmString>::try_from(&des) {
                     Ok(path) => path,
                     _ => {
-                        return Err(InvalidArgument {
+                        return err!(InvalidArgument {
                             given: des.into(),
                             expected: Cow::Borrowed("Node containing string"),
                         });
@@ -332,7 +329,7 @@ impl AmlangAgent {
             }
             _ if context.eval == special_node || context.exec == special_node => {
                 if arg_nodes.len() != 1 {
-                    return Err(WrongArgumentCount {
+                    return err!(WrongArgumentCount {
                         given: arg_nodes.len(),
                         expected: ExpectedCount::Exactly(1),
                     });
@@ -347,7 +344,7 @@ impl AmlangAgent {
                     self.exec(structure)
                 }
             }
-            _ => Err(InvalidArgument {
+            _ => err!(InvalidArgument {
                 given: Node::new(self.agent_state.context().lang_env(), special_node).into(),
                 expected: Cow::Borrowed("special Amlang Node"),
             }),
@@ -360,7 +357,7 @@ impl AmlangAgent {
         }
 
         return match *structures.unwrap() {
-            Sexp::Primitive(primitive) => Err(InvalidSexp(primitive.clone().into())),
+            Sexp::Primitive(primitive) => err!(InvalidSexp(primitive.clone().into())),
 
             Sexp::Cons(cons) => {
                 // TODO(perf) Return Cow.
@@ -490,7 +487,7 @@ impl Eval for AmlangAgent {
                 let (car, cdr) = cons.consume();
                 let car = match car {
                     Some(car) => car,
-                    None => return Err(InvalidSexp(Cons::new(car, cdr).into())),
+                    None => return err!(InvalidSexp(Cons::new(car, cdr).into())),
                 };
 
                 let eval_car = self.eval(car)?;
@@ -513,7 +510,7 @@ impl Eval for AmlangAgent {
                         _ if Node::new(context.lang_env(), context.branch) == node => {
                             let args = self.evlis(cdr)?;
                             if args.len() != 3 {
-                                return Err(WrongArgumentCount {
+                                return err!(WrongArgumentCount {
                                     given: args.len(),
                                     expected: ExpectedCount::Exactly(3),
                                 });
@@ -528,7 +525,7 @@ impl Eval for AmlangAgent {
                         }
                     }
                 }
-                return Err(InvalidArgument {
+                return err!(InvalidArgument {
                     given: Cons::new(Some(Box::new(eval_car)), cdr).into(),
                     expected: Cow::Borrowed("special form or functional application"),
                 });

@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 use std::collections::HashMap;
 
-use crate::lang_err::{ExpectedCount, LangErr};
+use crate::lang_err::ExpectedCount;
 use crate::model::Ret;
 use crate::primitive::builtin::Args;
 use crate::primitive::{BuiltIn, Number, Primitive};
@@ -38,7 +38,7 @@ pub fn add(args: Args) -> Ret {
         if let Sexp::Primitive(Primitive::Number(num)) = arg {
             curr += num;
         } else {
-            return Err(LangErr::InvalidArgument {
+            return err!(InvalidArgument {
                 given: arg.clone(),
                 expected: Cow::Borrowed("a Number"),
             });
@@ -50,7 +50,7 @@ pub fn add(args: Args) -> Ret {
 
 pub fn sub(args: Args) -> Ret {
     if args.len() < 1 {
-        return Err(LangErr::WrongArgumentCount {
+        return err!(WrongArgumentCount {
             given: 0,
             expected: ExpectedCount::AtLeast(1),
         });
@@ -67,7 +67,7 @@ pub fn sub(args: Args) -> Ret {
                 curr -= num;
             }
         } else {
-            return Err(LangErr::InvalidArgument {
+            return err!(InvalidArgument {
                 given: arg.clone(),
                 expected: Cow::Borrowed("a Number"),
             });
@@ -83,7 +83,7 @@ pub fn mul(args: Args) -> Ret {
         if let Sexp::Primitive(Primitive::Number(num)) = arg {
             curr *= num;
         } else {
-            return Err(LangErr::InvalidArgument {
+            return err!(InvalidArgument {
                 given: arg.clone(),
                 expected: Cow::Borrowed("a Number"),
             });
@@ -95,7 +95,7 @@ pub fn mul(args: Args) -> Ret {
 
 pub fn div(args: Args) -> Ret {
     if args.len() < 1 {
-        return Err(LangErr::WrongArgumentCount {
+        return err!(WrongArgumentCount {
             given: 0,
             expected: ExpectedCount::AtLeast(1),
         });
@@ -112,7 +112,7 @@ pub fn div(args: Args) -> Ret {
                 curr /= num;
             }
         } else {
-            return Err(LangErr::InvalidArgument {
+            return err!(InvalidArgument {
                 given: arg.clone(),
                 expected: Cow::Borrowed("a Number"),
             });
@@ -124,7 +124,7 @@ pub fn div(args: Args) -> Ret {
 
 pub fn car(mut args: Args) -> Ret {
     if args.len() != 1 {
-        return Err(LangErr::WrongArgumentCount {
+        return err!(WrongArgumentCount {
             given: args.len(),
             expected: ExpectedCount::Exactly(1),
         });
@@ -138,7 +138,7 @@ pub fn car(mut args: Args) -> Ret {
             Ok(Sexp::default())
         }
     } else {
-        Err(LangErr::InvalidArgument {
+        err!(InvalidArgument {
             given: first,
             expected: Cow::Borrowed("Cons"),
         })
@@ -147,7 +147,7 @@ pub fn car(mut args: Args) -> Ret {
 
 pub fn cdr(mut args: Args) -> Ret {
     if args.len() != 1 {
-        return Err(LangErr::WrongArgumentCount {
+        return err!(WrongArgumentCount {
             given: args.len(),
             expected: ExpectedCount::Exactly(1),
         });
@@ -161,7 +161,7 @@ pub fn cdr(mut args: Args) -> Ret {
             Ok(Sexp::default())
         }
     } else {
-        Err(LangErr::InvalidArgument {
+        err!(InvalidArgument {
             given: first,
             expected: Cow::Borrowed("Cons"),
         })
@@ -170,7 +170,7 @@ pub fn cdr(mut args: Args) -> Ret {
 
 pub fn cons(mut args: Args) -> Ret {
     if args.len() != 2 {
-        return Err(LangErr::WrongArgumentCount {
+        return err!(WrongArgumentCount {
             given: args.len(),
             expected: ExpectedCount::Exactly(2),
         });

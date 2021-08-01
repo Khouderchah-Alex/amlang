@@ -6,7 +6,7 @@ use std::sync::Arc;
 use super::amlang_context::AmlangContext;
 use crate::environment::environment::{EnvObject, TripleSet};
 use crate::environment::LocalNode;
-use crate::lang_err::LangErr::{self, *};
+use crate::lang_err::LangErr;
 use crate::model::Model;
 use crate::primitive::symbol_policies::policy_admin;
 use crate::primitive::{LocalNodeTable, Node, Path, Primitive, Symbol, SymbolTable, ToSymbol};
@@ -127,7 +127,7 @@ impl EnvState {
                 return Ok(node);
             }
         }
-        Err(LangErr::UnboundSymbol(name.clone()))
+        err!(UnboundSymbol(name.clone()))
     }
 
     pub fn designate(&mut self, designator: Primitive) -> Result<Sexp, LangErr> {
@@ -170,7 +170,7 @@ impl EnvState {
         let symbol = if let Ok(symbol) = <Symbol>::try_from(name_sexp.cloned()) {
             symbol
         } else {
-            return Err(InvalidArgument {
+            return err!(InvalidArgument {
                 given: self
                     .env()
                     .node_structure(name)
@@ -185,7 +185,7 @@ impl EnvState {
         // designations; that is, only fail if the designation exists earlier in
         // the chain than the current environment.
         if let Ok(_) = self.resolve(&symbol) {
-            return Err(AlreadyBoundSymbol(symbol));
+            return err!(AlreadyBoundSymbol(symbol));
         }
 
         let global_node = node.globalize(&self);
@@ -216,7 +216,7 @@ impl EnvState {
             .iter()
             .next()
         {
-            return Err(LangErr::DuplicateTriple(*triple.generate_structure(self)));
+            return err!(DuplicateTriple(*triple.generate_structure(self)));
         }
 
         let triple = self.env().insert_triple(subject, predicate, object);
@@ -271,7 +271,7 @@ impl EnvState {
 
     pub fn import(&mut self, original: Node) -> Result<Node, LangErr> {
         if original.env() == self.pos().env() {
-            return Err(InvalidArgument {
+            return err!(InvalidArgument {
                 given: original.into(),
                 expected: Cow::Borrowed("Node outside of current env"),
             });
@@ -299,7 +299,7 @@ impl EnvState {
                 return Ok(imported.globalize(&self));
             }
         } else {
-            return Err(InvalidState {
+            return err!(InvalidState {
                 actual: Cow::Borrowed("import table triple object has no table"),
                 expected: Cow::Borrowed("has table"),
             });
@@ -311,7 +311,7 @@ impl EnvState {
         {
             table.insert(original.local(), imported);
         } else {
-            return Err(InvalidState {
+            return err!(InvalidState {
                 actual: Cow::Borrowed("import table triple object has no table"),
                 expected: Cow::Borrowed("has table"),
             });

@@ -67,7 +67,7 @@ macro_rules! bootstrap_context {
                 if let Some(node) = table.lookup(s) {
                     Ok(node.local())
                 } else {
-                    Err(LangErr(lang_err::LangErr::UnboundSymbol(s.to_symbol_or_panic(policy_admin))))
+                    err!(UnboundSymbol(s.to_symbol_or_panic(policy_admin))).map_err(|e| LangErr(e))
                 }
             };
             (
@@ -470,9 +470,7 @@ impl EnvManager {
 
     fn parse_symbol(&mut self, sym: &Symbol) -> Result<Node, DeserializeError> {
         match policy_admin(sym.as_str()).unwrap() {
-            AdminSymbolInfo::Identifier => {
-                Err(LangErr(lang_err::LangErr::UnboundSymbol(sym.clone())))
-            }
+            AdminSymbolInfo::Identifier => err!(UnboundSymbol(sym.clone())).map_err(|e| LangErr(e)),
             AdminSymbolInfo::LocalNode(node) => Ok(node.globalize(self.env_state())),
             AdminSymbolInfo::LocalTriple(idx) => {
                 let triple = self.env_state().env().triple_from_index(idx);
@@ -509,10 +507,11 @@ impl EnvManager {
             if node.env() == context.lang_env() {
                 if node.local() == context.apply {
                     if cdr.is_none() {
-                        return Err(LangErr(lang_err::LangErr::WrongArgumentCount {
+                        return err!(WrongArgumentCount {
                             given: 0,
                             expected: lang_err::ExpectedCount::Exactly(2),
-                        }));
+                        })
+                        .map_err(|e| LangErr(e));
                     }
 
                     let (func, args) =
@@ -523,16 +522,17 @@ impl EnvManager {
                         if let Ok(sym) = <&Symbol>::try_from(&*arg) {
                             arg_nodes.push(self.parse_symbol(sym)?);
                         } else {
-                            return Err(LangErr(lang_err::LangErr::InvalidSexp(*arg)));
+                            return err!(InvalidSexp(*arg)).map_err(|e| LangErr(e));
                         }
                     }
                     return Ok(Procedure::Application(fnode, arg_nodes).into());
                 } else if node.local() == context.lambda {
                     if cdr.is_none() {
-                        return Err(LangErr(lang_err::LangErr::WrongArgumentCount {
+                        return err!(WrongArgumentCount {
                             given: 0,
                             expected: lang_err::ExpectedCount::AtLeast(2),
-                        }));
+                        })
+                        .map_err(|e| LangErr(e));
                     }
 
                     let (params, body) =
@@ -542,17 +542,18 @@ impl EnvManager {
                         if let Ok(sym) = <&Symbol>::try_from(&*param) {
                             param_nodes.push(self.parse_symbol(sym)?);
                         } else {
-                            return Err(LangErr(lang_err::LangErr::InvalidSexp(*param)));
+                            return err!(InvalidSexp(*param)).map_err(|e| LangErr(e));
                         }
                     }
                     let body_node = self.parse_symbol(&body)?;
                     return Ok(Procedure::Abstraction(param_nodes, body_node).into());
                 } else if node.local() == context.branch {
                     if cdr.is_none() {
-                        return Err(LangErr(lang_err::LangErr::WrongArgumentCount {
+                        return err!(WrongArgumentCount {
                             given: 0,
                             expected: lang_err::ExpectedCount::Exactly(3),
-                        }));
+                        })
+                        .map_err(|e| LangErr(e));
                     }
 
                     let (pred, a, b) = break_by_types!(*cdr.unwrap(), Symbol, Symbol, Symbol)
@@ -600,7 +601,10 @@ impl EnvManager {
 
         let iter = match SexpIntoIter::try_from(remainder) {
             Ok(iter) => iter,
-            Err(lang_err::LangErr::WrongArgumentCount { .. }) => return Ok(()),
+            Err(lang_err::LangErr {
+                kind: lang_err::ErrKind::WrongArgumentCount { .. },
+                ..
+            }) => return Ok(()),
             Err(err) => return Err(DeserializeError::LangErr(err)),
         };
 

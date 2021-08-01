@@ -9,7 +9,7 @@ macro_rules! break_by_types {
         {
             match $sexp {
                 Sexp::Primitive(primitive) => {
-                    Err(crate::lang_err::LangErr::InvalidSexp(primitive.clone().into()))
+                    err!(InvalidSexp(primitive.clone().into()))
                 }
                 Sexp::Cons(cons) => {
                     let mut iter = cons.into_iter();
@@ -28,7 +28,7 @@ macro_rules! break_by_types {
                                             i += 1;
                                             <$type>::try_from(*sexp).unwrap()
                                         } else {
-                                            return Err(crate::lang_err::LangErr::InvalidArgument{
+                                            return err!(InvalidArgument{
                                                 given: *sexp.clone(),
                                                 expected: std::borrow::Cow::Owned(
                                                     "type ".to_string() + stringify!($type)
@@ -37,7 +37,7 @@ macro_rules! break_by_types {
                                         }
                                     }
                                     None =>  {
-                                        return Err(crate::lang_err::LangErr::WrongArgumentCount{
+                                        return err!(WrongArgumentCount{
                                             given: i,
                                             expected: crate::lang_err::ExpectedCount::Exactly(
                                                 expected
@@ -59,7 +59,7 @@ macro_rules! break_by_types {
                             iter = Cons::default().into_iter();
                         )*
                         if let Some(_) = iter.next() {
-                            return Err(crate::lang_err::LangErr::WrongArgumentCount{
+                            return err!(WrongArgumentCount{
                                 given: i + 1 + iter.count(),
                                 expected: crate::lang_err::ExpectedCount::Exactly(i),
                             });

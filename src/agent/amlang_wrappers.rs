@@ -1,10 +1,7 @@
 use std::borrow::Cow;
 use std::convert::TryFrom;
 
-use crate::lang_err::{
-    ExpectedCount,
-    LangErr::{self, *},
-};
+use crate::lang_err::{ExpectedCount, LangErr};
 use crate::model::Ret;
 use crate::primitive::{Node, Primitive, Symbol};
 use crate::sexp::{Cons, HeapSexp, Sexp};
@@ -12,7 +9,7 @@ use crate::sexp::{Cons, HeapSexp, Sexp};
 
 pub fn quote_wrapper(args: Option<HeapSexp>) -> Ret {
     if args.is_none() {
-        return Err(WrongArgumentCount {
+        return err!(WrongArgumentCount {
             given: 0,
             expected: ExpectedCount::Exactly(1),
         });
@@ -24,7 +21,7 @@ pub fn quote_wrapper(args: Option<HeapSexp>) -> Ret {
 
 pub fn make_procedure_wrapper(args: Option<HeapSexp>) -> Result<(Vec<Symbol>, Sexp), LangErr> {
     if args.is_none() {
-        return Err(WrongArgumentCount {
+        return err!(WrongArgumentCount {
             given: 0,
             expected: ExpectedCount::AtLeast(2),
         });
@@ -37,7 +34,7 @@ pub fn make_procedure_wrapper(args: Option<HeapSexp>) -> Result<(Vec<Symbol>, Se
         let name = match *param {
             Sexp::Primitive(Primitive::Symbol(symbol)) => symbol,
             _ => {
-                return Err(InvalidArgument {
+                return err!(InvalidArgument {
                     given: param.clone().into(),
                     expected: Cow::Borrowed("symbol"),
                 });
@@ -49,12 +46,12 @@ pub fn make_procedure_wrapper(args: Option<HeapSexp>) -> Result<(Vec<Symbol>, Se
     return match body {
         Some(hsexp) => match *hsexp {
             Sexp::Cons(cons) => Ok((params, cons.into())),
-            Sexp::Primitive(primitive) => Err(InvalidArgument {
+            Sexp::Primitive(primitive) => err!(InvalidArgument {
                 given: primitive.into(),
                 expected: Cow::Borrowed("procedure body"),
             }),
         },
-        None => Err(WrongArgumentCount {
+        None => err!(WrongArgumentCount {
             given: 1,
             expected: ExpectedCount::AtLeast(2),
         }),
@@ -63,7 +60,7 @@ pub fn make_procedure_wrapper(args: Option<HeapSexp>) -> Result<(Vec<Symbol>, Se
 
 pub fn tell_wrapper(args: &Vec<Node>) -> Result<(Node, Node, Node), LangErr> {
     if args.len() != 3 {
-        return Err(WrongArgumentCount {
+        return err!(WrongArgumentCount {
             given: args.len(),
             expected: ExpectedCount::Exactly(3),
         });
@@ -77,12 +74,12 @@ pub fn tell_wrapper(args: &Vec<Node>) -> Result<(Node, Node, Node), LangErr> {
 
 pub fn def_wrapper(args: &Vec<Node>) -> Result<(Node, Option<Node>), LangErr> {
     if args.len() < 1 {
-        return Err(WrongArgumentCount {
+        return err!(WrongArgumentCount {
             given: args.len(),
             expected: ExpectedCount::AtLeast(1),
         });
     } else if args.len() > 2 {
-        return Err(WrongArgumentCount {
+        return err!(WrongArgumentCount {
             given: args.len(),
             expected: ExpectedCount::AtMost(2),
         });
@@ -95,7 +92,7 @@ pub fn def_wrapper(args: &Vec<Node>) -> Result<(Node, Option<Node>), LangErr> {
 
 pub fn apply_wrapper(args: &Vec<Node>) -> Result<(Node, Node), LangErr> {
     if args.len() != 2 {
-        return Err(WrongArgumentCount {
+        return err!(WrongArgumentCount {
             given: args.len(),
             expected: ExpectedCount::Exactly(2),
         });
