@@ -152,13 +152,15 @@ impl AmlangAgent {
 
                 self.cont.push(frame);
 
-                let body = self.agent_state.designate(Primitive::Node(body_node))?;
-                let result = self.exec(body)?;
-                let res = if let Ok(node) = <Node>::try_from(&result) {
-                    Ok(self.concretize(node).into())
-                } else {
-                    Ok(result)
-                };
+                let res = (|| {
+                    let body = self.agent_state.designate(Primitive::Node(body_node))?;
+                    let result = self.exec(body)?;
+                    if let Ok(node) = <Node>::try_from(&result) {
+                        Ok(self.concretize(node).into())
+                    } else {
+                        Ok(result)
+                    }
+                })();
 
                 self.cont.pop();
                 res
