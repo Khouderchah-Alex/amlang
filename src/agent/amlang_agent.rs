@@ -1,4 +1,4 @@
-use log::{debug, warn};
+use log::debug;
 use std::borrow::Cow;
 use std::convert::TryFrom;
 use std::io::{stdout, BufWriter};
@@ -10,8 +10,10 @@ use crate::environment::LocalNode;
 use crate::lang_err::{ExpectedCount, LangErr};
 use crate::model::{Eval, Model, Ret};
 use crate::parser::parse_sexp;
-use crate::primitive::procedure::Procedure;
-use crate::primitive::{AmString, Continuation, Node, Number, Primitive, Symbol, SymbolTable};
+use crate::primitive::continuation::ContinuationFrame;
+use crate::primitive::{
+    AmString, Continuation, Node, Number, Primitive, Procedure, Symbol, SymbolTable,
+};
 use crate::sexp::{Cons, HeapSexp, Sexp, SexpIntoIter};
 use crate::token::interactive_stream::InteractiveStream;
 
@@ -19,7 +21,7 @@ use crate::token::interactive_stream::InteractiveStream;
 pub struct AmlangAgent {
     agent_state: EnvState,
     history_state: EnvState,
-    cont: Box<Continuation>,
+    cont: Continuation,
     eval_symbols: SymbolTable,
 }
 
@@ -29,12 +31,10 @@ impl AmlangAgent {
         let lang_env = agent_state.context().lang_env();
         agent_state.designation_chain_mut().push_front(lang_env);
 
-        // TODO(func) Use repr of Agent run.
-        let root_context = Node::new(lang_env, LocalNode::default());
         Self {
             agent_state,
             history_state,
-            cont: Continuation::new_front(None, root_context),
+            cont: Continuation::new(),
             eval_symbols: SymbolTable::default(),
         }
     }
@@ -135,8 +135,7 @@ impl AmlangAgent {
                     });
                 }
 
-                self.push_cont(proc_node);
-
+                let mut frame = ContinuationFrame::new(proc_node);
                 let mut args = Vec::with_capacity(arg_nodes.len());
                 for (i, node) in arg_nodes.into_iter().enumerate() {
                     let structure = self.agent_state.designate(Primitive::Node(node))?;
@@ -147,9 +146,11 @@ impl AmlangAgent {
                     };
                     args.push(arg);
 
-                    self.cont.insert(params[i], node);
+                    frame.insert(params[i], node);
                     debug!("cont insert: {} -> {}", params[i], node);
                 }
+
+                self.cont.push(frame);
 
                 let body = self.agent_state.designate(Primitive::Node(body_node))?;
                 let result = self.exec(body)?;
@@ -159,7 +160,7 @@ impl AmlangAgent {
                     Ok(result)
                 };
 
-                self.pop_cont();
+                self.cont.pop();
                 res
             }
             not_proc @ _ => err!(InvalidArgument {
@@ -387,24 +388,6 @@ impl AmlangAgent {
             new_node
         } else {
             node
-        }
-    }
-
-    fn push_cont(&mut self, new_context: Node) {
-        let mut old_cont = Continuation::new_front(None, new_context);
-        std::mem::swap(&mut old_cont, &mut self.cont);
-        self.cont.set_next(Some(old_cont));
-    }
-
-    fn pop_cont(&mut self) {
-        // TODO(func) Use repr of Agent run for context.
-        let root_context = Node::new(self.env_state().context().lang_env, LocalNode::default());
-        let mut old_cont = Continuation::new_front(None, root_context);
-        std::mem::swap(&mut old_cont, &mut self.cont);
-        if let Some(c) = old_cont.pop_front() {
-            self.cont = c;
-        } else {
-            warn!("Over-popped continuation");
         }
     }
 }
