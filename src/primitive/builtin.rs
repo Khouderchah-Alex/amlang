@@ -4,7 +4,7 @@ use std::convert::TryFrom;
 use std::fmt;
 
 use crate::model::Ret;
-use crate::primitive::Primitive;
+use crate::primitive::{Continuation, Primitive};
 use crate::sexp::Sexp;
 
 
@@ -13,11 +13,11 @@ pub type Args = Vec<Sexp>;
 #[derive(Clone, Copy)]
 pub struct BuiltIn {
     name: &'static str,
-    fun: fn(Args) -> Ret,
+    fun: fn(Args, &Continuation) -> Ret,
 }
 
 impl BuiltIn {
-    pub fn new(name: &'static str, fun: fn(Args) -> Ret) -> BuiltIn {
+    pub fn new(name: &'static str, fun: fn(Args, &Continuation) -> Ret) -> BuiltIn {
         BuiltIn { name, fun }
     }
 
@@ -25,8 +25,8 @@ impl BuiltIn {
         self.name
     }
 
-    pub fn call(&self, args: Args) -> Ret {
-        (self.fun)(args)
+    pub fn call(&self, args: Args, cont: &Continuation) -> Ret {
+        (self.fun)(args, cont)
     }
 }
 

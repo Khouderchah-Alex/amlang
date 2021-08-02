@@ -15,10 +15,19 @@ macro_rules! err {
     };
 }
 
+macro_rules! err_ctx {
+    ($cont:expr, $($kind:tt)+) => {
+        Err(crate::lang_err::LangErr::with_context(
+            $cont.clone(),
+            crate::lang_err::ErrKind::$($kind)+,
+        ))
+    };
+}
+
 
 #[derive(Debug)]
 pub struct LangErr {
-    cont: Option<Box<Continuation>>,
+    cont: Option<Continuation>,
     pub kind: ErrKind,
 }
 
@@ -55,7 +64,8 @@ impl LangErr {
         Self { cont: None, kind }
     }
 
-    pub fn with_context(cont: Box<Continuation>, kind: ErrKind) -> Self {
+    // Prefer using err_ctx! for convenience.
+    pub fn with_context(cont: Continuation, kind: ErrKind) -> Self {
         Self {
             cont: Some(cont),
             kind,
@@ -67,7 +77,7 @@ impl LangErr {
 impl fmt::Display for LangErr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "[Lang Error] ")?;
-        let res = match &self.kind {
+        match &self.kind {
             InvalidArgument { given, expected } => write!(
                 f,
                 "Invalid argument: given {}, expected {}",
@@ -85,8 +95,16 @@ impl fmt::Display for LangErr {
             UnboundSymbol(symbol) => write!(f, "Unbound symbol: \"{}\"", symbol),
             AlreadyBoundSymbol(symbol) => write!(f, "Already bound symbol: \"{}\"", symbol),
             DuplicateTriple(sexp) => write!(f, "Duplicate triple: {}", sexp),
-        };
-        res
+        }?;
+
+        // TODO(func) Move tracing to something that can resolve Nodes.
+        if let Some(cont) = &self.cont {
+            writeln!(f, "")?;
+            for (i, frame) in cont.iter().enumerate() {
+                writeln!(f, "{})  {}", i, frame.context())?
+            }
+        }
+        Ok(())
     }
 }
 

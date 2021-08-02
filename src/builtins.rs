@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use crate::lang_err::ExpectedCount;
 use crate::model::Ret;
 use crate::primitive::builtin::Args;
-use crate::primitive::{BuiltIn, Number, Primitive};
+use crate::primitive::{BuiltIn, Continuation, Number, Primitive};
 use crate::sexp::{self, Sexp};
 
 
@@ -32,28 +32,34 @@ pub fn generate_builtin_map() -> HashMap<&'static str, BuiltIn> {
 }
 
 
-pub fn add(args: Args) -> Ret {
+pub fn add(args: Args, cont: &Continuation) -> Ret {
     let mut curr = Number::default();
     for arg in args {
         if let Sexp::Primitive(Primitive::Number(num)) = arg {
             curr += num;
         } else {
-            return err!(InvalidArgument {
-                given: arg.clone(),
-                expected: Cow::Borrowed("a Number"),
-            });
+            return err_ctx!(
+                cont,
+                InvalidArgument {
+                    given: arg.clone(),
+                    expected: Cow::Borrowed("a Number"),
+                }
+            );
         }
     }
 
     Ok(curr.into())
 }
 
-pub fn sub(args: Args) -> Ret {
+pub fn sub(args: Args, cont: &Continuation) -> Ret {
     if args.len() < 1 {
-        return err!(WrongArgumentCount {
-            given: 0,
-            expected: ExpectedCount::AtLeast(1),
-        });
+        return err_ctx!(
+            cont,
+            WrongArgumentCount {
+                given: 0,
+                expected: ExpectedCount::AtLeast(1),
+            }
+        );
     }
 
     let mut curr = Number::default();
@@ -67,38 +73,47 @@ pub fn sub(args: Args) -> Ret {
                 curr -= num;
             }
         } else {
-            return err!(InvalidArgument {
-                given: arg.clone(),
-                expected: Cow::Borrowed("a Number"),
-            });
+            return err_ctx!(
+                cont,
+                InvalidArgument {
+                    given: arg.clone(),
+                    expected: Cow::Borrowed("a Number"),
+                }
+            );
         }
     }
 
     Ok(curr.into())
 }
 
-pub fn mul(args: Args) -> Ret {
+pub fn mul(args: Args, cont: &Continuation) -> Ret {
     let mut curr = Number::Integer(1);
     for arg in args {
         if let Sexp::Primitive(Primitive::Number(num)) = arg {
             curr *= num;
         } else {
-            return err!(InvalidArgument {
-                given: arg.clone(),
-                expected: Cow::Borrowed("a Number"),
-            });
+            return err_ctx!(
+                cont,
+                InvalidArgument {
+                    given: arg.clone(),
+                    expected: Cow::Borrowed("a Number"),
+                }
+            );
         }
     }
 
     Ok(curr.into())
 }
 
-pub fn div(args: Args) -> Ret {
+pub fn div(args: Args, cont: &Continuation) -> Ret {
     if args.len() < 1 {
-        return err!(WrongArgumentCount {
-            given: 0,
-            expected: ExpectedCount::AtLeast(1),
-        });
+        return err_ctx!(
+            cont,
+            WrongArgumentCount {
+                given: 0,
+                expected: ExpectedCount::AtLeast(1),
+            }
+        );
     }
 
     let mut curr = Number::default();
@@ -112,22 +127,28 @@ pub fn div(args: Args) -> Ret {
                 curr /= num;
             }
         } else {
-            return err!(InvalidArgument {
-                given: arg.clone(),
-                expected: Cow::Borrowed("a Number"),
-            });
+            return err_ctx!(
+                cont,
+                InvalidArgument {
+                    given: arg.clone(),
+                    expected: Cow::Borrowed("a Number"),
+                }
+            );
         }
     }
 
     Ok(curr.into())
 }
 
-pub fn car(mut args: Args) -> Ret {
+pub fn car(mut args: Args, cont: &Continuation) -> Ret {
     if args.len() != 1 {
-        return err!(WrongArgumentCount {
-            given: args.len(),
-            expected: ExpectedCount::Exactly(1),
-        });
+        return err_ctx!(
+            cont,
+            WrongArgumentCount {
+                given: args.len(),
+                expected: ExpectedCount::Exactly(1),
+            }
+        );
     }
 
     let first = args.pop().unwrap();
@@ -138,19 +159,25 @@ pub fn car(mut args: Args) -> Ret {
             Ok(Sexp::default())
         }
     } else {
-        err!(InvalidArgument {
-            given: first,
-            expected: Cow::Borrowed("Cons"),
-        })
+        err_ctx!(
+            cont,
+            InvalidArgument {
+                given: first,
+                expected: Cow::Borrowed("Cons"),
+            }
+        )
     }
 }
 
-pub fn cdr(mut args: Args) -> Ret {
+pub fn cdr(mut args: Args, cont: &Continuation) -> Ret {
     if args.len() != 1 {
-        return err!(WrongArgumentCount {
-            given: args.len(),
-            expected: ExpectedCount::Exactly(1),
-        });
+        return err_ctx!(
+            cont,
+            WrongArgumentCount {
+                given: args.len(),
+                expected: ExpectedCount::Exactly(1),
+            }
+        );
     }
 
     let first = args.pop().unwrap();
@@ -161,19 +188,25 @@ pub fn cdr(mut args: Args) -> Ret {
             Ok(Sexp::default())
         }
     } else {
-        err!(InvalidArgument {
-            given: first,
-            expected: Cow::Borrowed("Cons"),
-        })
+        err_ctx!(
+            cont,
+            InvalidArgument {
+                given: first,
+                expected: Cow::Borrowed("Cons"),
+            }
+        )
     }
 }
 
-pub fn cons(mut args: Args) -> Ret {
+pub fn cons(mut args: Args, cont: &Continuation) -> Ret {
     if args.len() != 2 {
-        return err!(WrongArgumentCount {
-            given: args.len(),
-            expected: ExpectedCount::Exactly(2),
-        });
+        return err_ctx!(
+            cont,
+            WrongArgumentCount {
+                given: args.len(),
+                expected: ExpectedCount::Exactly(2),
+            }
+        );
     }
 
     let cdr = args.pop().unwrap().into();

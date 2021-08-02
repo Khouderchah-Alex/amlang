@@ -42,6 +42,11 @@ impl Continuation {
         }
         None
     }
+
+    /// Iterator from most-recent to least-recent frame.
+    pub fn iter(&self) -> impl Iterator<Item = &ContinuationFrame> {
+        self.0.iter().rev()
+    }
 }
 
 impl ContinuationFrame {
@@ -60,6 +65,10 @@ impl ContinuationFrame {
             entry.or_insert(to);
             true
         }
+    }
+
+    pub fn context(&self) -> Node {
+        self.context
     }
 }
 
