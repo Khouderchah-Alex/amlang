@@ -39,7 +39,7 @@ impl AmlangAgent {
         }
     }
 
-    fn make_procedure(&mut self, params: Vec<Symbol>, body: Sexp) -> Result<Procedure, LangErr> {
+    fn make_lambda(&mut self, params: Vec<Symbol>, body: Sexp) -> Result<Procedure, LangErr> {
         let mut surface = Vec::new();
         for symbol in params {
             let node = self
@@ -484,8 +484,8 @@ impl Eval for AmlangAgent {
                             return quote_wrapper(cdr);
                         }
                         _ if Node::new(context.lang_env(), context.lambda) == node => {
-                            let (params, body) = make_procedure_wrapper(cdr)?;
-                            let proc = self.make_procedure(params, body)?;
+                            let (params, body) = make_lambda_wrapper(cdr)?;
+                            let proc = self.make_lambda(params, body)?;
                             return Ok(self
                                 .agent_state
                                 .env()

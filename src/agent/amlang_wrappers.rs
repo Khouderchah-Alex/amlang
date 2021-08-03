@@ -19,7 +19,7 @@ pub fn quote_wrapper(args: Option<HeapSexp>) -> Ret {
     Ok(val)
 }
 
-pub fn make_procedure_wrapper(args: Option<HeapSexp>) -> Result<(Vec<Symbol>, Sexp), LangErr> {
+pub fn make_lambda_wrapper(args: Option<HeapSexp>) -> Result<(Vec<Symbol>, Sexp), LangErr> {
     if args.is_none() {
         return err!(WrongArgumentCount {
             given: 0,
