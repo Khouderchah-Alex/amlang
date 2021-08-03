@@ -71,6 +71,10 @@ impl LangErr {
             kind,
         }
     }
+
+    pub fn cont(&self) -> &Option<Continuation> {
+        &self.cont
+    }
 }
 
 
@@ -95,16 +99,7 @@ impl fmt::Display for LangErr {
             UnboundSymbol(symbol) => write!(f, "Unbound symbol: \"{}\"", symbol),
             AlreadyBoundSymbol(symbol) => write!(f, "Already bound symbol: \"{}\"", symbol),
             DuplicateTriple(sexp) => write!(f, "Duplicate triple: {}", sexp),
-        }?;
-
-        // TODO(func) Move tracing to something that can resolve Nodes.
-        if let Some(cont) = &self.cont {
-            writeln!(f, "")?;
-            for (i, frame) in cont.iter().enumerate() {
-                writeln!(f, "{})  {}", i, frame.context())?
-            }
         }
-        Ok(())
     }
 }
 

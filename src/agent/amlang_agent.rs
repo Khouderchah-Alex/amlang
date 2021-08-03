@@ -443,6 +443,7 @@ impl Agent for AmlangAgent {
                 }
                 Err(err) => {
                     println!(" {}", err);
+                    self.trace_error(err);
                     continue;
                 }
             };
@@ -521,6 +522,15 @@ impl Eval for AmlangAgent {
 
 
 impl AmlangAgent {
+    fn trace_error(&mut self, err: LangErr) {
+        if let Some(cont) = &err.cont() {
+            for (i, frame) in cont.iter().enumerate() {
+                print!("{})  ", i);
+                self.print_list(&frame.context().into());
+                println!("");
+            }
+        }
+    }
     /*
        fn print_curr_nodes(&mut self) {
            let nodes = self.agent_state.env().all_nodes();
