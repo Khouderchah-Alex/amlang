@@ -2,6 +2,7 @@ use log::debug;
 use std::borrow::Cow;
 use std::convert::TryFrom;
 use std::io::{stdout, BufWriter};
+use std::iter::Peekable;
 
 use super::agent::Agent;
 use super::amlang_wrappers::*;
@@ -9,7 +10,7 @@ use super::env_state::EnvState;
 use crate::environment::LocalNode;
 use crate::lang_err::{ExpectedCount, LangErr};
 use crate::model::{Eval, Model, Ret};
-use crate::parser::parse_sexp;
+use crate::parser::{parse_sexp, ParseError};
 use crate::primitive::continuation::ContinuationFrame;
 use crate::primitive::{
     AmString, Continuation, Node, Number, Primitive, Procedure, Symbol, SymbolTable,
@@ -18,11 +19,29 @@ use crate::sexp::{Cons, HeapSexp, Sexp, SexpIntoIter};
 use crate::token::TokenInfo;
 
 
+#[derive(Clone)]
 pub struct AmlangAgent {
     agent_state: EnvState,
     history_state: EnvState,
     cont: Continuation,
     eval_symbols: SymbolTable,
+}
+
+pub struct RunIter<'a, S, F>
+where
+    S: Iterator<Item = TokenInfo>,
+    F: FnMut(&mut AmlangAgent, &Result<Sexp, RunError>),
+{
+    agent: &'a mut AmlangAgent,
+    stream: Peekable<S>,
+    handler: F,
+}
+
+#[derive(Debug)]
+pub enum RunError {
+    ParseError(ParseError),
+    CompileError(LangErr),
+    ExecError(LangErr),
 }
 
 impl AmlangAgent {
@@ -39,57 +58,15 @@ impl AmlangAgent {
         }
     }
 
-    pub fn run<S: Iterator<Item = TokenInfo>>(&mut self, stream: S) -> Result<(), String> {
-        let mut peekable = stream.peekable();
-        loop {
-            let sexp = match parse_sexp(&mut peekable, 0) {
-                Ok(Some(parsed)) => parsed,
-                Ok(None) => return Ok(()),
-                Err(err) => {
-                    println!(" {}", err);
-                    println!("");
-                    continue;
-                }
-            };
-
-            let meaning = match self.eval(sexp) {
-                Ok(meaning) => meaning,
-                Err(err) => {
-                    println!("[Compile error] {}", err);
-                    println!("");
-                    continue;
-                }
-            };
-
-            let meaning_node = self
-                .history_state
-                .env()
-                .insert_structure(meaning)
-                .globalize(&self.history_state);
-            let meaning = self
-                .history_state
-                .designate(Primitive::Node(meaning_node))
-                .unwrap();
-            match self.exec(meaning) {
-                Ok(val) => {
-                    print!("-> ");
-                    if let Ok(node) = <Node>::try_from(&val) {
-                        print!("{}->", node);
-                        let designated = self.agent_state.designate(Primitive::Node(node)).unwrap();
-                        self.print_list(&designated);
-                    } else {
-                        self.print_list(&val);
-                    }
-                    println!("");
-                }
-                Err(err) => {
-                    println!(" {}", err);
-                    self.trace_error(err);
-                    continue;
-                }
-            };
-
-            println!();
+    pub fn run<'a, S, F>(&'a mut self, stream: S, handler: F) -> RunIter<'a, S, F>
+    where
+        S: Iterator<Item = TokenInfo>,
+        F: FnMut(&mut AmlangAgent, &Result<Sexp, RunError>),
+    {
+        RunIter {
+            agent: self,
+            stream: stream.peekable(),
+            handler,
         }
     }
 
@@ -519,10 +496,58 @@ impl Eval for AmlangAgent {
     }
 }
 
+impl<'a, S, F> Iterator for RunIter<'a, S, F>
+where
+    S: Iterator<Item = TokenInfo>,
+    F: FnMut(&mut AmlangAgent, &Result<Sexp, RunError>),
+{
+    type Item = Result<Sexp, RunError>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let sexp = match parse_sexp(&mut self.stream, 0) {
+            Ok(Some(parsed)) => parsed,
+            Ok(None) => return None,
+            Err(err) => {
+                let res = Err(RunError::ParseError(err));
+                (self.handler)(&mut self.agent, &res);
+                return Some(res);
+            }
+        };
+
+        let meaning = match self.agent.eval(sexp) {
+            Ok(meaning) => meaning,
+            Err(err) => {
+                let res = Err(RunError::CompileError(err));
+                (self.handler)(&mut self.agent, &res);
+                return Some(res);
+            }
+        };
+
+        let meaning_node = self
+            .agent
+            .history_state
+            .env()
+            .insert_structure(meaning)
+            .globalize(&self.agent.history_state);
+        let meaning = self
+            .agent
+            .history_state
+            .designate(Primitive::Node(meaning_node))
+            .unwrap();
+
+        let res = match self.agent.exec(meaning) {
+            Ok(val) => Ok(val),
+            Err(err) => Err(RunError::ExecError(err)),
+        };
+        (self.handler)(&mut self.agent, &res);
+        Some(res)
+    }
+}
+
 
 impl AmlangAgent {
-    fn trace_error(&mut self, err: LangErr) {
-        if let Some(cont) = &err.cont() {
+    pub fn trace_error(&mut self, err: &LangErr) {
+        if let Some(cont) = err.cont() {
             for (i, frame) in cont.iter().enumerate() {
                 print!("{})  ", i);
                 self.print_list(&frame.context().into());
@@ -551,7 +576,7 @@ impl AmlangAgent {
         }
     }
 
-    fn print_list(&mut self, structure: &Sexp) {
+    pub fn print_list(&mut self, structure: &Sexp) {
         let mut writer = BufWriter::new(stdout());
         if let Err(err) = self.print_list_internal(&mut writer, structure, 0) {
             println!("print_list error: {:?}", err);

@@ -1,5 +1,5 @@
 use std::env;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 #[macro_use]
 pub mod lang_err;
@@ -17,8 +17,16 @@ pub mod primitive;
 pub mod token;
 
 
-pub fn init() -> Result<(), String> {
-    env_logger::init();
+pub fn init(start_dir: PathBuf) -> Result<(), String> {
+    assert!(start_dir.is_absolute());
+    env::set_current_dir(start_dir).unwrap();
+
+    if let Err(err) = env_logger::try_init() {
+        // Integration tests will call this method multiple times; ignore the error.
+        if !cfg!(not(test)) {
+            panic!("{}", err);
+        }
+    }
 
     let args: Vec<String> = env::args().collect();
     if args.len() > 1 {
