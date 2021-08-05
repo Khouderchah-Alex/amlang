@@ -652,10 +652,6 @@ impl EnvManager {
 }
 
 impl Agent for EnvManager {
-    fn run(&mut self) -> Result<(), String> {
-        Ok(())
-    }
-
     fn env_state(&mut self) -> &mut EnvState {
         &mut self.env_state
     }

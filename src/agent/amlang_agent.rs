@@ -15,7 +15,7 @@ use crate::primitive::{
     AmString, Continuation, Node, Number, Primitive, Procedure, Symbol, SymbolTable,
 };
 use crate::sexp::{Cons, HeapSexp, Sexp, SexpIntoIter};
-use crate::token::interactive_stream::InteractiveStream;
+use crate::token::TokenInfo;
 
 
 pub struct AmlangAgent {
@@ -38,6 +38,61 @@ impl AmlangAgent {
             eval_symbols: SymbolTable::default(),
         }
     }
+
+    pub fn run<S: Iterator<Item = TokenInfo>>(&mut self, stream: S) -> Result<(), String> {
+        let mut peekable = stream.peekable();
+        loop {
+            let sexp = match parse_sexp(&mut peekable, 0) {
+                Ok(Some(parsed)) => parsed,
+                Ok(None) => return Ok(()),
+                Err(err) => {
+                    println!(" {}", err);
+                    println!("");
+                    continue;
+                }
+            };
+
+            let meaning = match self.eval(sexp) {
+                Ok(meaning) => meaning,
+                Err(err) => {
+                    println!("[Compile error] {}", err);
+                    println!("");
+                    continue;
+                }
+            };
+
+            let meaning_node = self
+                .history_state
+                .env()
+                .insert_structure(meaning)
+                .globalize(&self.history_state);
+            let meaning = self
+                .history_state
+                .designate(Primitive::Node(meaning_node))
+                .unwrap();
+            match self.exec(meaning) {
+                Ok(val) => {
+                    print!("-> ");
+                    if let Ok(node) = <Node>::try_from(&val) {
+                        print!("{}->", node);
+                        let designated = self.agent_state.designate(Primitive::Node(node)).unwrap();
+                        self.print_list(&designated);
+                    } else {
+                        self.print_list(&val);
+                    }
+                    println!("");
+                }
+                Err(err) => {
+                    println!(" {}", err);
+                    self.trace_error(err);
+                    continue;
+                }
+            };
+
+            println!();
+        }
+    }
+
 
     fn make_lambda(&mut self, params: Vec<Symbol>, body: Sexp) -> Result<Procedure, LangErr> {
         let mut surface = Vec::new();
@@ -396,62 +451,6 @@ impl AmlangAgent {
 
 
 impl Agent for AmlangAgent {
-    fn run(&mut self) -> Result<(), String> {
-        let stream = InteractiveStream::new(self.agent_state.clone());
-        let mut peekable = stream.peekable();
-
-        loop {
-            let sexp = match parse_sexp(&mut peekable, 0) {
-                Ok(Some(parsed)) => parsed,
-                Ok(None) => return Ok(()),
-                Err(err) => {
-                    println!(" {}", err);
-                    println!("");
-                    continue;
-                }
-            };
-
-            let meaning = match self.eval(sexp) {
-                Ok(meaning) => meaning,
-                Err(err) => {
-                    println!("[Compile error] {}", err);
-                    println!("");
-                    continue;
-                }
-            };
-
-            let meaning_node = self
-                .history_state
-                .env()
-                .insert_structure(meaning)
-                .globalize(&self.history_state);
-            let meaning = self
-                .history_state
-                .designate(Primitive::Node(meaning_node))
-                .unwrap();
-            match self.exec(meaning) {
-                Ok(val) => {
-                    print!("-> ");
-                    if let Ok(node) = <Node>::try_from(&val) {
-                        print!("{}->", node);
-                        let designated = self.agent_state.designate(Primitive::Node(node)).unwrap();
-                        self.print_list(&designated);
-                    } else {
-                        self.print_list(&val);
-                    }
-                    println!("");
-                }
-                Err(err) => {
-                    println!(" {}", err);
-                    self.trace_error(err);
-                    continue;
-                }
-            };
-
-            println!();
-        }
-    }
-
     fn env_state(&mut self) -> &mut EnvState {
         &mut self.agent_state
     }
