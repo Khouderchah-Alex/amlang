@@ -136,27 +136,47 @@ impl AmlangAgent {
     fn apply(&mut self, proc_node: Node, arg_nodes: Vec<Node>) -> Ret {
         match self.agent_state.designate(Primitive::Node(proc_node))? {
             Sexp::Primitive(Primitive::Node(node)) => {
-                if node.env() == self.agent_state.context().lang_env() {
-                    self.apply_special(node.local(), arg_nodes)
-                } else {
-                    err!(InvalidArgument {
-                        given: node.into(),
-                        expected: Cow::Borrowed("Procedure or special Amlang Node"),
-                    })
-                }
+                let frame = ContinuationFrame::new(proc_node);
+                self.cont.push(frame);
+
+                let res = (|| {
+                    if node.env() == self.agent_state.context().lang_env() {
+                        self.apply_special(node.local(), arg_nodes)
+                    } else {
+                        err_ctx!(
+                            self.cont,
+                            InvalidArgument {
+                                given: node.into(),
+                                expected: Cow::Borrowed("Procedure or special Amlang Node"),
+                            }
+                        )
+                    }
+                })();
+
+                self.cont.pop();
+                res
             }
             Sexp::Primitive(Primitive::BuiltIn(builtin)) => {
-                let mut args = Vec::with_capacity(arg_nodes.len());
-                for node in arg_nodes {
-                    let structure = self.agent_state.designate(Primitive::Node(node))?;
-                    let arg = if let Ok(_) = <Node>::try_from(&structure) {
-                        structure
-                    } else {
-                        self.exec(structure)?
-                    };
-                    args.push(arg);
-                }
-                builtin.call(args, &self.cont)
+                let frame = ContinuationFrame::new(proc_node);
+                self.cont.push(frame);
+
+                let res = (|| {
+                    let mut args = Vec::with_capacity(arg_nodes.len());
+                    for node in arg_nodes {
+                        let structure = self.agent_state.designate(Primitive::Node(node))?;
+                        let arg = if let Ok(_) = <Node>::try_from(&structure) {
+                            structure
+                        } else {
+                            self.exec(structure)?
+                        };
+                        args.push(arg);
+                    }
+
+                    builtin.call(args, &self.cont)
+                })();
+
+                self.cont.pop();
+                res
             }
             Sexp::Primitive(Primitive::Procedure(Procedure::Abstraction(params, body_node))) => {
                 if arg_nodes.len() != params.len() {
