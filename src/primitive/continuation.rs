@@ -22,6 +22,14 @@ impl Continuation {
         Self::default()
     }
 
+    pub fn top_mut(&mut self) -> Option<&mut ContinuationFrame> {
+        let len = self.0.len();
+        if len == 0 {
+            return None;
+        }
+        Some(&mut self.0[len - 1])
+    }
+
     pub fn push(&mut self, frame: ContinuationFrame) {
         self.0.push(frame);
     }

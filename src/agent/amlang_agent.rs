@@ -103,30 +103,40 @@ impl AmlangAgent {
     fn exec(&mut self, meaning_node: Node) -> Ret {
         let meaning = self.agent_state.designate(Primitive::Node(meaning_node))?;
         match meaning {
-            Sexp::Primitive(Primitive::Procedure(proc)) => match proc {
-                Procedure::Application(proc_node, arg_nodes) => {
-                    let concretized_nodes = arg_nodes
-                        .into_iter()
-                        .map(|n| self.concretize(n))
-                        .collect::<Vec<_>>();
-                    let cproc = self.concretize(proc_node);
-                    self.apply(cproc, concretized_nodes)
-                }
-                Procedure::Branch(pred, a, b) => {
-                    let cpred = self.concretize(pred);
-                    let ca = self.concretize(a);
-                    let cb = self.concretize(b);
+            Sexp::Primitive(Primitive::Procedure(proc)) => {
+                match proc {
+                    Procedure::Application(proc_node, arg_nodes) => {
+                        let frame = ContinuationFrame::new(meaning_node);
+                        self.cont.push(frame);
 
-                    let cond = self.exec(cpred)?;
-                    // TODO(func) Integrate actual boolean type.
-                    if cond != Number::Integer(1).into() {
-                        return Ok(self.exec(cb)?);
+                        let res = (|| {
+                            let concretized_nodes = arg_nodes
+                                .into_iter()
+                                .map(|n| self.concretize(n))
+                                .collect::<Vec<_>>();
+                            let cproc = self.concretize(proc_node);
+                            self.apply(cproc, concretized_nodes)
+                        })();
+
+                        self.cont.pop();
+                        res
                     }
-                    Ok(self.exec(ca)?)
+                    Procedure::Branch(pred, a, b) => {
+                        let cpred = self.concretize(pred);
+                        let ca = self.concretize(a);
+                        let cb = self.concretize(b);
+
+                        let cond = self.exec(cpred)?;
+                        // TODO(func) Integrate actual boolean type.
+                        if cond != Number::Integer(1).into() {
+                            return Ok(self.exec(cb)?);
+                        }
+                        Ok(self.exec(ca)?)
+                    }
+                    lambda @ Procedure::Abstraction(..) => Ok(lambda.into()),
+                    _ => panic!("Unsupported procedure type: {:?}", proc),
                 }
-                lambda @ Procedure::Abstraction(..) => Ok(lambda.into()),
-                _ => panic!("Unsupported procedure type: {:?}", proc),
-            },
+            }
             _ => Ok(meaning),
         }
     }
@@ -134,41 +144,25 @@ impl AmlangAgent {
     fn apply(&mut self, proc_node: Node, arg_nodes: Vec<Node>) -> Ret {
         match self.agent_state.designate(Primitive::Node(proc_node))? {
             Sexp::Primitive(Primitive::Node(node)) => {
-                let frame = ContinuationFrame::new(proc_node);
-                self.cont.push(frame);
-
-                let res = (|| {
-                    if node.env() == self.agent_state.context().lang_env() {
-                        self.apply_special(node.local(), arg_nodes)
-                    } else {
-                        err_ctx!(
-                            self.cont,
-                            InvalidArgument {
-                                given: node.into(),
-                                expected: Cow::Borrowed("Procedure or special Amlang Node"),
-                            }
-                        )
-                    }
-                })();
-
-                self.cont.pop();
-                res
+                if node.env() == self.agent_state.context().lang_env() {
+                    self.apply_special(node.local(), arg_nodes)
+                } else {
+                    err_ctx!(
+                        self.cont,
+                        InvalidArgument {
+                            given: node.into(),
+                            expected: Cow::Borrowed("Procedure or special Amlang Node"),
+                        }
+                    )
+                }
             }
             Sexp::Primitive(Primitive::BuiltIn(builtin)) => {
-                let frame = ContinuationFrame::new(proc_node);
-                self.cont.push(frame);
+                let mut args = Vec::with_capacity(arg_nodes.len());
+                for node in arg_nodes {
+                    args.push(self.exec(node)?);
+                }
 
-                let res = (|| {
-                    let mut args = Vec::with_capacity(arg_nodes.len());
-                    for node in arg_nodes {
-                        args.push(self.exec(node)?);
-                    }
-
-                    builtin.call(args, &self.cont)
-                })();
-
-                self.cont.pop();
-                res
+                builtin.call(args, &self.cont)
             }
             Sexp::Primitive(Primitive::Procedure(Procedure::Abstraction(params, body_node))) => {
                 if arg_nodes.len() != params.len() {
@@ -182,28 +176,21 @@ impl AmlangAgent {
                     );
                 }
 
-                let mut frame = ContinuationFrame::new(proc_node);
                 let mut args = Vec::with_capacity(arg_nodes.len());
                 for (i, node) in arg_nodes.into_iter().enumerate() {
                     args.push(self.exec(node)?);
 
+                    let frame = self.cont.top_mut().unwrap();
                     frame.insert(params[i], node);
                     debug!("cont insert: {} -> {}", params[i], node);
                 }
 
-                self.cont.push(frame);
-
-                let res = (|| {
-                    let body = self.exec(body_node)?;
-                    if let Ok(node) = <Node>::try_from(&body) {
-                        Ok(self.concretize(node).into())
-                    } else {
-                        Ok(body)
-                    }
-                })();
-
-                self.cont.pop();
-                res
+                let body = self.exec(body_node)?;
+                if let Ok(node) = <Node>::try_from(&body) {
+                    Ok(self.concretize(node).into())
+                } else {
+                    Ok(body)
+                }
             }
             not_proc @ _ => err_ctx!(
                 self.cont,
