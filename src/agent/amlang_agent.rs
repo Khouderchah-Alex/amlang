@@ -160,11 +160,14 @@ impl AmlangAgent {
             }
             Sexp::Primitive(Primitive::Procedure(Procedure::Abstraction(params, body_node))) => {
                 if arg_nodes.len() != params.len() {
-                    return err!(WrongArgumentCount {
-                        given: arg_nodes.len(),
-                        // TODO(func) support variable arity.
-                        expected: ExpectedCount::Exactly(params.len()),
-                    });
+                    return err_ctx!(
+                        self.cont,
+                        WrongArgumentCount {
+                            given: arg_nodes.len(),
+                            // TODO(func) support variable arity.
+                            expected: ExpectedCount::Exactly(params.len()),
+                        }
+                    );
                 }
 
                 let mut frame = ContinuationFrame::new(proc_node);
@@ -197,10 +200,13 @@ impl AmlangAgent {
                 self.cont.pop();
                 res
             }
-            not_proc @ _ => err!(InvalidArgument {
-                given: not_proc.clone(),
-                expected: Cow::Borrowed("Procedure"),
-            }),
+            not_proc @ _ => err_ctx!(
+                self.cont,
+                InvalidArgument {
+                    given: not_proc.clone(),
+                    expected: Cow::Borrowed("Procedure"),
+                }
+            ),
         }
     }
 
@@ -219,7 +225,7 @@ impl AmlangAgent {
         match special_node {
             _ if context.tell == special_node || context.ask == special_node => {
                 let is_tell = context.tell == special_node;
-                let (ss, pp, oo) = tell_wrapper(&arg_nodes)?;
+                let (ss, pp, oo) = tell_wrapper(&arg_nodes, &self.cont)?;
 
                 // TODO(func) Add support for cross-env triples through surrogates.
                 let mut to_local = |node: Node| {
@@ -250,7 +256,7 @@ impl AmlangAgent {
                 }
             }
             _ if context.def == special_node => {
-                let (name, structure) = def_wrapper(&arg_nodes)?;
+                let (name, structure) = def_wrapper(&arg_nodes, &self.cont)?;
                 self.agent_state.designate(Primitive::Node(name))?;
                 if name.env() != self.agent_state.pos().env() {
                     panic!("Cross-env triples are not yet supported");
@@ -270,20 +276,26 @@ impl AmlangAgent {
             }
             _ if context.curr == special_node => {
                 if arg_nodes.len() > 0 {
-                    return err!(WrongArgumentCount {
-                        given: arg_nodes.len(),
-                        expected: ExpectedCount::Exactly(0),
-                    });
+                    return err_ctx!(
+                        self.cont,
+                        WrongArgumentCount {
+                            given: arg_nodes.len(),
+                            expected: ExpectedCount::Exactly(0),
+                        }
+                    );
                 }
                 self.print_curr_triples();
                 return Ok(self.agent_state.pos().into());
             }
             _ if context.jump == special_node => {
                 if arg_nodes.len() != 1 {
-                    return err!(WrongArgumentCount {
-                        given: arg_nodes.len(),
-                        expected: ExpectedCount::Exactly(1),
-                    });
+                    return err_ctx!(
+                        self.cont,
+                        WrongArgumentCount {
+                            given: arg_nodes.len(),
+                            expected: ExpectedCount::Exactly(1),
+                        }
+                    );
                 }
 
                 // If original expr eval + exec -> Node, use that.
@@ -294,10 +306,13 @@ impl AmlangAgent {
             }
             _ if context.import == special_node => {
                 if arg_nodes.len() != 1 {
-                    return err!(WrongArgumentCount {
-                        given: arg_nodes.len(),
-                        expected: ExpectedCount::Exactly(1),
-                    });
+                    return err_ctx!(
+                        self.cont,
+                        WrongArgumentCount {
+                            given: arg_nodes.len(),
+                            expected: ExpectedCount::Exactly(1),
+                        }
+                    );
                 }
 
                 // If original expr eval + exec -> Node, use that.
@@ -307,20 +322,26 @@ impl AmlangAgent {
             }
             _ if context.env_find == special_node => {
                 if arg_nodes.len() != 1 {
-                    return err!(WrongArgumentCount {
-                        given: arg_nodes.len(),
-                        expected: ExpectedCount::Exactly(1),
-                    });
+                    return err_ctx!(
+                        self.cont,
+                        WrongArgumentCount {
+                            given: arg_nodes.len(),
+                            expected: ExpectedCount::Exactly(1),
+                        }
+                    );
                 }
 
                 let des = self.agent_state.designate(Primitive::Node(arg_nodes[0]))?;
                 let path = match <&AmString>::try_from(&des) {
                     Ok(path) => path,
                     _ => {
-                        return err!(InvalidArgument {
-                            given: des.into(),
-                            expected: Cow::Borrowed("Node containing string"),
-                        });
+                        return err_ctx!(
+                            self.cont,
+                            InvalidArgument {
+                                given: des.into(),
+                                expected: Cow::Borrowed("Node containing string"),
+                            }
+                        );
                     }
                 };
 
@@ -331,7 +352,7 @@ impl AmlangAgent {
                 }
             }
             _ if context.apply == special_node => {
-                let (proc_node, args_node) = apply_wrapper(&arg_nodes)?;
+                let (proc_node, args_node) = apply_wrapper(&arg_nodes, &self.cont)?;
                 let proc_meaning = self.agent_state.designate(Primitive::Node(proc_node))?;
                 let proc_sexp = self.exec(proc_meaning)?;
                 let args_meaning = self.agent_state.designate(Primitive::Node(args_node))?;
@@ -364,10 +385,13 @@ impl AmlangAgent {
             }
             _ if context.eval == special_node || context.exec == special_node => {
                 if arg_nodes.len() != 1 {
-                    return err!(WrongArgumentCount {
-                        given: arg_nodes.len(),
-                        expected: ExpectedCount::Exactly(1),
-                    });
+                    return err_ctx!(
+                        self.cont,
+                        WrongArgumentCount {
+                            given: arg_nodes.len(),
+                            expected: ExpectedCount::Exactly(1),
+                        }
+                    );
                 }
                 let is_eval = context.eval == special_node;
                 let arg = self.agent_state.designate(Primitive::Node(arg_nodes[0]))?;
@@ -379,10 +403,13 @@ impl AmlangAgent {
                     self.exec(structure)
                 }
             }
-            _ => err!(InvalidArgument {
-                given: Node::new(self.agent_state.context().lang_env(), special_node).into(),
-                expected: Cow::Borrowed("special Amlang Node"),
-            }),
+            _ => err_ctx!(
+                self.cont,
+                InvalidArgument {
+                    given: Node::new(self.agent_state.context().lang_env(), special_node).into(),
+                    expected: Cow::Borrowed("special Amlang Node"),
+                }
+            ),
         }
     }
 
@@ -460,7 +487,7 @@ impl Eval for AmlangAgent {
                             return quote_wrapper(cdr);
                         }
                         _ if Node::new(context.lang_env(), context.lambda) == node => {
-                            let (params, body) = make_lambda_wrapper(cdr)?;
+                            let (params, body) = make_lambda_wrapper(cdr, &self.cont)?;
                             let proc = self.make_lambda(params, body)?;
                             return Ok(self
                                 .agent_state
@@ -548,8 +575,10 @@ where
 impl AmlangAgent {
     pub fn trace_error(&mut self, err: &LangErr) {
         if let Some(cont) = err.cont() {
+            println!("");
+            println!("  --TRACE--");
             for (i, frame) in cont.iter().enumerate() {
-                print!("{})  ", i);
+                print!("   {})  ", i);
                 self.print_list(&frame.context().into());
                 println!("");
             }
