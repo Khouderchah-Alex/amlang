@@ -100,7 +100,8 @@ impl AmlangAgent {
         Ok(Procedure::Abstraction(surface, body_node))
     }
 
-    fn exec(&mut self, meaning: Sexp) -> Ret {
+    fn exec(&mut self, meaning_node: Node) -> Ret {
+        let meaning = self.agent_state.designate(Primitive::Node(meaning_node))?;
         match meaning {
             Sexp::Primitive(Primitive::Procedure(proc)) => match proc {
                 Procedure::Application(proc_node, arg_nodes) => {
@@ -115,16 +116,13 @@ impl AmlangAgent {
                     let cpred = self.concretize(pred);
                     let ca = self.concretize(a);
                     let cb = self.concretize(b);
-                    let p_des = self.agent_state.designate(Primitive::Node(cpred))?;
-                    let a_des = self.agent_state.designate(Primitive::Node(ca))?;
-                    let b_des = self.agent_state.designate(Primitive::Node(cb))?;
 
-                    let cond = self.exec(p_des)?;
+                    let cond = self.exec(cpred)?;
                     // TODO(func) Integrate actual boolean type.
                     if cond != Number::Integer(1).into() {
-                        return Ok(self.exec(b_des)?);
+                        return Ok(self.exec(cb)?);
                     }
-                    Ok(self.exec(a_des)?)
+                    Ok(self.exec(ca)?)
                 }
                 lambda @ Procedure::Abstraction(..) => Ok(lambda.into()),
                 _ => panic!("Unsupported procedure type: {:?}", proc),
@@ -163,13 +161,7 @@ impl AmlangAgent {
                 let res = (|| {
                     let mut args = Vec::with_capacity(arg_nodes.len());
                     for node in arg_nodes {
-                        let structure = self.agent_state.designate(Primitive::Node(node))?;
-                        let arg = if let Ok(_) = <Node>::try_from(&structure) {
-                            structure
-                        } else {
-                            self.exec(structure)?
-                        };
-                        args.push(arg);
+                        args.push(self.exec(node)?);
                     }
 
                     builtin.call(args, &self.cont)
@@ -193,13 +185,7 @@ impl AmlangAgent {
                 let mut frame = ContinuationFrame::new(proc_node);
                 let mut args = Vec::with_capacity(arg_nodes.len());
                 for (i, node) in arg_nodes.into_iter().enumerate() {
-                    let structure = self.agent_state.designate(Primitive::Node(node))?;
-                    let arg = if let Ok(_) = <Node>::try_from(&structure) {
-                        structure
-                    } else {
-                        self.exec(structure)?
-                    };
-                    args.push(arg);
+                    args.push(self.exec(node)?);
 
                     frame.insert(params[i], node);
                     debug!("cont insert: {} -> {}", params[i], node);
@@ -208,12 +194,11 @@ impl AmlangAgent {
                 self.cont.push(frame);
 
                 let res = (|| {
-                    let body = self.agent_state.designate(Primitive::Node(body_node))?;
-                    let result = self.exec(body)?;
-                    if let Ok(node) = <Node>::try_from(&result) {
+                    let body = self.exec(body_node)?;
+                    if let Ok(node) = <Node>::try_from(&body) {
                         Ok(self.concretize(node).into())
                     } else {
-                        Ok(result)
+                        Ok(body)
                     }
                 })();
 
@@ -231,9 +216,8 @@ impl AmlangAgent {
     }
 
     fn exec_to_node(&mut self, node: Node) -> Result<Node, LangErr> {
-        let desig = self.agent_state.designate(Primitive::Node(node))?;
-        let e = self.exec(desig)?;
-        if let Ok(new_node) = Node::try_from(&e) {
+        let structure = self.exec(node)?;
+        if let Ok(new_node) = Node::try_from(&structure) {
             Ok(new_node)
         } else {
             Ok(node)
@@ -276,23 +260,19 @@ impl AmlangAgent {
                 }
             }
             _ if context.def == special_node => {
-                let (name, structure) = def_wrapper(&arg_nodes, &self.cont)?;
+                let (name, val) = def_wrapper(&arg_nodes, &self.cont)?;
                 self.agent_state.designate(Primitive::Node(name))?;
                 if name.env() != self.agent_state.pos().env() {
                     panic!("Cross-env triples are not yet supported");
                 }
 
-                let structure_node = if let Some(s) = structure {
-                    let des = self.agent_state.designate(Primitive::Node(s))?;
-                    let res = self.exec(des)?;
-                    self.agent_state.env().insert_structure(res)
+                let val_node = if let Some(s) = val {
+                    let val = self.exec(s)?;
+                    self.agent_state.env().insert_structure(val)
                 } else {
                     self.agent_state.env().insert_atom()
                 };
-                return Ok(self
-                    .agent_state
-                    .name_node(name.local(), structure_node)?
-                    .into());
+                return Ok(self.agent_state.name_node(name.local(), val_node)?.into());
             }
             _ if context.curr == special_node => {
                 if arg_nodes.len() > 0 {
@@ -373,10 +353,8 @@ impl AmlangAgent {
             }
             _ if context.apply == special_node => {
                 let (proc_node, args_node) = apply_wrapper(&arg_nodes, &self.cont)?;
-                let proc_meaning = self.agent_state.designate(Primitive::Node(proc_node))?;
-                let proc_sexp = self.exec(proc_meaning)?;
-                let args_meaning = self.agent_state.designate(Primitive::Node(args_node))?;
-                let args_sexp = self.exec(args_meaning)?;
+                let proc_sexp = self.exec(proc_node)?;
+                let args_sexp = self.exec(args_node)?;
                 debug!("applying (apply {} '{})", proc_sexp, args_sexp);
 
                 let proc = if let Ok(node) = Node::try_from(&proc_sexp) {
@@ -414,13 +392,18 @@ impl AmlangAgent {
                     );
                 }
                 let is_eval = context.eval == special_node;
-                let arg = self.agent_state.designate(Primitive::Node(arg_nodes[0]))?;
-                let structure = self.exec(arg)?;
-                debug!("applying (eval {})", structure);
+                let arg = self.exec(arg_nodes[0])?;
                 if is_eval {
-                    self.eval(HeapSexp::new(structure))
+                    debug!("applying (eval {})", arg);
+                    self.eval(HeapSexp::new(arg))
                 } else {
-                    self.exec(structure)
+                    debug!("applying (exec {})", arg);
+                    let meaning_node = self
+                        .history_state
+                        .env()
+                        .insert_structure(arg.into())
+                        .globalize(&self.history_state);
+                    self.exec(meaning_node)
                 }
             }
             _ => err_ctx!(
@@ -576,13 +559,8 @@ where
             .env()
             .insert_structure(meaning)
             .globalize(&self.agent.history_state);
-        let meaning = self
-            .agent
-            .history_state
-            .designate(Primitive::Node(meaning_node))
-            .unwrap();
 
-        let res = match self.agent.exec(meaning) {
+        let res = match self.agent.exec(meaning_node) {
             Ok(val) => Ok(val),
             Err(err) => Err(RunError::ExecError(err)),
         };
