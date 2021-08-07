@@ -74,10 +74,16 @@ impl Iterator for InteractiveStream {
                 }
                 Err(ReadlineError::Interrupted) => {
                     println!("^C");
+                    if self.tokenizer.depth() > 0 {
+                        self.tokenizer.clear();
+                        // Enable ^C to cancel an expression mid-parse.
+                        return None;
+                    }
                     continue;
                 }
                 Err(ReadlineError::Eof) => {
                     println!("^D");
+                    self.tokenizer.clear();
                     return None;
                 }
                 Err(err) => {

@@ -57,6 +57,7 @@ impl Tokenizer {
     pub fn clear(&mut self) {
         self.tokens.clear();
         self.depth = 0;
+        self.started_quote = false;
     }
 
     pub fn depth(&self) -> usize {
