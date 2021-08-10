@@ -19,7 +19,8 @@ use crate::model::{Eval, Model, Ret};
 use crate::parser::{self, parse_sexp};
 use crate::primitive::symbol_policies::{policy_admin, AdminSymbolInfo};
 use crate::primitive::{
-    AmString, BuiltIn, Node, Path, Primitive, Procedure, Symbol, SymbolTable, ToSymbol,
+    AmString, BuiltIn, Continuation, Node, Path, Primitive, Procedure, Symbol, SymbolTable,
+    ToSymbol,
 };
 use crate::sexp::{Cons, HeapSexp, Sexp, SexpIntoIter};
 use crate::token::file_stream::{self, FileStream, FileStreamError};
@@ -654,6 +655,13 @@ impl EnvManager {
 impl Agent for EnvManager {
     fn env_state(&mut self) -> &mut EnvState {
         &mut self.env_state
+    }
+    // TODO(func) Add Continuations to repr control state.
+    fn cont(&self) -> &Continuation {
+        panic!()
+    }
+    fn cont_mut(&mut self) -> &mut Continuation {
+        panic!()
     }
 }
 
