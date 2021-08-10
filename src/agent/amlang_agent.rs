@@ -556,13 +556,17 @@ where
 impl AmlangAgent {
     pub fn trace_error(&mut self, err: &LangErr) {
         if let Some(cont) = err.cont() {
+            let mut stored_cont = cont.clone();
+            std::mem::swap(self.cont_mut(), &mut stored_cont);
             println!("");
             println!("  --TRACE--");
             for (i, frame) in cont.iter().enumerate() {
+                self.cont_mut().pop();
                 print!("   {})  ", i);
                 self.print_list(&frame.context().into());
                 println!("");
             }
+            std::mem::swap(self.cont_mut(), &mut stored_cont);
         }
     }
 
