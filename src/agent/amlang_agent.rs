@@ -21,7 +21,7 @@ use crate::token::TokenInfo;
 #[derive(Clone)]
 pub struct AmlangAgent {
     agent_state: EnvState,
-    history_state: EnvState,
+    history_env: LocalNode,
     cont: Continuation,
     eval_symbols: SymbolTable,
 }
@@ -44,14 +44,15 @@ pub enum RunError {
 }
 
 impl AmlangAgent {
-    pub fn from_state(mut agent_state: EnvState, history_state: EnvState) -> Self {
+    pub fn from_state(mut agent_state: EnvState, history_env: LocalNode) -> Self {
         // Ensure agent state designates amlang nodes first.
         let lang_env = agent_state.context().lang_env();
         agent_state.designation_chain_mut().push_front(lang_env);
 
         Self {
             agent_state,
-            history_state,
+            // TODO(sec) Verify as env node.
+            history_env,
             cont: Continuation::new(),
             eval_symbols: SymbolTable::default(),
         }
@@ -385,11 +386,11 @@ impl AmlangAgent {
                 } else {
                     debug!("applying (exec {})", arg);
                     let meaning_node = self
-                        .history_state
-                        .env()
-                        .insert_structure(arg.into())
-                        .globalize(&self.history_state);
-                    self.exec(meaning_node)
+                        .agent_state
+                        .access_env(self.history_env)
+                        .unwrap()
+                        .insert_structure(arg.into());
+                    self.exec(Node::new(self.history_env, meaning_node))
                 }
             }
             _ => err_ctx!(
@@ -538,12 +539,15 @@ where
 
         let meaning_node = self
             .agent
-            .history_state
-            .env()
-            .insert_structure(meaning)
-            .globalize(&self.agent.history_state);
+            .agent_state
+            .access_env(self.agent.history_env)
+            .unwrap()
+            .insert_structure(meaning);
 
-        let res = match self.agent.exec(meaning_node) {
+        let res = match self
+            .agent
+            .exec(Node::new(self.agent.history_env, meaning_node))
+        {
             Ok(val) => Ok(val),
             Err(err) => Err(RunError::ExecError(err)),
         };
