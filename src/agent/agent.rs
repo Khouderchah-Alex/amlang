@@ -12,7 +12,6 @@ pub trait Agent: Eval {
     fn cont(&self) -> &Continuation;
     fn cont_mut(&mut self) -> &mut Continuation;
 
-
     fn concretize(&self, node: Node) -> Node {
         if let Some(new_node) = self.cont().lookup(&node) {
             debug!("concretizing: {} -> {}", node, new_node);
@@ -24,7 +23,7 @@ pub trait Agent: Eval {
 
     fn print_list(&mut self, structure: &Sexp) {
         let mut writer = BufWriter::new(stdout());
-        if let Err(err) = self.print_list_internal(&mut writer, structure, 0) {
+        if let Err(err) = self.write_list_internal(&mut writer, structure, 0) {
             println!("print_list error: {:?}", err);
         }
     }
@@ -32,7 +31,7 @@ pub trait Agent: Eval {
 
     // "Private" methods below. //
 
-    fn print_list_internal<W: std::io::Write>(
+    fn write_list_internal<W: std::io::Write>(
         &mut self,
         w: &mut W,
         structure: &Sexp,
@@ -64,7 +63,7 @@ pub trait Agent: Eval {
                     .node_as_triple(node.local())
                 {
                     let s = triple.generate_structure(&mut self.env_state());
-                    self.print_list_internal(w, &s, depth + 1)
+                    self.write_list_internal(w, &s, depth + 1)
                 } else {
                     let s = if let Some(structure) = self
                         .env_state()
@@ -89,13 +88,13 @@ pub trait Agent: Eval {
                     if s == node.into() || depth > MAX_DEPTH {
                         write!(w, "{}", node)
                     } else {
-                        self.print_list_internal(w, &s, depth + 1)
+                        self.write_list_internal(w, &s, depth + 1)
                     }
                 }
             }
             Primitive::Procedure(procedure) => {
                 let s = procedure.generate_structure(self.env_state());
-                self.print_list_internal(w, &s, depth + 1)
+                self.write_list_internal(w, &s, depth + 1)
             }
             _ => write!(w, "{}", primitive),
         }
