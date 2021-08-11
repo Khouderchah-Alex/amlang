@@ -17,7 +17,7 @@ pub fn setup() -> Result<AmlangAgent, String> {
     amlang::init(start_dir)?;
 
     // Bootstrap/deserialize.
-    let mut manager = match amlang::agent::env_manager::EnvManager::bootstrap(META_ENV_PATH) {
+    let manager = match amlang::agent::env_manager::EnvManager::bootstrap(META_ENV_PATH) {
         Ok(val) => val,
         Err(err) => return Err(format!("{:?}", err)),
     };
