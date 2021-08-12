@@ -7,13 +7,13 @@ use rustyline::{Context, Helper};
 use std::cell::RefCell;
 use std::convert::TryFrom;
 
-use crate::agent::env_state::EnvState;
+use crate::agent::agent_state::AgentState;
 use crate::primitive::{Symbol, SymbolTable};
 
 
 // Rustyline Helper for InteractiveStream.
 pub struct InteractiveHelper {
-    env_state: RefCell<EnvState>,
+    state: RefCell<AgentState>,
 }
 
 pub struct InteractiveCandidate {
@@ -21,14 +21,14 @@ pub struct InteractiveCandidate {
 }
 
 impl InteractiveHelper {
-    pub fn new(env_state: EnvState) -> Self {
+    pub fn new(state: AgentState) -> Self {
         Self {
-            env_state: RefCell::new(env_state),
+            state: RefCell::new(state),
         }
     }
 
     fn designation_prefix(&self, prefix: &str) -> Vec<Symbol> {
-        let mut state = self.env_state.borrow_mut();
+        let mut state = self.state.borrow_mut();
         let designation = state.designation();
 
         let mut res = Vec::<Symbol>::new();

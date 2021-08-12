@@ -4,7 +4,7 @@
 
 use std::fmt;
 
-use crate::agent::env_state::EnvState;
+use crate::agent::agent_state::AgentState;
 use crate::model::Model;
 use crate::primitive::Node;
 use crate::sexp::HeapSexp;
@@ -28,9 +28,9 @@ impl LocalNode {
         self.0
     }
 
-    /// Globalize relative to current env of env_state.
-    pub fn globalize(self, env_state: &EnvState) -> Node {
-        env_state.globalize(self)
+    /// Globalize relative to current env of state.
+    pub fn globalize(self, state: &AgentState) -> Node {
+        state.globalize(self)
     }
 }
 
@@ -46,9 +46,9 @@ impl LocalTriple {
 
 
 impl Model for LocalTriple {
-    fn generate_structure(&self, env_state: &mut EnvState) -> HeapSexp {
-        let e = env_state.pos().env();
-        let env = env_state.env();
+    fn generate_structure(&self, state: &mut AgentState) -> HeapSexp {
+        let e = state.pos().env();
+        let env = state.env();
         let s = Node::new(e, env.triple_subject(*self));
         let p = Node::new(e, env.triple_predicate(*self));
         let o = Node::new(e, env.triple_object(*self));

@@ -9,7 +9,7 @@ use std::sync::Arc;
 use super::agent::Agent;
 use super::amlang_context::AmlangContext;
 use super::amlang_wrappers::quote_wrapper;
-use super::env_state::{EnvState, AMLANG_DESIGNATION};
+use super::agent_state::{AgentState, AMLANG_DESIGNATION};
 use crate::builtins::generate_builtin_map;
 use crate::environment::environment::EnvObject;
 use crate::environment::mem_environment::MemEnvironment;
@@ -29,7 +29,7 @@ use DeserializeError::*;
 
 
 pub struct EnvManager {
-    env_state: EnvState,
+    state: AgentState,
 }
 
 #[derive(Debug)]
@@ -57,7 +57,7 @@ macro_rules! bootstrap_context {
         let ($($node,)+) = {
             let table = if let Ok(table) =
                 <&SymbolTable>::try_from(
-                    $manager.env_state_mut().env().node_structure($context.designation())
+                    $manager.state_mut().env().node_structure($context.designation())
                 ) {
                 table
             } else {
@@ -100,9 +100,9 @@ impl EnvManager {
         ));
 
         // Bootstrap meta env.
-        let meta_state = EnvState::new(LocalNode::default(), context.self_node(), context.clone());
+        let meta_state = AgentState::new(LocalNode::default(), context.self_node(), context.clone());
         let mut manager = Self {
-            env_state: meta_state,
+            state: meta_state,
         };
         manager.deserialize_curr_env(meta_path)?;
         bootstrap_context!(manager, context,
@@ -115,7 +115,7 @@ impl EnvManager {
         // Make context usable for bootstrapping lang.
         {
             let meta_state =
-                EnvState::new(LocalNode::default(), context.self_node(), context.clone());
+                AgentState::new(LocalNode::default(), context.self_node(), context.clone());
             let l = meta_state.find_env("lang.env").unwrap();
             std::mem::drop(meta_state);
             let mut c = Arc::get_mut(&mut context).unwrap();
@@ -130,11 +130,11 @@ impl EnvManager {
         }
 
         // Bootstrap lang env.
-        let lang_state = EnvState::new(context.lang_env(), context.self_node(), context.clone());
+        let lang_state = AgentState::new(context.lang_env(), context.self_node(), context.clone());
         let mut manager = Self {
-            env_state: lang_state,
+            state: lang_state,
         };
-        let meta = manager.env_state().context().meta();
+        let meta = manager.state().context().meta();
         let lang_path_triple = meta
             .match_but_object(context.lang_env(), context.serialize_path)
             .iter()
@@ -166,7 +166,7 @@ impl EnvManager {
         info!("Lang env bootstrapping complete.");
 
         let mut bootstrapped = Self {
-            env_state: EnvState::new(context.lang_env(), context.self_node(), context.clone()),
+            state: AgentState::new(context.lang_env(), context.self_node(), context.clone()),
         };
 
         // TODO(func) Allow for delayed loading of environments.
@@ -183,18 +183,18 @@ impl EnvManager {
 
             EnvManager::initialize_env_node(&mut *context.meta(), subject_node);
             bootstrapped
-                .env_state_mut()
+                .state_mut()
                 .jump(Node::new(subject_node, LocalNode::default()));
             bootstrapped.deserialize_curr_env(path.as_std_path())?;
         }
 
-        bootstrapped.env_state_mut().jump_env(context.lang_env);
+        bootstrapped.state_mut().jump_env(context.lang_env);
         Ok(bootstrapped)
     }
 
     pub fn create_env<P: AsRef<StdPath>>(&mut self, path: P) -> LocalNode {
-        let serialize_path = self.env_state().context().serialize_path;
-        let meta = self.env_state().context().meta();
+        let serialize_path = self.state().context().serialize_path;
+        let meta = self.state().context().meta();
         // Initially create as MemEnvironment.
         let env_node = meta.insert_structure(Box::new(MemEnvironment::new()).into());
 
@@ -212,25 +212,25 @@ impl EnvManager {
     }
 
     pub fn serialize_full<P: AsRef<StdPath>>(&mut self, out_path: P) -> std::io::Result<()> {
-        let original_pos = self.env_state().pos();
+        let original_pos = self.state().pos();
 
-        self.env_state_mut()
+        self.state_mut()
             .jump(Node::new(LocalNode::default(), LocalNode::default()));
         self.serialize_curr_env(out_path)?;
 
         // Serialize recursively.
-        let serialize_path = self.env_state().context().serialize_path;
+        let serialize_path = self.state().context().serialize_path;
         let env_triples = self
-            .env_state()
+            .state()
             .context()
             .meta()
             .match_predicate(serialize_path);
         for triple in env_triples {
-            let subject_node = self.env_state().context().meta().triple_subject(triple);
+            let subject_node = self.state().context().meta().triple_subject(triple);
             let path = {
-                let object_node = self.env_state().context().meta().triple_object(triple);
+                let object_node = self.state().context().meta().triple_object(triple);
                 let object = self
-                    .env_state()
+                    .state()
                     .context()
                     .meta()
                     .node_structure(object_node)
@@ -238,11 +238,11 @@ impl EnvManager {
                 <&Path>::try_from(object).unwrap().clone()
             };
 
-            self.env_state_mut().jump_env(subject_node);
+            self.state_mut().jump_env(subject_node);
             self.serialize_curr_env(path.as_std_path())?;
         }
 
-        self.env_state_mut().jump(original_pos);
+        self.state_mut().jump(original_pos);
         Ok(())
     }
 
@@ -251,7 +251,7 @@ impl EnvManager {
         let mut w = BufWriter::new(file);
 
         write!(&mut w, "(nodes")?;
-        for node in self.env_state_mut().env().all_nodes() {
+        for node in self.state_mut().env().all_nodes() {
             write!(&mut w, "\n    ")?;
 
             // Subtle: Cloning of Env doesn't actually copy data. In this case,
@@ -259,7 +259,7 @@ impl EnvManager {
             // a placeholder to determine typing.
             //
             // TODO(func) SharedEnv impl.
-            let s = self.env_state_mut().env().node_structure(node).cloned();
+            let s = self.state_mut().env().node_structure(node).cloned();
             let (write_structure, add_quote) = match &s {
                 Some(sexp) => match sexp {
                     Sexp::Primitive(Primitive::SymbolTable(_)) => (false, false),
@@ -278,7 +278,7 @@ impl EnvManager {
             if write_structure {
                 write!(&mut w, "(")?;
             }
-            self.serialize_list_internal(&mut w, &node.globalize(self.env_state()).into(), 0)?;
+            self.serialize_list_internal(&mut w, &node.globalize(self.state()).into(), 0)?;
             if write_structure {
                 write!(&mut w, "\t")?;
                 if add_quote {
@@ -291,15 +291,15 @@ impl EnvManager {
         write!(&mut w, "\n)\n\n")?;
 
         write!(&mut w, "(triples")?;
-        for triple in self.env_state_mut().env().match_all() {
+        for triple in self.state_mut().env().match_all() {
             write!(&mut w, "\n    ")?;
-            let s = triple.generate_structure(self.env_state_mut());
+            let s = triple.generate_structure(self.state_mut());
             self.serialize_list_internal(&mut w, &s, 1)?;
         }
         writeln!(&mut w, "\n)")?;
         info!(
             "Serialized env {} @ \"{}\".",
-            self.env_state().pos().env(),
+            self.state().pos().env(),
             out_path.as_ref().to_string_lossy()
         );
         Ok(())
@@ -315,7 +315,7 @@ impl EnvManager {
                 warn!("Env file not found: {}", in_path.as_ref().to_string_lossy());
                 warn!(
                     "Leaving env {} unchanged. If this is intended, then all is well.",
-                    self.env_state().pos().env()
+                    self.state().pos().env()
                 );
                 return Ok(());
             }
@@ -341,16 +341,16 @@ impl EnvManager {
 
         info!(
             "Loaded env {} from \"{}\".",
-            self.env_state().pos().env(),
+            self.state().pos().env(),
             in_path.as_ref().to_string_lossy()
         );
         debug!(
             "  Node count:    {}",
-            self.env_state_mut().env().all_nodes().len()
+            self.state_mut().env().all_nodes().len()
         );
         debug!(
             "  Triple count:  {}",
-            self.env_state_mut().env().match_all().len()
+            self.state_mut().env().match_all().len()
         );
         Ok(())
     }
@@ -414,23 +414,23 @@ impl EnvManager {
             }
             Primitive::BuiltIn(builtin) => write!(w, "(__builtin {})", builtin.name()),
             Primitive::Procedure(proc) => {
-                let proc_sexp = proc.generate_structure(self.env_state_mut());
+                let proc_sexp = proc.generate_structure(self.state_mut());
                 self.serialize_list_internal(w, &proc_sexp, depth + 1)
             }
             Primitive::Node(node) => {
                 if let Some(triple) = self
-                    .env_state_mut()
+                    .state_mut()
                     .access_env(node.env())
                     .unwrap()
                     .node_as_triple(node.local())
                 {
-                    if node.env() != self.env_state().pos().env() {
+                    if node.env() != self.state().pos().env() {
                         write!(w, "^{}", node.env().id())?;
                     }
-                    return write!(w, "^t{}", self.env_state_mut().env().triple_index(triple));
+                    return write!(w, "^t{}", self.state_mut().env().triple_index(triple));
                 }
 
-                if node.env() != self.env_state().pos().env() {
+                if node.env() != self.state().pos().env() {
                     write!(w, "^{}", node.env().id())?;
                 }
                 write!(w, "^{}", node.local().id())
@@ -453,7 +453,7 @@ impl EnvManager {
             match *entry {
                 Sexp::Primitive(primitive) => {
                     if let Primitive::Symbol(_sym) = primitive {
-                        self.env_state_mut().env().insert_atom();
+                        self.state_mut().env().insert_atom();
                     } else {
                         return Err(ExpectedSymbol);
                     }
@@ -462,7 +462,7 @@ impl EnvManager {
                     let (_name, command) =
                         break_by_types!(cons.into(), Symbol, Sexp).map_err(|e| LangErr(e))?;
                     let structure = self.eval_structure(command, &builtins)?;
-                    self.env_state_mut().env().insert_structure(structure);
+                    self.state_mut().env().insert_structure(structure);
                 }
             }
         }
@@ -472,15 +472,15 @@ impl EnvManager {
     fn parse_symbol(&mut self, sym: &Symbol) -> Result<Node, DeserializeError> {
         match policy_admin(sym.as_str()).unwrap() {
             AdminSymbolInfo::Identifier => err!(UnboundSymbol(sym.clone())).map_err(|e| LangErr(e)),
-            AdminSymbolInfo::LocalNode(node) => Ok(node.globalize(self.env_state())),
+            AdminSymbolInfo::LocalNode(node) => Ok(node.globalize(self.state())),
             AdminSymbolInfo::LocalTriple(idx) => {
-                let triple = self.env_state_mut().env().triple_from_index(idx);
-                Ok(triple.node().globalize(self.env_state()))
+                let triple = self.state_mut().env().triple_from_index(idx);
+                Ok(triple.node().globalize(self.state()))
             }
             AdminSymbolInfo::GlobalNode(env, node) => Ok(Node::new(env, node)),
             AdminSymbolInfo::GlobalTriple(env, idx) => Ok(Node::new(
                 env,
-                self.env_state_mut().env().triple_from_index(idx).node(),
+                self.state_mut().env().triple_from_index(idx).node(),
             )),
         }
     }
@@ -500,7 +500,7 @@ impl EnvManager {
             break_by_types!(structure, Symbol; remainder).map_err(|e| LangErr(e))?;
 
         if let Ok(node) = self.parse_symbol(&command) {
-            let context = self.env_state().context();
+            let context = self.state().context();
 
             // Note(subtle): during the initial deserialization of the lang env,
             // these context nodes are only valid because they're specially set
@@ -617,16 +617,16 @@ impl EnvManager {
             let predicate = self.parse_symbol(&p)?;
             let object = self.parse_symbol(&o)?;
 
-            self.env_state_mut().env().insert_triple(
+            self.state_mut().env().insert_triple(
                 subject.local(),
                 predicate.local(),
                 object.local(),
             );
 
-            let designation = self.env_state().designation();
+            let designation = self.state().designation();
             if predicate.local() == designation && object.local() != designation {
                 let name = if let Ok(sym) =
-                    <Symbol>::try_from(self.env_state_mut().designate(Primitive::Node(object)))
+                    <Symbol>::try_from(self.state_mut().designate(Primitive::Node(object)))
                 {
                     sym
                 } else {
@@ -634,7 +634,7 @@ impl EnvManager {
                         "{} {} {:?}",
                         subject,
                         object,
-                        self.env_state_mut()
+                        self.state_mut()
                             .designate(Primitive::Node(object))
                             .unwrap()
                     );
@@ -642,7 +642,7 @@ impl EnvManager {
                 };
 
                 if let Ok(table) = <&mut SymbolTable>::try_from(
-                    self.env_state_mut().env().node_structure_mut(designation),
+                    self.state_mut().env().node_structure_mut(designation),
                 ) {
                     table.insert(name, subject);
                 } else {
@@ -655,11 +655,11 @@ impl EnvManager {
 }
 
 impl Agent for EnvManager {
-    fn env_state(&self) -> &EnvState {
-        &self.env_state
+    fn state(&self) -> &AgentState {
+        &self.state
     }
-    fn env_state_mut(&mut self) -> &mut EnvState {
-        &mut self.env_state
+    fn state_mut(&mut self) -> &mut AgentState {
+        &mut self.state
     }
     // TODO(func) Add Continuations to repr control state.
     fn cont(&self) -> &Continuation {

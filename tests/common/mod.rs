@@ -23,7 +23,7 @@ pub fn setup() -> Result<AmlangAgent, String> {
     };
 
     // Prep agent.
-    let mut agent_state = manager.env_state().clone();
+    let mut agent_state = manager.state().clone();
     let working_env = agent_state.find_env("working.env").unwrap();
     agent_state.jump_env(working_env);
     agent_state.designation_chain_mut().push_back(working_env);

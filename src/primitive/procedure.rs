@@ -1,7 +1,7 @@
 use std::convert::TryFrom;
 
 use super::{Node, Primitive};
-use crate::agent::env_state::EnvState;
+use crate::agent::agent_state::AgentState;
 use crate::model::Model;
 use crate::sexp::{HeapSexp, Sexp};
 
@@ -16,8 +16,8 @@ pub enum Procedure {
 
 
 impl Model for Procedure {
-    fn generate_structure(&self, env_state: &mut EnvState) -> HeapSexp {
-        let context = env_state.context();
+    fn generate_structure(&self, state: &mut AgentState) -> HeapSexp {
+        let context = state.context();
         match self {
             Procedure::Application(func, args) => {
                 let apply_node = Node::new(context.lang_env(), context.apply);

@@ -14,7 +14,7 @@ use crate::sexp::Sexp;
 
 
 #[derive(Clone)]
-pub struct EnvState {
+pub struct AgentState {
     env: LocalNode,
     pos: LocalNode,
 
@@ -25,7 +25,7 @@ pub struct EnvState {
 
 pub const AMLANG_DESIGNATION: &str = "__designatedBy";
 
-impl EnvState {
+impl AgentState {
     pub fn new(env: LocalNode, pos: LocalNode, context: Arc<AmlangContext>) -> Self {
         Self {
             env,
@@ -69,7 +69,7 @@ impl EnvState {
         &self.designation_chain
     }
 
-    // EnvState does not currently contain any policy; Agents populate this as
+    // AgentState does not currently contain any policy; Agents populate this as
     // needed.
     // TODO(func, sec) Provide dedicated interface for d-chain mutations.
     pub fn designation_chain_mut(&mut self) -> &mut VecDeque<LocalNode> {

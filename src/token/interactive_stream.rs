@@ -4,7 +4,7 @@ use rustyline::Editor;
 use super::interactive_helper::InteractiveHelper;
 use super::token::TokenInfo;
 use super::tokenizer::Tokenizer;
-use crate::agent::env_state::EnvState;
+use crate::agent::agent_state::AgentState;
 use crate::primitive::symbol_policies::policy_base;
 
 
@@ -16,9 +16,9 @@ pub struct InteractiveStream {
 }
 
 impl InteractiveStream {
-    pub fn new(env_state: EnvState) -> InteractiveStream {
+    pub fn new(state: AgentState) -> InteractiveStream {
         let mut editor = Editor::<InteractiveHelper>::new();
-        editor.set_helper(Some(InteractiveHelper::new(env_state)));
+        editor.set_helper(Some(InteractiveHelper::new(state)));
 
         InteractiveStream {
             editor,

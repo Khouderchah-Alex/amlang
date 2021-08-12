@@ -1,15 +1,15 @@
 use log::debug;
 use std::io::{stdout, BufWriter};
 
-use super::env_state::EnvState;
+use super::agent_state::AgentState;
 use crate::model::{Eval, Model};
 use crate::primitive::{Continuation, Node, Primitive};
 use crate::sexp::Sexp;
 
 
 pub trait Agent: Eval {
-    fn env_state(&self) -> &EnvState;
-    fn env_state_mut(&mut self) -> &mut EnvState;
+    fn state(&self) -> &AgentState;
+    fn state_mut(&mut self) -> &mut AgentState;
     fn cont(&self) -> &Continuation;
     fn cont_mut(&mut self) -> &mut Continuation;
 
@@ -55,19 +55,19 @@ pub trait Agent: Eval {
             Primitive::Node(raw_node) => {
                 let node = self.concretize(*raw_node);
                 // Print Nodes as their designators if possible.
-                if let Some(sym) = self.env_state_mut().node_designator(node) {
+                if let Some(sym) = self.state_mut().node_designator(node) {
                     write!(w, "{}", sym.as_str())
                 } else if let Some(triple) = self
-                    .env_state_mut()
+                    .state_mut()
                     .access_env(node.env())
                     .unwrap()
                     .node_as_triple(node.local())
                 {
-                    let s = triple.generate_structure(self.env_state_mut());
+                    let s = triple.generate_structure(self.state_mut());
                     self.write_list_internal(w, &s, depth + 1)
                 } else {
                     let s = if let Some(structure) = self
-                        .env_state_mut()
+                        .state_mut()
                         .access_env(node.env())
                         .unwrap()
                         .node_structure(node.local())
@@ -94,7 +94,7 @@ pub trait Agent: Eval {
                 }
             }
             Primitive::Procedure(procedure) => {
-                let s = procedure.generate_structure(self.env_state_mut());
+                let s = procedure.generate_structure(self.state_mut());
                 self.write_list_internal(w, &s, depth + 1)
             }
             _ => write!(w, "{}", primitive),

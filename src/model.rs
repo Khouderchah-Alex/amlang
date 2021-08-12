@@ -1,4 +1,4 @@
-use crate::agent::env_state::EnvState;
+use crate::agent::agent_state::AgentState;
 use crate::lang_err::LangErr;
 use crate::sexp::{HeapSexp, Sexp};
 
@@ -12,5 +12,5 @@ pub trait Eval {
 
 pub trait Model {
     /// Model structure according to (possibly implicit) metamodel.
-    fn generate_structure(&self, env_state: &mut EnvState) -> HeapSexp;
+    fn generate_structure(&self, state: &mut AgentState) -> HeapSexp;
 }

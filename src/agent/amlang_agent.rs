@@ -5,7 +5,7 @@ use std::iter::Peekable;
 
 use super::agent::Agent;
 use super::amlang_wrappers::*;
-use super::env_state::EnvState;
+use super::agent_state::AgentState;
 use crate::environment::LocalNode;
 use crate::lang_err::{ExpectedCount, LangErr};
 use crate::model::{Eval, Model, Ret};
@@ -20,7 +20,7 @@ use crate::token::TokenInfo;
 
 #[derive(Clone)]
 pub struct AmlangAgent {
-    agent_state: EnvState,
+    state: AgentState,
     history_env: LocalNode,
     cont: Continuation,
     eval_symbols: SymbolTable,
@@ -44,13 +44,13 @@ pub enum RunError {
 }
 
 impl AmlangAgent {
-    pub fn from_state(mut agent_state: EnvState, history_env: LocalNode) -> Self {
+    pub fn from_state(mut state: AgentState, history_env: LocalNode) -> Self {
         // Ensure agent state designates amlang nodes first.
-        let lang_env = agent_state.context().lang_env();
-        agent_state.designation_chain_mut().push_front(lang_env);
+        let lang_env = state.context().lang_env();
+        state.designation_chain_mut().push_front(lang_env);
 
         Self {
-            agent_state,
+            state,
             // TODO(sec) Verify as env node.
             history_env,
             cont: Continuation::new(),
@@ -75,10 +75,10 @@ impl AmlangAgent {
         let mut surface = Vec::new();
         for symbol in params {
             let node = self
-                .env_state_mut()
+                .state_mut()
                 .env()
                 .insert_atom()
-                .globalize(self.env_state());
+                .globalize(self.state());
             // TODO(func) Use actual deep environment representation (including popping off).
             self.eval_symbols.insert(symbol, node);
             surface.push(node);
@@ -93,16 +93,16 @@ impl AmlangAgent {
         // TODO(func) Allow for sequence.
         let body_eval = self.eval(Box::new(cons.car().unwrap().clone()))?;
         let body_node = self
-            .env_state_mut()
+            .state_mut()
             .env()
             .insert_structure(body_eval)
-            .globalize(self.env_state());
+            .globalize(self.state());
         Ok(Procedure::Abstraction(surface, body_node))
     }
 
     fn exec(&mut self, meaning_node: Node) -> Ret {
         let meaning = self
-            .env_state_mut()
+            .state_mut()
             .designate(Primitive::Node(meaning_node))?;
         match meaning {
             Sexp::Primitive(Primitive::Procedure(proc)) => {
@@ -144,9 +144,9 @@ impl AmlangAgent {
     }
 
     fn apply(&mut self, proc_node: Node, arg_nodes: Vec<Node>) -> Ret {
-        match self.env_state_mut().designate(Primitive::Node(proc_node))? {
+        match self.state_mut().designate(Primitive::Node(proc_node))? {
             Sexp::Primitive(Primitive::Node(node)) => {
-                if node.env() == self.env_state().context().lang_env() {
+                if node.env() == self.state().context().lang_env() {
                     self.apply_special(node.local(), arg_nodes)
                 } else {
                     err_ctx!(
@@ -214,7 +214,7 @@ impl AmlangAgent {
     }
 
     fn apply_special(&mut self, special_node: LocalNode, arg_nodes: Vec<Node>) -> Ret {
-        let context = self.env_state().context();
+        let context = self.state().context();
         match special_node {
             _ if context.tell == special_node || context.ask == special_node => {
                 let is_tell = context.tell == special_node;
@@ -223,12 +223,12 @@ impl AmlangAgent {
                 // TODO(func) Add support for cross-env triples through surrogates.
                 let mut to_local = |node: Node| {
                     let placeholder = Node::new(
-                        self.env_state().context().lang_env(),
-                        self.env_state().context().placeholder,
+                        self.state().context().lang_env(),
+                        self.state().context().placeholder,
                     );
                     let final_node = self.exec_to_node(node)?;
                     if (is_tell || final_node != placeholder)
-                        && final_node.env() != self.env_state().pos().env()
+                        && final_node.env() != self.state().pos().env()
                     {
                         panic!("Cross-env triples are not yet supported");
                     }
@@ -243,26 +243,26 @@ impl AmlangAgent {
                     o
                 );
                 if is_tell {
-                    self.env_state_mut().tell(s, p, o)
+                    self.state_mut().tell(s, p, o)
                 } else {
-                    self.env_state_mut().ask(s, p, o)
+                    self.state_mut().ask(s, p, o)
                 }
             }
             _ if context.def == special_node => {
                 let (name, val) = def_wrapper(&arg_nodes, &self.cont())?;
-                self.env_state_mut().designate(Primitive::Node(name))?;
-                if name.env() != self.env_state().pos().env() {
+                self.state_mut().designate(Primitive::Node(name))?;
+                if name.env() != self.state().pos().env() {
                     panic!("Cross-env triples are not yet supported");
                 }
 
                 let val_node = if let Some(s) = val {
                     let val = self.exec(s)?;
-                    self.env_state_mut().env().insert_structure(val)
+                    self.state_mut().env().insert_structure(val)
                 } else {
-                    self.env_state_mut().env().insert_atom()
+                    self.state_mut().env().insert_atom()
                 };
                 return Ok(self
-                    .env_state_mut()
+                    .state_mut()
                     .name_node(name.local(), val_node)?
                     .into());
             }
@@ -277,7 +277,7 @@ impl AmlangAgent {
                     );
                 }
                 self.print_curr_triples();
-                return Ok(self.env_state().pos().into());
+                return Ok(self.state().pos().into());
             }
             _ if context.jump == special_node => {
                 if arg_nodes.len() != 1 {
@@ -292,9 +292,9 @@ impl AmlangAgent {
 
                 // If original expr eval + exec -> Node, use that.
                 let dest = self.exec_to_node(arg_nodes[0])?;
-                self.env_state_mut().jump(dest);
+                self.state_mut().jump(dest);
                 self.print_curr_triples();
-                return Ok(self.env_state().pos().into());
+                return Ok(self.state().pos().into());
             }
             _ if context.import == special_node => {
                 if arg_nodes.len() != 1 {
@@ -309,7 +309,7 @@ impl AmlangAgent {
 
                 // If original expr eval + exec -> Node, use that.
                 let original = self.exec_to_node(arg_nodes[0])?;
-                let imported = self.env_state_mut().import(original)?;
+                let imported = self.state_mut().import(original)?;
                 return Ok(imported.into());
             }
             _ if context.env_find == special_node => {
@@ -324,7 +324,7 @@ impl AmlangAgent {
                 }
 
                 let des = self
-                    .env_state_mut()
+                    .state_mut()
                     .designate(Primitive::Node(arg_nodes[0]))?;
                 let path = match <&AmString>::try_from(&des) {
                     Ok(path) => path,
@@ -339,7 +339,7 @@ impl AmlangAgent {
                     }
                 };
 
-                if let Some(lnode) = self.env_state().find_env(path.as_str()) {
+                if let Some(lnode) = self.state().find_env(path.as_str()) {
                     Ok(Node::new(LocalNode::default(), lnode).into())
                 } else {
                     Ok(Sexp::default())
@@ -354,10 +354,10 @@ impl AmlangAgent {
                 let proc = if let Ok(node) = Node::try_from(&proc_sexp) {
                     node
                 } else {
-                    self.env_state_mut()
+                    self.state_mut()
                         .env()
                         .insert_structure(proc_sexp)
-                        .globalize(self.env_state())
+                        .globalize(self.state())
                 };
                 let mut args = Vec::new();
                 for arg in SexpIntoIter::try_from(args_sexp)? {
@@ -365,10 +365,10 @@ impl AmlangAgent {
                         args.push(node);
                     } else {
                         args.push(
-                            self.env_state_mut()
+                            self.state_mut()
                                 .env()
                                 .insert_structure(arg.into())
-                                .globalize(self.env_state()),
+                                .globalize(self.state()),
                         );
                     }
                 }
@@ -399,7 +399,7 @@ impl AmlangAgent {
             _ => err_ctx!(
                 self.cont(),
                 InvalidArgument {
-                    given: Node::new(self.env_state().context().lang_env(), special_node).into(),
+                    given: Node::new(self.state().context().lang_env(), special_node).into(),
                     expected: Cow::Borrowed("special Amlang Node"),
                 }
             ),
@@ -424,10 +424,10 @@ impl AmlangAgent {
                         args.push(node.into());
                     } else {
                         args.push(
-                            self.env_state_mut()
+                            self.state_mut()
                                 .env()
                                 .insert_structure(val)
-                                .globalize(self.env_state()),
+                                .globalize(self.state()),
                         );
                     }
                 }
@@ -439,7 +439,7 @@ impl AmlangAgent {
     fn history_insert(&mut self, structure: Sexp) -> Node {
         let env = self.history_env;
         let node = self
-            .env_state_mut()
+            .state_mut()
             .access_env(env)
             .unwrap()
             .insert_structure(structure);
@@ -449,11 +449,11 @@ impl AmlangAgent {
 
 
 impl Agent for AmlangAgent {
-    fn env_state(&self) -> &EnvState {
-        &self.agent_state
+    fn state(&self) -> &AgentState {
+        &self.state
     }
-    fn env_state_mut(&mut self) -> &mut EnvState {
-        &mut self.agent_state
+    fn state_mut(&mut self) -> &mut AgentState {
+        &mut self.state
     }
     fn cont(&self) -> &Continuation {
         &self.cont
@@ -472,7 +472,7 @@ impl Eval for AmlangAgent {
                         return Ok(node.into());
                     }
                 }
-                return self.env_state_mut().designate(primitive);
+                return self.state_mut().designate(primitive);
             }
 
             Sexp::Cons(cons) => {
@@ -484,7 +484,7 @@ impl Eval for AmlangAgent {
 
                 let eval_car = self.eval(car)?;
                 if let Ok(node) = <Node>::try_from(&eval_car) {
-                    let context = self.env_state().context();
+                    let context = self.state().context();
                     match node {
                         _ if Node::new(context.lang_env(), context.quote) == node => {
                             return quote_wrapper(cdr);
@@ -493,10 +493,10 @@ impl Eval for AmlangAgent {
                             let (params, body) = make_lambda_wrapper(cdr, &self.cont())?;
                             let proc = self.make_lambda(params, body)?;
                             return Ok(self
-                                .env_state_mut()
+                                .state_mut()
                                 .env()
                                 .insert_structure(proc.into())
-                                .globalize(self.env_state())
+                                .globalize(self.state())
                                 .into());
                         }
                         _ if Node::new(context.lang_env(), context.branch) == node => {
@@ -582,11 +582,11 @@ impl AmlangAgent {
     }
 
     fn print_curr_triples(&mut self) {
-        let local = self.env_state().pos().local();
-        let triples = self.env_state_mut().env().match_any(local);
+        let local = self.state().pos().local();
+        let triples = self.state_mut().env().match_any(local);
         for triple in triples {
             print!("    ");
-            let structure = triple.generate_structure(self.env_state_mut());
+            let structure = triple.generate_structure(self.state_mut());
             self.print_list(&structure);
             println!("");
         }
