@@ -1,20 +1,17 @@
 use std::fmt;
 
 
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Continuation<Frame>(Vec<Frame>);
 
 impl<Frame> Continuation<Frame> {
-    pub fn new() -> Self {
-        Self(vec![])
+    pub fn new(root: Frame) -> Self {
+        Self(vec![root])
     }
 
-    pub fn top_mut(&mut self) -> Option<&mut Frame> {
-        let len = self.0.len();
-        if len == 0 {
-            return None;
-        }
-        Some(&mut self.0[len - 1])
+    pub fn top_mut(&mut self) -> &mut Frame {
+        let len = self.depth();
+        &mut self.0[len - 1]
     }
 
     pub fn push(&mut self, frame: Frame) {
@@ -22,7 +19,11 @@ impl<Frame> Continuation<Frame> {
     }
 
     pub fn pop(&mut self) -> Option<Frame> {
-        self.0.pop()
+        match self.depth() {
+            0 => panic!(),
+            1 => None,
+            _ => self.0.pop(),
+        }
     }
 
     pub fn depth(&self) -> usize {

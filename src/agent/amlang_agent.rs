@@ -47,11 +47,13 @@ impl AmlangAgent {
         let lang_env = state.context().lang_env();
         state.designation_chain_mut().push_front(lang_env);
 
+        // TODO(func) Provide better root node.
+        let root_exec_frame = ExecFrame::new(state.pos());
         Self {
             state,
             // TODO(sec) Verify as env node.
             history_env,
-            cont: ExecState::new(),
+            cont: ExecState::new(root_exec_frame),
             eval_symbols: SymbolTable::default(),
         }
     }
@@ -174,7 +176,7 @@ impl AmlangAgent {
                 for (i, node) in arg_nodes.into_iter().enumerate() {
                     args.push(self.exec(node)?);
 
-                    let frame = self.cont_mut().top_mut().unwrap();
+                    let frame = self.cont_mut().top_mut();
                     frame.insert(params[i], node);
                     debug!("cont insert: {} -> {}", params[i], node);
                 }
