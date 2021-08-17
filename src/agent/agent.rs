@@ -2,24 +2,26 @@ use log::debug;
 use std::io::{stdout, BufWriter};
 
 use super::agent_state::AgentState;
+use crate::agent::exec_state::ExecState;
 use crate::model::{Eval, Model};
-use crate::primitive::{Continuation, Node, Primitive};
+use crate::primitive::{Node, Primitive};
 use crate::sexp::Sexp;
 
 
 pub trait Agent: Eval {
     fn state(&self) -> &AgentState;
     fn state_mut(&mut self) -> &mut AgentState;
-    fn cont(&self) -> &Continuation;
-    fn cont_mut(&mut self) -> &mut Continuation;
+    fn cont(&self) -> &ExecState;
+    fn cont_mut(&mut self) -> &mut ExecState;
 
     fn concretize(&self, node: Node) -> Node {
-        if let Some(new_node) = self.cont().lookup(&node) {
-            debug!("concretizing: {} -> {}", node, new_node);
-            new_node
-        } else {
-            node
+        for frame in self.cont().iter() {
+            if let Some(n) = frame.lookup(node) {
+                debug!("concretizing: {} -> {}", node, n);
+                return n;
+            }
         }
+        node
     }
 
     fn print_list(&mut self, structure: &Sexp) {

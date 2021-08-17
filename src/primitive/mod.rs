@@ -7,7 +7,6 @@ use std::mem;
 mod try_from_helper;
 
 pub mod builtin;
-pub mod continuation;
 pub mod node;
 pub mod number;
 pub mod path;
@@ -18,7 +17,6 @@ pub mod symbol_policies;
 pub mod table;
 
 pub use self::builtin::BuiltIn;
-pub use self::continuation::Continuation;
 pub use self::node::Node;
 pub use self::number::Number;
 pub use self::path::Path;
@@ -40,7 +38,6 @@ pub enum Primitive {
 
     SymbolTable(SymbolTable),
     LocalNodeTable(LocalNodeTable),
-    Continuation(Continuation),
     Procedure(Procedure),
     // Presumably only present in meta env Nodes, but this comes down
     // to how base Agents are implemented.
@@ -62,7 +59,6 @@ impl fmt::Display for Primitive {
 
             Primitive::SymbolTable(table) => write!(f, "{:?}", table),
             Primitive::LocalNodeTable(table) => write!(f, "{:?}", table),
-            Primitive::Continuation(cont) => write!(f, "{}", cont),
             Primitive::Procedure(proc) => write!(f, "{:?}", proc),
             Primitive::Env(_env) => write!(f, "[Env]"),
         }
@@ -100,9 +96,6 @@ impl PartialEq for Primitive {
                         &Primitive::LocalNodeTable(ref this),
                         &Primitive::LocalNodeTable(ref that),
                     ) => (*this) == (*that),
-                    (&Primitive::Continuation(ref this), &Primitive::Continuation(ref that)) => {
-                        (*this) == (*that)
-                    }
                     (&Primitive::Procedure(ref this), &Primitive::Procedure(ref that)) => {
                         (*this) == (*that)
                     }

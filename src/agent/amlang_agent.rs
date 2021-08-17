@@ -4,16 +4,14 @@ use std::convert::TryFrom;
 use std::iter::Peekable;
 
 use super::agent::Agent;
-use super::amlang_wrappers::*;
 use super::agent_state::AgentState;
+use super::amlang_wrappers::*;
+use crate::agent::exec_state::{ExecFrame, ExecState};
 use crate::environment::LocalNode;
 use crate::lang_err::{ExpectedCount, LangErr};
 use crate::model::{Eval, Model, Ret};
 use crate::parser::{parse_sexp, ParseError};
-use crate::primitive::continuation::ContinuationFrame;
-use crate::primitive::{
-    AmString, Continuation, Node, Number, Primitive, Procedure, Symbol, SymbolTable,
-};
+use crate::primitive::{AmString, Node, Number, Primitive, Procedure, Symbol, SymbolTable};
 use crate::sexp::{Cons, HeapSexp, Sexp, SexpIntoIter};
 use crate::token::TokenInfo;
 
@@ -22,7 +20,7 @@ use crate::token::TokenInfo;
 pub struct AmlangAgent {
     state: AgentState,
     history_env: LocalNode,
-    cont: Continuation,
+    cont: ExecState,
     eval_symbols: SymbolTable,
 }
 
@@ -53,7 +51,7 @@ impl AmlangAgent {
             state,
             // TODO(sec) Verify as env node.
             history_env,
-            cont: Continuation::new(),
+            cont: ExecState::new(),
             eval_symbols: SymbolTable::default(),
         }
     }
@@ -74,11 +72,7 @@ impl AmlangAgent {
     fn make_lambda(&mut self, params: Vec<Symbol>, body: Sexp) -> Result<Procedure, LangErr> {
         let mut surface = Vec::new();
         for symbol in params {
-            let node = self
-                .state_mut()
-                .env()
-                .insert_atom()
-                .globalize(self.state());
+            let node = self.state_mut().env().insert_atom().globalize(self.state());
             // TODO(func) Use actual deep environment representation (including popping off).
             self.eval_symbols.insert(symbol, node);
             surface.push(node);
@@ -101,14 +95,12 @@ impl AmlangAgent {
     }
 
     fn exec(&mut self, meaning_node: Node) -> Ret {
-        let meaning = self
-            .state_mut()
-            .designate(Primitive::Node(meaning_node))?;
+        let meaning = self.state_mut().designate(Primitive::Node(meaning_node))?;
         match meaning {
             Sexp::Primitive(Primitive::Procedure(proc)) => {
                 match proc {
                     Procedure::Application(proc_node, arg_nodes) => {
-                        let frame = ContinuationFrame::new(meaning_node);
+                        let frame = ExecFrame::new(meaning_node);
                         self.cont_mut().push(frame);
 
                         let res = (|| {
@@ -261,10 +253,7 @@ impl AmlangAgent {
                 } else {
                     self.state_mut().env().insert_atom()
                 };
-                return Ok(self
-                    .state_mut()
-                    .name_node(name.local(), val_node)?
-                    .into());
+                return Ok(self.state_mut().name_node(name.local(), val_node)?.into());
             }
             _ if context.curr == special_node => {
                 if arg_nodes.len() > 0 {
@@ -323,9 +312,7 @@ impl AmlangAgent {
                     );
                 }
 
-                let des = self
-                    .state_mut()
-                    .designate(Primitive::Node(arg_nodes[0]))?;
+                let des = self.state_mut().designate(Primitive::Node(arg_nodes[0]))?;
                 let path = match <&AmString>::try_from(&des) {
                     Ok(path) => path,
                     _ => {
@@ -455,10 +442,10 @@ impl Agent for AmlangAgent {
     fn state_mut(&mut self) -> &mut AgentState {
         &mut self.state
     }
-    fn cont(&self) -> &Continuation {
+    fn cont(&self) -> &ExecState {
         &self.cont
     }
-    fn cont_mut(&mut self) -> &mut Continuation {
+    fn cont_mut(&mut self) -> &mut ExecState {
         &mut self.cont
     }
 }

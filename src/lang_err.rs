@@ -3,7 +3,8 @@ use std::fmt;
 
 use self::ErrKind::*;
 use self::ExpectedCount::*;
-use crate::primitive::{Continuation, Symbol};
+use crate::agent::exec_state::ExecState;
+use crate::primitive::Symbol;
 use crate::sexp::Sexp;
 
 
@@ -27,7 +28,7 @@ macro_rules! err_ctx {
 
 #[derive(Debug)]
 pub struct LangErr {
-    cont: Option<Continuation>,
+    cont: Option<ExecState>,
     pub kind: ErrKind,
 }
 
@@ -65,14 +66,14 @@ impl LangErr {
     }
 
     // Prefer using err_ctx! for convenience.
-    pub fn with_context(cont: Continuation, kind: ErrKind) -> Self {
+    pub fn with_context(cont: ExecState, kind: ErrKind) -> Self {
         Self {
             cont: Some(cont),
             kind,
         }
     }
 
-    pub fn cont(&self) -> &Option<Continuation> {
+    pub fn cont(&self) -> &Option<ExecState> {
         &self.cont
     }
 }

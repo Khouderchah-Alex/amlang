@@ -7,9 +7,10 @@ use std::path::Path as StdPath;
 use std::sync::Arc;
 
 use super::agent::Agent;
+use super::agent_state::{AgentState, AMLANG_DESIGNATION};
 use super::amlang_context::AmlangContext;
 use super::amlang_wrappers::quote_wrapper;
-use super::agent_state::{AgentState, AMLANG_DESIGNATION};
+use crate::agent::exec_state::ExecState;
 use crate::builtins::generate_builtin_map;
 use crate::environment::environment::EnvObject;
 use crate::environment::mem_environment::MemEnvironment;
@@ -19,8 +20,7 @@ use crate::model::{Eval, Model, Ret};
 use crate::parser::{self, parse_sexp};
 use crate::primitive::symbol_policies::{policy_admin, AdminSymbolInfo};
 use crate::primitive::{
-    AmString, BuiltIn, Continuation, Node, Path, Primitive, Procedure, Symbol, SymbolTable,
-    ToSymbol,
+    AmString, BuiltIn, Node, Path, Primitive, Procedure, Symbol, SymbolTable, ToSymbol,
 };
 use crate::sexp::{Cons, HeapSexp, Sexp, SexpIntoIter};
 use crate::token::file_stream::{self, FileStream, FileStreamError};
@@ -100,10 +100,9 @@ impl EnvManager {
         ));
 
         // Bootstrap meta env.
-        let meta_state = AgentState::new(LocalNode::default(), context.self_node(), context.clone());
-        let mut manager = Self {
-            state: meta_state,
-        };
+        let meta_state =
+            AgentState::new(LocalNode::default(), context.self_node(), context.clone());
+        let mut manager = Self { state: meta_state };
         manager.deserialize_curr_env(meta_path)?;
         bootstrap_context!(manager, context,
                            imports: "__imports",
@@ -131,9 +130,7 @@ impl EnvManager {
 
         // Bootstrap lang env.
         let lang_state = AgentState::new(context.lang_env(), context.self_node(), context.clone());
-        let mut manager = Self {
-            state: lang_state,
-        };
+        let mut manager = Self { state: lang_state };
         let meta = manager.state().context().meta();
         let lang_path_triple = meta
             .match_but_object(context.lang_env(), context.serialize_path)
@@ -634,9 +631,7 @@ impl EnvManager {
                         "{} {} {:?}",
                         subject,
                         object,
-                        self.state_mut()
-                            .designate(Primitive::Node(object))
-                            .unwrap()
+                        self.state_mut().designate(Primitive::Node(object)).unwrap()
                     );
                     return Err(ExpectedSymbol);
                 };
@@ -661,11 +656,11 @@ impl Agent for EnvManager {
     fn state_mut(&mut self) -> &mut AgentState {
         &mut self.state
     }
-    // TODO(func) Add Continuations to repr control state.
-    fn cont(&self) -> &Continuation {
+    // TODO(func) Add ExecStates to repr control state.
+    fn cont(&self) -> &ExecState {
         panic!()
     }
-    fn cont_mut(&mut self) -> &mut Continuation {
+    fn cont_mut(&mut self) -> &mut ExecState {
         panic!()
     }
 }

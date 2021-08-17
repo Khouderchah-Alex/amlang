@@ -1,9 +1,10 @@
 use std::borrow::Cow;
 use std::convert::TryFrom;
 
+use crate::agent::exec_state::ExecState;
 use crate::lang_err::{ExpectedCount, LangErr};
 use crate::model::Ret;
-use crate::primitive::{Continuation, Node, Primitive, Symbol};
+use crate::primitive::{Node, Primitive, Symbol};
 use crate::sexp::{Cons, HeapSexp, Sexp};
 
 
@@ -21,7 +22,7 @@ pub fn quote_wrapper(args: Option<HeapSexp>) -> Ret {
 
 pub fn make_lambda_wrapper(
     args: Option<HeapSexp>,
-    cont: &Continuation,
+    cont: &ExecState,
 ) -> Result<(Vec<Symbol>, Sexp), LangErr> {
     if args.is_none() {
         return err_ctx!(
@@ -73,7 +74,7 @@ pub fn make_lambda_wrapper(
     };
 }
 
-pub fn tell_wrapper(args: &Vec<Node>, cont: &Continuation) -> Result<(Node, Node, Node), LangErr> {
+pub fn tell_wrapper(args: &Vec<Node>, cont: &ExecState) -> Result<(Node, Node, Node), LangErr> {
     if args.len() != 3 {
         return err_ctx!(
             cont,
@@ -90,7 +91,7 @@ pub fn tell_wrapper(args: &Vec<Node>, cont: &Continuation) -> Result<(Node, Node
     Ok((subject, predicate, object))
 }
 
-pub fn def_wrapper(args: &Vec<Node>, cont: &Continuation) -> Result<(Node, Option<Node>), LangErr> {
+pub fn def_wrapper(args: &Vec<Node>, cont: &ExecState) -> Result<(Node, Option<Node>), LangErr> {
     if args.len() < 1 {
         return err_ctx!(
             cont,
@@ -114,7 +115,7 @@ pub fn def_wrapper(args: &Vec<Node>, cont: &Continuation) -> Result<(Node, Optio
     Ok((name, structure))
 }
 
-pub fn apply_wrapper(args: &Vec<Node>, cont: &Continuation) -> Result<(Node, Node), LangErr> {
+pub fn apply_wrapper(args: &Vec<Node>, cont: &ExecState) -> Result<(Node, Node), LangErr> {
     if args.len() != 2 {
         return err_ctx!(
             cont,

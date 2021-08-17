@@ -1,10 +1,11 @@
 use std::borrow::Cow;
 use std::collections::HashMap;
 
+use crate::agent::exec_state::ExecState;
 use crate::lang_err::ExpectedCount;
 use crate::model::Ret;
 use crate::primitive::builtin::Args;
-use crate::primitive::{BuiltIn, Continuation, Number, Primitive};
+use crate::primitive::{BuiltIn, Number, Primitive};
 use crate::sexp::{self, Sexp};
 
 
@@ -32,7 +33,7 @@ pub fn generate_builtin_map() -> HashMap<&'static str, BuiltIn> {
 }
 
 
-pub fn add(args: Args, cont: &Continuation) -> Ret {
+pub fn add(args: Args, cont: &ExecState) -> Ret {
     let mut curr = Number::default();
     for arg in args {
         if let Sexp::Primitive(Primitive::Number(num)) = arg {
@@ -51,7 +52,7 @@ pub fn add(args: Args, cont: &Continuation) -> Ret {
     Ok(curr.into())
 }
 
-pub fn sub(args: Args, cont: &Continuation) -> Ret {
+pub fn sub(args: Args, cont: &ExecState) -> Ret {
     if args.len() < 1 {
         return err_ctx!(
             cont,
@@ -86,7 +87,7 @@ pub fn sub(args: Args, cont: &Continuation) -> Ret {
     Ok(curr.into())
 }
 
-pub fn mul(args: Args, cont: &Continuation) -> Ret {
+pub fn mul(args: Args, cont: &ExecState) -> Ret {
     let mut curr = Number::Integer(1);
     for arg in args {
         if let Sexp::Primitive(Primitive::Number(num)) = arg {
@@ -105,7 +106,7 @@ pub fn mul(args: Args, cont: &Continuation) -> Ret {
     Ok(curr.into())
 }
 
-pub fn div(args: Args, cont: &Continuation) -> Ret {
+pub fn div(args: Args, cont: &ExecState) -> Ret {
     if args.len() < 1 {
         return err_ctx!(
             cont,
@@ -140,7 +141,7 @@ pub fn div(args: Args, cont: &Continuation) -> Ret {
     Ok(curr.into())
 }
 
-pub fn car(mut args: Args, cont: &Continuation) -> Ret {
+pub fn car(mut args: Args, cont: &ExecState) -> Ret {
     if args.len() != 1 {
         return err_ctx!(
             cont,
@@ -169,7 +170,7 @@ pub fn car(mut args: Args, cont: &Continuation) -> Ret {
     }
 }
 
-pub fn cdr(mut args: Args, cont: &Continuation) -> Ret {
+pub fn cdr(mut args: Args, cont: &ExecState) -> Ret {
     if args.len() != 1 {
         return err_ctx!(
             cont,
@@ -198,7 +199,7 @@ pub fn cdr(mut args: Args, cont: &Continuation) -> Ret {
     }
 }
 
-pub fn cons(mut args: Args, cont: &Continuation) -> Ret {
+pub fn cons(mut args: Args, cont: &ExecState) -> Ret {
     if args.len() != 2 {
         return err_ctx!(
             cont,
