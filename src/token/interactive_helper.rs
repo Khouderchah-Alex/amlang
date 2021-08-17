@@ -29,7 +29,7 @@ impl InteractiveHelper {
 
     fn designation_prefix(&self, prefix: &str) -> Vec<Symbol> {
         let mut state = self.state.borrow_mut();
-        let designation = state.designation();
+        let designation = state.context().designation();
 
         let mut res = Vec::<Symbol>::new();
         for env in state.designation_chain().clone() {

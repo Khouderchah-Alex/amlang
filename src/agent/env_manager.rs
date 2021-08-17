@@ -100,8 +100,10 @@ impl EnvManager {
         ));
 
         // Bootstrap meta env.
-        let meta_state =
-            AgentState::new(LocalNode::default(), context.self_node(), context.clone());
+        let meta_state = AgentState::new(
+            Node::new(LocalNode::default(), context.self_node()),
+            context.clone(),
+        );
         let mut manager = Self { state: meta_state };
         manager.deserialize_curr_env(meta_path)?;
         bootstrap_context!(manager, context,
@@ -113,8 +115,10 @@ impl EnvManager {
 
         // Make context usable for bootstrapping lang.
         {
-            let meta_state =
-                AgentState::new(LocalNode::default(), context.self_node(), context.clone());
+            let meta_state = AgentState::new(
+                Node::new(LocalNode::default(), context.self_node()),
+                context.clone(),
+            );
             let l = meta_state.find_env("lang.env").unwrap();
             std::mem::drop(meta_state);
             let mut c = Arc::get_mut(&mut context).unwrap();
@@ -129,7 +133,10 @@ impl EnvManager {
         }
 
         // Bootstrap lang env.
-        let lang_state = AgentState::new(context.lang_env(), context.self_node(), context.clone());
+        let lang_state = AgentState::new(
+            Node::new(context.lang_env(), context.self_node()),
+            context.clone(),
+        );
         let mut manager = Self { state: lang_state };
         let meta = manager.state().context().meta();
         let lang_path_triple = meta
@@ -163,7 +170,10 @@ impl EnvManager {
         info!("Lang env bootstrapping complete.");
 
         let mut bootstrapped = Self {
-            state: AgentState::new(context.lang_env(), context.self_node(), context.clone()),
+            state: AgentState::new(
+                Node::new(context.lang_env(), context.self_node()),
+                context.clone(),
+            ),
         };
 
         // TODO(func) Allow for delayed loading of environments.
@@ -620,7 +630,7 @@ impl EnvManager {
                 object.local(),
             );
 
-            let designation = self.state().designation();
+            let designation = self.state().context().designation();
             if predicate.local() == designation && object.local() != designation {
                 let name = if let Ok(sym) =
                     <Symbol>::try_from(self.state_mut().designate(Primitive::Node(object)))

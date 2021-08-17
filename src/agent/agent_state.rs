@@ -4,6 +4,7 @@ use std::convert::TryFrom;
 use std::sync::Arc;
 
 use super::amlang_context::AmlangContext;
+use super::continuation::Continuation;
 use crate::environment::environment::{EnvObject, TripleSet};
 use crate::environment::LocalNode;
 use crate::lang_err::LangErr;
@@ -15,56 +16,63 @@ use crate::sexp::Sexp;
 
 #[derive(Clone)]
 pub struct AgentState {
-    env: LocalNode,
-    pos: LocalNode,
-
-    // Ordered list of Env Nodes.
+    env_state: Continuation<EnvFrame>,
     designation_chain: VecDeque<LocalNode>,
+
     context: Arc<AmlangContext>,
 }
 
 pub const AMLANG_DESIGNATION: &str = "__designatedBy";
 
+#[derive(Clone)]
+struct EnvFrame {
+    pos: Node,
+}
+
+
 impl AgentState {
-    pub fn new(env: LocalNode, pos: LocalNode, context: Arc<AmlangContext>) -> Self {
+    pub fn new(pos: Node, context: Arc<AmlangContext>) -> Self {
+        let env_state = Continuation::new(EnvFrame { pos });
         Self {
-            env,
-            pos,
+            env_state,
             designation_chain: VecDeque::new(),
             context,
         }
     }
 
+    pub fn context(&self) -> &AmlangContext {
+        &*self.context
+    }
+}
+
+// Env-state-only functionality.
+impl AgentState {
     pub fn globalize(&self, local: LocalNode) -> Node {
-        Node::new(self.env, local)
+        Node::new(self.pos().env(), local)
     }
 
     pub fn pos(&self) -> Node {
-        Node::new(self.env, self.pos)
+        self.env_state.top().pos
+    }
+    fn pos_mut(&mut self) -> &mut Node {
+        &mut self.env_state.top_mut().pos
     }
 
     pub fn jump(&mut self, node: Node) {
         // TODO(sec) Verify.
-        self.env = node.env();
-        self.pos = node.local();
+        *self.pos_mut() = node;
     }
 
     /// Jump to self node of indicated env.
     pub fn jump_env(&mut self, env_node: LocalNode) {
         // TODO(sec) Verify.
-        self.env = env_node;
-        self.pos = self.context.self_node();
+        let node = Node::new(env_node, self.context.self_node());
+        *self.pos_mut() = node;
     }
+}
 
-
-    pub fn context(&self) -> &AmlangContext {
-        &*self.context
-    }
-
-    pub fn designation(&self) -> LocalNode {
-        self.context.designation()
-    }
-
+// Designation-state-only functionality.
+impl AgentState {
     pub fn designation_chain(&self) -> &VecDeque<LocalNode> {
         &self.designation_chain
     }
@@ -75,7 +83,11 @@ impl AgentState {
     pub fn designation_chain_mut(&mut self) -> &mut VecDeque<LocalNode> {
         &mut self.designation_chain
     }
+}
 
+
+// Core functionality.
+impl AgentState {
     pub fn access_env(&mut self, meta_node: LocalNode) -> Option<&mut EnvObject> {
         let meta = self.context.meta();
         if meta_node == LocalNode::default() {
@@ -91,11 +103,11 @@ impl AgentState {
 
     pub fn env(&mut self) -> &mut EnvObject {
         // TODO(sec) Verify.
-        self.access_env(self.env).unwrap()
+        self.access_env(self.pos().env()).unwrap()
     }
 
     pub fn node_designator(&mut self, node: Node) -> Option<Symbol> {
-        let designation = self.designation();
+        let designation = self.context().designation();
         if node.local() == designation {
             return Some(AMLANG_DESIGNATION.to_symbol_or_panic(policy_admin));
         }
@@ -112,7 +124,7 @@ impl AgentState {
     }
 
     pub fn resolve(&mut self, name: &Symbol) -> Result<Node, LangErr> {
-        let designation = self.designation();
+        let designation = self.context().designation();
         // Always get self_* nodes from current env.
         match name.as_str() {
             "self_env" => return Ok(Node::new(self.pos().env(), LocalNode::default())),
@@ -190,7 +202,7 @@ impl AgentState {
 
         let global_node = node.globalize(&self);
 
-        let designation = self.designation();
+        let designation = self.context().designation();
         // Use designation of current environment.
         if let Ok(table) = <&mut SymbolTable>::try_from(self.env().node_structure_mut(designation))
         {

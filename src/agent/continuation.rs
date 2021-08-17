@@ -1,3 +1,5 @@
+use log::info;
+
 use std::fmt;
 
 
@@ -9,6 +11,10 @@ impl<Frame> Continuation<Frame> {
         Self(vec![root])
     }
 
+    pub fn top(&self) -> &Frame {
+        let len = self.depth();
+        &self.0[len - 1]
+    }
     pub fn top_mut(&mut self) -> &mut Frame {
         let len = self.depth();
         &mut self.0[len - 1]
@@ -21,7 +27,10 @@ impl<Frame> Continuation<Frame> {
     pub fn pop(&mut self) -> Option<Frame> {
         match self.depth() {
             0 => panic!(),
-            1 => None,
+            1 => {
+                info!("Ignoring pop of sole continuation frame");
+                None
+            }
             _ => self.0.pop(),
         }
     }
