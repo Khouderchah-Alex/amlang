@@ -10,7 +10,6 @@ use super::agent::Agent;
 use super::agent_state::{AgentState, AMLANG_DESIGNATION};
 use super::amlang_context::AmlangContext;
 use super::amlang_wrappers::quote_wrapper;
-use crate::agent::exec_state::ExecState;
 use crate::builtins::generate_builtin_map;
 use crate::environment::environment::EnvObject;
 use crate::environment::mem_environment::MemEnvironment;
@@ -665,13 +664,6 @@ impl Agent for EnvManager {
     }
     fn state_mut(&mut self) -> &mut AgentState {
         &mut self.state
-    }
-    // TODO(func) Add ExecStates to repr control state.
-    fn cont(&self) -> &ExecState {
-        panic!()
-    }
-    fn cont_mut(&mut self) -> &mut ExecState {
-        panic!()
     }
 }
 

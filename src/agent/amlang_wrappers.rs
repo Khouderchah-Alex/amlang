@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 use std::convert::TryFrom;
 
-use crate::agent::exec_state::ExecState;
+use crate::agent::agent_state::AgentState;
 use crate::lang_err::{ExpectedCount, LangErr};
 use crate::model::Ret;
 use crate::primitive::{Node, Primitive, Symbol};
@@ -22,11 +22,11 @@ pub fn quote_wrapper(args: Option<HeapSexp>) -> Ret {
 
 pub fn make_lambda_wrapper(
     args: Option<HeapSexp>,
-    cont: &ExecState,
+    state: &AgentState,
 ) -> Result<(Vec<Symbol>, Sexp), LangErr> {
     if args.is_none() {
         return err_ctx!(
-            cont,
+            state,
             WrongArgumentCount {
                 given: 0,
                 expected: ExpectedCount::AtLeast(2),
@@ -42,7 +42,7 @@ pub fn make_lambda_wrapper(
             Sexp::Primitive(Primitive::Symbol(symbol)) => symbol,
             _ => {
                 return err_ctx!(
-                    cont,
+                    state,
                     InvalidArgument {
                         given: param.clone().into(),
                         expected: Cow::Borrowed("symbol"),
@@ -57,7 +57,7 @@ pub fn make_lambda_wrapper(
         Some(hsexp) => match *hsexp {
             Sexp::Cons(cons) => Ok((params, cons.into())),
             Sexp::Primitive(primitive) => err_ctx!(
-                cont,
+                state,
                 InvalidArgument {
                     given: primitive.into(),
                     expected: Cow::Borrowed("procedure body"),
@@ -65,7 +65,7 @@ pub fn make_lambda_wrapper(
             ),
         },
         None => err_ctx!(
-            cont,
+            state,
             WrongArgumentCount {
                 given: 1,
                 expected: ExpectedCount::AtLeast(2),
@@ -74,10 +74,10 @@ pub fn make_lambda_wrapper(
     };
 }
 
-pub fn tell_wrapper(args: &Vec<Node>, cont: &ExecState) -> Result<(Node, Node, Node), LangErr> {
+pub fn tell_wrapper(args: &Vec<Node>, state: &AgentState) -> Result<(Node, Node, Node), LangErr> {
     if args.len() != 3 {
         return err_ctx!(
-            cont,
+            state,
             WrongArgumentCount {
                 given: args.len(),
                 expected: ExpectedCount::Exactly(3),
@@ -91,10 +91,10 @@ pub fn tell_wrapper(args: &Vec<Node>, cont: &ExecState) -> Result<(Node, Node, N
     Ok((subject, predicate, object))
 }
 
-pub fn def_wrapper(args: &Vec<Node>, cont: &ExecState) -> Result<(Node, Option<Node>), LangErr> {
+pub fn def_wrapper(args: &Vec<Node>, state: &AgentState) -> Result<(Node, Option<Node>), LangErr> {
     if args.len() < 1 {
         return err_ctx!(
-            cont,
+            state,
             WrongArgumentCount {
                 given: args.len(),
                 expected: ExpectedCount::AtLeast(1),
@@ -102,7 +102,7 @@ pub fn def_wrapper(args: &Vec<Node>, cont: &ExecState) -> Result<(Node, Option<N
         );
     } else if args.len() > 2 {
         return err_ctx!(
-            cont,
+            state,
             WrongArgumentCount {
                 given: args.len(),
                 expected: ExpectedCount::AtMost(2),
@@ -115,10 +115,10 @@ pub fn def_wrapper(args: &Vec<Node>, cont: &ExecState) -> Result<(Node, Option<N
     Ok((name, structure))
 }
 
-pub fn apply_wrapper(args: &Vec<Node>, cont: &ExecState) -> Result<(Node, Node), LangErr> {
+pub fn apply_wrapper(args: &Vec<Node>, state: &AgentState) -> Result<(Node, Node), LangErr> {
     if args.len() != 2 {
         return err_ctx!(
-            cont,
+            state,
             WrongArgumentCount {
                 given: args.len(),
                 expected: ExpectedCount::Exactly(2),

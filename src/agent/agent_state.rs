@@ -1,6 +1,9 @@
+use log::debug;
 use std::borrow::Cow;
+use std::collections::btree_map::Entry;
 use std::collections::VecDeque;
 use std::convert::TryFrom;
+use std::io::{stdout, BufWriter};
 use std::sync::Arc;
 
 use super::amlang_context::AmlangContext;
@@ -10,13 +13,15 @@ use crate::environment::LocalNode;
 use crate::lang_err::LangErr;
 use crate::model::Model;
 use crate::primitive::symbol_policies::policy_admin;
+use crate::primitive::table::Table;
 use crate::primitive::{LocalNodeTable, Node, Path, Primitive, Symbol, SymbolTable, ToSymbol};
 use crate::sexp::Sexp;
 
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct AgentState {
     env_state: Continuation<EnvFrame>,
+    exec_state: Continuation<ExecFrame>,
     designation_chain: VecDeque<LocalNode>,
 
     context: Arc<AmlangContext>,
@@ -24,7 +29,14 @@ pub struct AgentState {
 
 pub const AMLANG_DESIGNATION: &str = "__designatedBy";
 
-#[derive(Clone)]
+// TODO(func) Allow for more than dynamic Node lookups (e.g. static tables).
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ExecFrame {
+    context: Node,
+    map: Table<Node, Node>,
+}
+
+#[derive(Clone, Debug)]
 struct EnvFrame {
     pos: Node,
 }
@@ -33,8 +45,11 @@ struct EnvFrame {
 impl AgentState {
     pub fn new(pos: Node, context: Arc<AmlangContext>) -> Self {
         let env_state = Continuation::new(EnvFrame { pos });
+        // TODO(func) Provide better root node.
+        let exec_state = Continuation::new(ExecFrame::new(pos));
         Self {
             env_state,
+            exec_state,
             designation_chain: VecDeque::new(),
             context,
         }
@@ -76,12 +91,31 @@ impl AgentState {
     pub fn designation_chain(&self) -> &VecDeque<LocalNode> {
         &self.designation_chain
     }
-
     // AgentState does not currently contain any policy; Agents populate this as
     // needed.
     // TODO(func, sec) Provide dedicated interface for d-chain mutations.
     pub fn designation_chain_mut(&mut self) -> &mut VecDeque<LocalNode> {
         &mut self.designation_chain
+    }
+}
+
+// Exec-state-only functionality.
+impl AgentState {
+    pub fn exec_state(&self) -> &Continuation<ExecFrame> {
+        &self.exec_state
+    }
+    pub fn exec_state_mut(&mut self) -> &mut Continuation<ExecFrame> {
+        &mut self.exec_state
+    }
+
+    pub fn concretize(&self, node: Node) -> Node {
+        for frame in self.exec_state().iter() {
+            if let Some(n) = frame.lookup(node) {
+                debug!("concretizing: {} -> {}", node, n);
+                return n;
+            }
+        }
+        node
     }
 }
 
@@ -344,5 +378,111 @@ impl AgentState {
             }
         }
         None
+    }
+}
+
+
+// Print functionality.
+impl AgentState {
+    pub fn print_list(&mut self, structure: &Sexp) {
+        let mut writer = BufWriter::new(stdout());
+        if let Err(err) = self.write_list_internal(&mut writer, structure, 0) {
+            println!("print_list error: {:?}", err);
+        }
+    }
+
+    fn write_list_internal<W: std::io::Write>(
+        &mut self,
+        w: &mut W,
+        structure: &Sexp,
+        depth: usize,
+    ) -> std::io::Result<()> {
+        structure.write_list(w, depth, &mut |writer, primitive, depth| {
+            self.write_primitive(writer, primitive, depth)
+        })
+    }
+
+    fn write_primitive<W: std::io::Write>(
+        &mut self,
+        w: &mut W,
+        primitive: &Primitive,
+        depth: usize,
+    ) -> std::io::Result<()> {
+        const MAX_DEPTH: usize = 16;
+
+        match primitive {
+            Primitive::Node(raw_node) => {
+                let node = self.concretize(*raw_node);
+                // Print Nodes as their designators if possible.
+                if let Some(sym) = self.node_designator(node) {
+                    write!(w, "{}", sym.as_str())
+                } else if let Some(triple) = self
+                    .access_env(node.env())
+                    .unwrap()
+                    .node_as_triple(node.local())
+                {
+                    let s = triple.generate_structure(self);
+                    self.write_list_internal(w, &s, depth + 1)
+                } else {
+                    let s = if let Some(structure) = self
+                        .access_env(node.env())
+                        .unwrap()
+                        .node_structure(node.local())
+                    {
+                        write!(w, "{}->", node)?;
+                        // Subtle: Cloning of Env doesn't actually copy data. In
+                        // this case, the resulting Env object will be invalid
+                        // and should only stand as a placeholder to determine
+                        // typing.
+                        //
+                        // TODO(func) SharedEnv impl.
+                        structure.clone()
+                    } else {
+                        return write!(w, "{}", node);
+                    };
+
+                    // If we recurse unconditionally, cycles will cause stack
+                    // overflows.
+                    if s == node.into() || depth > MAX_DEPTH {
+                        write!(w, "{}", node)
+                    } else {
+                        self.write_list_internal(w, &s, depth + 1)
+                    }
+                }
+            }
+            Primitive::Procedure(procedure) => {
+                let s = procedure.generate_structure(self);
+                self.write_list_internal(w, &s, depth + 1)
+            }
+            _ => write!(w, "{}", primitive),
+        }
+    }
+}
+
+
+impl ExecFrame {
+    pub fn new(context: Node) -> Self {
+        Self {
+            context,
+            map: Default::default(),
+        }
+    }
+
+    pub fn insert(&mut self, from: Node, to: Node) -> bool {
+        let entry = self.map.entry(from);
+        if let Entry::Occupied(..) = entry {
+            false
+        } else {
+            entry.or_insert(to);
+            true
+        }
+    }
+
+    pub fn lookup(&self, key: Node) -> Option<Node> {
+        self.map.lookup(&key)
+    }
+
+    pub fn context(&self) -> Node {
+        self.context
     }
 }

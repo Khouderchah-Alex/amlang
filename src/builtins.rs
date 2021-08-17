@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 use std::collections::HashMap;
 
-use crate::agent::exec_state::ExecState;
+use crate::agent::agent_state::AgentState;
 use crate::lang_err::ExpectedCount;
 use crate::model::Ret;
 use crate::primitive::builtin::Args;
@@ -33,14 +33,14 @@ pub fn generate_builtin_map() -> HashMap<&'static str, BuiltIn> {
 }
 
 
-pub fn add(args: Args, cont: &ExecState) -> Ret {
+pub fn add(args: Args, state: &AgentState) -> Ret {
     let mut curr = Number::default();
     for arg in args {
         if let Sexp::Primitive(Primitive::Number(num)) = arg {
             curr += num;
         } else {
             return err_ctx!(
-                cont,
+                state,
                 InvalidArgument {
                     given: arg.clone(),
                     expected: Cow::Borrowed("a Number"),
@@ -52,10 +52,10 @@ pub fn add(args: Args, cont: &ExecState) -> Ret {
     Ok(curr.into())
 }
 
-pub fn sub(args: Args, cont: &ExecState) -> Ret {
+pub fn sub(args: Args, state: &AgentState) -> Ret {
     if args.len() < 1 {
         return err_ctx!(
-            cont,
+            state,
             WrongArgumentCount {
                 given: 0,
                 expected: ExpectedCount::AtLeast(1),
@@ -75,7 +75,7 @@ pub fn sub(args: Args, cont: &ExecState) -> Ret {
             }
         } else {
             return err_ctx!(
-                cont,
+                state,
                 InvalidArgument {
                     given: arg.clone(),
                     expected: Cow::Borrowed("a Number"),
@@ -87,14 +87,14 @@ pub fn sub(args: Args, cont: &ExecState) -> Ret {
     Ok(curr.into())
 }
 
-pub fn mul(args: Args, cont: &ExecState) -> Ret {
+pub fn mul(args: Args, state: &AgentState) -> Ret {
     let mut curr = Number::Integer(1);
     for arg in args {
         if let Sexp::Primitive(Primitive::Number(num)) = arg {
             curr *= num;
         } else {
             return err_ctx!(
-                cont,
+                state,
                 InvalidArgument {
                     given: arg.clone(),
                     expected: Cow::Borrowed("a Number"),
@@ -106,10 +106,10 @@ pub fn mul(args: Args, cont: &ExecState) -> Ret {
     Ok(curr.into())
 }
 
-pub fn div(args: Args, cont: &ExecState) -> Ret {
+pub fn div(args: Args, state: &AgentState) -> Ret {
     if args.len() < 1 {
         return err_ctx!(
-            cont,
+            state,
             WrongArgumentCount {
                 given: 0,
                 expected: ExpectedCount::AtLeast(1),
@@ -129,7 +129,7 @@ pub fn div(args: Args, cont: &ExecState) -> Ret {
             }
         } else {
             return err_ctx!(
-                cont,
+                state,
                 InvalidArgument {
                     given: arg.clone(),
                     expected: Cow::Borrowed("a Number"),
@@ -141,10 +141,10 @@ pub fn div(args: Args, cont: &ExecState) -> Ret {
     Ok(curr.into())
 }
 
-pub fn car(mut args: Args, cont: &ExecState) -> Ret {
+pub fn car(mut args: Args, state: &AgentState) -> Ret {
     if args.len() != 1 {
         return err_ctx!(
-            cont,
+            state,
             WrongArgumentCount {
                 given: args.len(),
                 expected: ExpectedCount::Exactly(1),
@@ -161,7 +161,7 @@ pub fn car(mut args: Args, cont: &ExecState) -> Ret {
         }
     } else {
         err_ctx!(
-            cont,
+            state,
             InvalidArgument {
                 given: first,
                 expected: Cow::Borrowed("Cons"),
@@ -170,10 +170,10 @@ pub fn car(mut args: Args, cont: &ExecState) -> Ret {
     }
 }
 
-pub fn cdr(mut args: Args, cont: &ExecState) -> Ret {
+pub fn cdr(mut args: Args, state: &AgentState) -> Ret {
     if args.len() != 1 {
         return err_ctx!(
-            cont,
+            state,
             WrongArgumentCount {
                 given: args.len(),
                 expected: ExpectedCount::Exactly(1),
@@ -190,7 +190,7 @@ pub fn cdr(mut args: Args, cont: &ExecState) -> Ret {
         }
     } else {
         err_ctx!(
-            cont,
+            state,
             InvalidArgument {
                 given: first,
                 expected: Cow::Borrowed("Cons"),
@@ -199,10 +199,10 @@ pub fn cdr(mut args: Args, cont: &ExecState) -> Ret {
     }
 }
 
-pub fn cons(mut args: Args, cont: &ExecState) -> Ret {
+pub fn cons(mut args: Args, state: &AgentState) -> Ret {
     if args.len() != 2 {
         return err_ctx!(
-            cont,
+            state,
             WrongArgumentCount {
                 given: args.len(),
                 expected: ExpectedCount::Exactly(2),

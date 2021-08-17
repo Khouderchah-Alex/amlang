@@ -4,6 +4,7 @@ use crate::environment::environment::EnvObject;
 use crate::environment::LocalNode;
 
 
+#[derive(Debug)]
 pub struct AmlangContext {
     meta: UnsafeCell<Box<EnvObject>>,
 

@@ -3,7 +3,7 @@ use std::fmt;
 
 use self::ErrKind::*;
 use self::ExpectedCount::*;
-use crate::agent::exec_state::ExecState;
+use crate::agent::agent_state::AgentState;
 use crate::primitive::Symbol;
 use crate::sexp::Sexp;
 
@@ -17,9 +17,9 @@ macro_rules! err {
 }
 
 macro_rules! err_ctx {
-    ($cont:expr, $($kind:tt)+) => {
+    ($state:expr, $($kind:tt)+) => {
         Err(crate::lang_err::LangErr::with_context(
-            $cont.clone(),
+            $state.clone(),
             crate::lang_err::ErrKind::$($kind)+,
         ))
     };
@@ -28,7 +28,7 @@ macro_rules! err_ctx {
 
 #[derive(Debug)]
 pub struct LangErr {
-    cont: Option<ExecState>,
+    state: Option<AgentState>,
     pub kind: ErrKind,
 }
 
@@ -62,19 +62,19 @@ pub enum ExpectedCount {
 impl LangErr {
     // Prefer using err! for convenience.
     pub fn empty_context(kind: ErrKind) -> Self {
-        Self { cont: None, kind }
+        Self { state: None, kind }
     }
 
     // Prefer using err_ctx! for convenience.
-    pub fn with_context(cont: ExecState, kind: ErrKind) -> Self {
+    pub fn with_context(state: AgentState, kind: ErrKind) -> Self {
         Self {
-            cont: Some(cont),
+            state: Some(state),
             kind,
         }
     }
 
-    pub fn cont(&self) -> &Option<ExecState> {
-        &self.cont
+    pub fn state(&self) -> &Option<AgentState> {
+        &self.state
     }
 }
 
