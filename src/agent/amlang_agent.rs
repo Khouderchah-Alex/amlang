@@ -6,6 +6,7 @@ use std::iter::Peekable;
 use super::agent::Agent;
 use super::agent_state::{AgentState, ExecFrame};
 use super::amlang_wrappers::*;
+use super::continuation::Continuation;
 use crate::environment::LocalNode;
 use crate::lang_err::{ExpectedCount, LangErr};
 use crate::model::{Eval, Model, Ret};
@@ -18,8 +19,9 @@ use crate::token::TokenInfo;
 #[derive(Clone)]
 pub struct AmlangAgent {
     state: AgentState,
+    eval_state: Continuation<SymbolTable>,
+
     history_env: LocalNode,
-    eval_symbols: SymbolTable,
 }
 
 pub struct RunIter<'a, S, F>
@@ -49,7 +51,7 @@ impl AmlangAgent {
             state,
             // TODO(sec) Verify as env node.
             history_env,
-            eval_symbols: SymbolTable::default(),
+            eval_state: Continuation::new(SymbolTable::default()),
         }
     }
 
@@ -68,27 +70,33 @@ impl AmlangAgent {
 
     fn make_lambda(&mut self, params: Vec<Symbol>, body: Sexp) -> Result<Procedure, LangErr> {
         let mut surface = Vec::new();
+        let mut frame = SymbolTable::default();
         for symbol in params {
             let node = self.state_mut().env().insert_atom().globalize(self.state());
-            // TODO(func) Use actual deep environment representation (including popping off).
-            self.eval_symbols.insert(symbol, node);
+            // TODO(func) Preclude multiple params of same name.
+            frame.insert(symbol, node);
             surface.push(node);
         }
 
-        let cons = match body {
-            Sexp::Primitive(primitive) => {
-                return err!(InvalidSexp(primitive.clone().into()));
-            }
-            Sexp::Cons(cons) => cons,
-        };
-        // TODO(func) Allow for sequence.
-        let body_eval = self.eval(Box::new(cons.car().unwrap().clone()))?;
-        let body_node = self
-            .state_mut()
-            .env()
-            .insert_structure(body_eval)
-            .globalize(self.state());
-        Ok(Procedure::Abstraction(surface, body_node))
+        self.eval_state.push(frame);
+        let res = (|| {
+            let cons = match body {
+                Sexp::Primitive(primitive) => {
+                    return err!(InvalidSexp(primitive.clone().into()));
+                }
+                Sexp::Cons(cons) => cons,
+            };
+            // TODO(func) Allow for sequence.
+            let body_eval = self.eval(Box::new(cons.car().unwrap().clone()))?;
+            let body_node = self
+                .state_mut()
+                .env()
+                .insert_structure(body_eval)
+                .globalize(self.state());
+            Ok(Procedure::Abstraction(surface, body_node))
+        })();
+        self.eval_state.pop();
+        res
     }
 
     fn exec(&mut self, meaning_node: Node) -> Ret {
@@ -446,8 +454,10 @@ impl Eval for AmlangAgent {
         match *structure {
             Sexp::Primitive(primitive) => {
                 if let Primitive::Symbol(symbol) = &primitive {
-                    if let Some(node) = self.eval_symbols.lookup(symbol) {
-                        return Ok(node.into());
+                    for frame in self.eval_state.iter() {
+                        if let Some(node) = frame.lookup(symbol) {
+                            return Ok(node.into());
+                        }
                     }
                 }
                 return self.state_mut().designate(primitive);
