@@ -1,5 +1,7 @@
 mod common;
 
+use amlang::agent::amlang_agent::RunError;
+use amlang::lang_err::{ErrKind, LangErr};
 use amlang::primitive::Number;
 
 
@@ -48,4 +50,18 @@ fn lambda_nested_exec() {
 
     let results = common::results(&mut lang_agent, "((lambda (a) (+ a a)) (* 4 2))");
     assert_eq!(results, vec![Number::Integer(16).into()]);
+}
+
+#[test]
+fn lambda_duplicate_argname() {
+    let mut lang_agent = common::setup().unwrap();
+
+    let results = common::results_with_errors(&mut lang_agent, "(lambda (a a) (+ a a))");
+    assert!(matches!(
+        results[0],
+        Err(RunError::CompileError(LangErr {
+            kind: ErrKind::InvalidArgument { .. },
+            ..
+        }))
+    ));
 }

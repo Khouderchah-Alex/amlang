@@ -73,7 +73,12 @@ impl AmlangAgent {
         let mut frame = SymbolTable::default();
         for symbol in params {
             let node = self.state_mut().env().insert_atom().globalize(self.state());
-            // TODO(func) Preclude multiple params of same name.
+            if frame.contains_key(&symbol) {
+                return err!(InvalidArgument {
+                    given: symbol.into(),
+                    expected: Cow::Borrowed("unique name within argument list")
+                });
+            }
             frame.insert(symbol, node);
             surface.push(node);
         }

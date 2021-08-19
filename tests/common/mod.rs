@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use amlang::agent::agent::Agent;
-use amlang::agent::amlang_agent::AmlangAgent;
+use amlang::agent::amlang_agent::{AmlangAgent, RunError};
 use amlang::primitive::symbol_policies::policy_base;
 use amlang::sexp::Sexp;
 use amlang::token::string_stream::StringStream;
@@ -38,4 +38,12 @@ pub fn results<S: AsRef<str>>(lang_agent: &mut AmlangAgent, s: S) -> Vec<Sexp> {
         .run(stream, |_, _| {})
         .map(|e| e.unwrap())
         .collect::<Vec<_>>()
+}
+
+pub fn results_with_errors<S: AsRef<str>>(
+    lang_agent: &mut AmlangAgent,
+    s: S,
+) -> Vec<Result<Sexp, RunError>> {
+    let stream = StringStream::new(s, policy_base).unwrap();
+    lang_agent.run(stream, |_, _| {}).collect::<Vec<_>>()
 }
