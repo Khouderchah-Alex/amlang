@@ -6,3 +6,7 @@ pub use local_node::{LocalNode, LocalTriple};
 pub mod environment;
 pub mod local_node;
 pub mod mem_environment;
+
+// Private mods.
+#[cfg(test)]
+mod append_vec;

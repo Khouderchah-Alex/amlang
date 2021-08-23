@@ -7,8 +7,6 @@ pub mod lang_err;
 pub mod sexp;
 
 pub mod agent;
-#[cfg(test)]
-pub mod append_vec;
 pub mod builtins;
 pub mod environment;
 pub mod model;
