@@ -36,3 +36,15 @@ fn structure_insertion() {
     assert_eq!(m.len(), 1);
     assert_eq!(env.triple_object(*m.iter().next().unwrap()), c);
 }
+
+#[test]
+fn meta_triple_insertion() {
+    let mut env = MemEnvironment::new();
+    let a = env.insert_atom();
+    let b = env.insert_atom();
+    let c = env.insert_atom();
+
+    let t = env.insert_triple(a, b, c);
+    let tt = env.insert_triple(t.node(), a, c);
+    assert_eq!(env.triple_subject(tt), t.node());
+}
