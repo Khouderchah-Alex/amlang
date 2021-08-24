@@ -14,6 +14,9 @@ use crate::sexp::Sexp;
 pub struct MemEnvironment {
     nodes: Vec<Node>,
     triples: Vec<Triple>,
+
+    node_edges: Vec<Edges>,
+    triple_edges: Vec<Edges>,
 }
 
 // TODO(perf, scale) Allow for Edges to be pushed on-disk?
@@ -25,13 +28,7 @@ struct Edges {
 }
 
 #[derive(Debug)]
-struct Node {
-    kind: NodeKind,
-    edges: Edges,
-}
-
-#[derive(Debug)]
-enum NodeKind {
+enum Node {
     Atomic,
     Structured(Sexp),
 }
@@ -41,8 +38,6 @@ struct Triple {
     object: LocalNode,
     predicate: LocalNode,
     subject: LocalNode,
-
-    edges: Edges,
 }
 
 
@@ -51,23 +46,28 @@ impl MemEnvironment {
         Self {
             nodes: vec![],
             triples: vec![],
+
+            node_edges: vec![],
+            triple_edges: vec![],
         }
     }
 
     fn edges(&self, node: LocalNode) -> &Edges {
         // TODO(sec) Under what conditions could IDs be faked?
+        trace!("Env {}: edge lookup: {}", self.env_id(), node.id());
         if is_triple_id(node.id()) {
-            &self.triple_unchecked(node).edges
+            &self.triple_edges[triple_index_unchecked(node.id())]
         } else {
-            &self.node_unchecked(node).edges
+            &self.node_edges[node_index_unchecked(node.id())]
         }
     }
     fn edges_mut(&mut self, node: LocalNode) -> &mut Edges {
         // TODO(sec) Under what conditions could IDs be faked?
+        trace!("Env {}: edge mut lookup: {}", self.env_id(), node.id());
         if is_triple_id(node.id()) {
-            &mut self.triple_mut_unchecked(node).edges
+            &mut self.triple_edges[triple_index_unchecked(node.id())]
         } else {
-            &mut self.node_mut_unchecked(node).edges
+            &mut self.node_edges[node_index_unchecked(node.id())]
         }
     }
 
@@ -84,15 +84,11 @@ impl MemEnvironment {
         trace!("Env {}: triple lookup: {}", self.env_id(), triple.id());
         &self.triples[triple_index_unchecked(triple.id())]
     }
-    fn triple_mut_unchecked(&mut self, triple: LocalNode) -> &mut Triple {
-        trace!("Env {}: triple mut lookup: {}", self.env_id(), triple.id());
-        &mut self.triples[triple_index_unchecked(triple.id())]
-    }
 
     fn env_id(&self) -> LocalId {
         // Technically, this is a bit of a layer violation, but by assuming the
         // self node exists, the env can identify itself at this layer.
-        if let NodeKind::Structured(Sexp::Primitive(Primitive::Node(node))) = self.nodes[0].kind {
+        if let Node::Structured(Sexp::Primitive(Primitive::Node(node))) = self.nodes[0] {
             node.env().id()
         } else {
             panic!();
@@ -126,12 +122,14 @@ impl Environment for MemEnvironment {
 
     fn insert_atom(&mut self) -> LocalNode {
         let id = self.next_node_id();
-        self.nodes.push(Node::new(NodeKind::Atomic));
+        self.nodes.push(Node::Atomic);
+        self.node_edges.push(Edges::default());
         id
     }
     fn insert_structure(&mut self, structure: Sexp) -> LocalNode {
         let id = self.next_node_id();
-        self.nodes.push(Node::new(NodeKind::Structured(structure)));
+        self.nodes.push(Node::Structured(structure));
+        self.node_edges.push(Edges::default());
         id
     }
     fn insert_triple(
@@ -150,8 +148,8 @@ impl Environment for MemEnvironment {
             subject,
             predicate,
             object,
-            edges: Edges::default(),
         });
+        self.triple_edges.push(Edges::default());
         id
     }
 
@@ -213,9 +211,9 @@ impl Environment for MemEnvironment {
             return None;
         }
 
-        match &self.node_unchecked(node).kind {
-            NodeKind::Atomic => None,
-            NodeKind::Structured(structure) => Some(structure),
+        match &self.node_unchecked(node) {
+            Node::Atomic => None,
+            Node::Structured(structure) => Some(structure),
         }
     }
     fn node_structure_mut(&mut self, node: LocalNode) -> Option<&mut Sexp> {
@@ -223,9 +221,9 @@ impl Environment for MemEnvironment {
             return None;
         }
 
-        match &mut self.node_mut_unchecked(node).kind {
-            NodeKind::Atomic => None,
-            NodeKind::Structured(structure) => Some(structure),
+        match self.node_mut_unchecked(node) {
+            Node::Atomic => None,
+            Node::Structured(structure) => Some(structure),
         }
     }
     fn node_as_triple(&self, node: LocalNode) -> Option<LocalTriple> {
@@ -260,14 +258,6 @@ impl Clone for MemEnvironment {
     }
 }
 
-impl Node {
-    fn new(kind: NodeKind) -> Node {
-        Node {
-            kind,
-            edges: Edges::default(),
-        }
-    }
-}
 
 fn is_triple_id(id: LocalId) -> bool {
     id.leading_ones() > 0
