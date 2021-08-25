@@ -4,6 +4,8 @@ use super::local_node::{LocalId, LocalNode, LocalTriple};
 use crate::primitive::Primitive;
 use crate::sexp::Sexp;
 
+use self::index_id_conv::*;
+
 
 // TODO(perf, scale) Allow for Edges to be pushed on-disk?
 #[derive(Debug, Default)]
@@ -49,22 +51,15 @@ pub trait MemBackend {
         let num: LocalId = self.node_count() as LocalId;
         // TODO(scale, sec) Any problems with crash upon exhaustion? Probably
         // not a concern unless/until parts of an Environment can be offloaded.
-        assert!(!self.is_triple_id(num));
+        assert!(!is_triple_id(num));
         LocalNode::new(num)
     }
     fn next_triple_id(&self) -> LocalTriple {
         // TODO(scale, sec) Any problems with crash upon exhaustion? Probably
         // not a concern unless/until parts of an Environment can be offloaded.
-        assert!(!self.is_triple_id(self.triple_count() as LocalId));
+        assert!(!is_triple_id(self.triple_count() as LocalId));
 
-        self.index_to_triple_id(self.triple_count())
-    }
-
-    fn is_triple_id(&self, id: LocalId) -> bool {
-        id.leading_ones() > 0
-    }
-    fn index_to_triple_id(&self, index: usize) -> LocalTriple {
-        LocalTriple::new((index as LocalId) | !(LocalId::MAX >> 1))
+        index_to_triple_id(self.triple_count())
     }
 
     fn env_id(&self) -> LocalId {
@@ -77,5 +72,27 @@ pub trait MemBackend {
         } else {
             panic!();
         }
+    }
+}
+
+
+// Not putting this functionality in local_node because this behavior is
+// MemEnvironment-specific.
+pub mod index_id_conv {
+    use super::super::local_node::{LocalId, LocalTriple};
+
+    pub const fn is_triple_id(id: LocalId) -> bool {
+        id.leading_ones() > 0
+    }
+    pub const fn index_to_triple_id(index: usize) -> LocalTriple {
+        LocalTriple::new((index as LocalId) | !(LocalId::MAX >> 1))
+    }
+
+    // Note CANNOT be used for Nodes of Triples.
+    pub const fn node_index_unchecked(id: LocalId) -> usize {
+        id as usize
+    }
+    pub const fn triple_index_unchecked(id: LocalId) -> usize {
+        (id & (LocalId::MAX >> 1)) as usize
     }
 }
