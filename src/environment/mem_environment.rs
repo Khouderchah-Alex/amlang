@@ -1,12 +1,11 @@
 //! Thread-unsafe in-memory Environment.
 
 use log::trace;
-use std::collections::BTreeSet;
 use std::fmt::Debug;
 
 use super::environment::{Environment, NodeSet, TripleSet};
 use super::local_node::{LocalId, LocalNode, LocalTriple};
-use crate::primitive::Primitive;
+use super::mem_backend::{Edges, MemBackend, Node, Triple};
 use crate::sexp::Sexp;
 
 
@@ -19,28 +18,6 @@ pub struct MemEnvironment {
     triple_edges: Vec<Edges>,
 }
 
-// TODO(perf, scale) Allow for Edges to be pushed on-disk?
-#[derive(Debug, Default)]
-struct Edges {
-    as_subject: BTreeSet<LocalTriple>,
-    as_predicate: BTreeSet<LocalTriple>,
-    as_object: BTreeSet<LocalTriple>,
-}
-
-#[derive(Debug)]
-enum Node {
-    Atomic,
-    Structured(Sexp),
-}
-
-#[derive(Debug)]
-struct Triple {
-    object: LocalNode,
-    predicate: LocalNode,
-    subject: LocalNode,
-}
-
-
 impl MemEnvironment {
     pub fn new() -> MemEnvironment {
         Self {
@@ -51,11 +28,13 @@ impl MemEnvironment {
             triple_edges: vec![],
         }
     }
+}
 
+impl MemBackend for MemEnvironment {
     fn edges(&self, node: LocalNode) -> &Edges {
         // TODO(sec) Under what conditions could IDs be faked?
         trace!("Env {}: edge lookup: {}", self.env_id(), node.id());
-        if is_triple_id(node.id()) {
+        if self.is_triple_id(node.id()) {
             &self.triple_edges[triple_index_unchecked(node.id())]
         } else {
             &self.node_edges[node_index_unchecked(node.id())]
@@ -64,7 +43,7 @@ impl MemEnvironment {
     fn edges_mut(&mut self, node: LocalNode) -> &mut Edges {
         // TODO(sec) Under what conditions could IDs be faked?
         trace!("Env {}: edge mut lookup: {}", self.env_id(), node.id());
-        if is_triple_id(node.id()) {
+        if self.is_triple_id(node.id()) {
             &mut self.triple_edges[triple_index_unchecked(node.id())]
         } else {
             &mut self.node_edges[node_index_unchecked(node.id())]
@@ -107,35 +86,6 @@ impl MemEnvironment {
 
     fn triple_count(&self) -> usize {
         self.triples.len()
-    }
-
-
-    fn next_node_id(&self) -> LocalNode {
-        let num: LocalId = self.node_count() as LocalId;
-        // TODO(scale, sec) Any problems with crash upon exhaustion? Probably
-        // not a concern unless/until parts of an Environment can be offloaded.
-        assert!(!is_triple_id(num));
-        LocalNode::new(num)
-    }
-
-    fn next_triple_id(&self) -> LocalTriple {
-        // TODO(scale, sec) Any problems with crash upon exhaustion? Probably
-        // not a concern unless/until parts of an Environment can be offloaded.
-        assert!(!is_triple_id(self.triple_count() as LocalId));
-
-        index_to_triple_id(self.triple_count())
-    }
-
-    fn env_id(&self) -> LocalId {
-        // Technically, this is a bit of a layer violation, but by assuming the
-        // self node exists, the env can identify itself at this layer.
-        if let Node::Structured(Sexp::Primitive(Primitive::Node(node))) =
-            self.node_unchecked(LocalNode::default())
-        {
-            node.env().id()
-        } else {
-            panic!();
-        }
     }
 }
 
@@ -228,12 +178,12 @@ impl Environment for MemEnvironment {
     }
     fn match_all(&self) -> TripleSet {
         (0..self.triple_count())
-            .map(|x| index_to_triple_id(x))
+            .map(|x| self.index_to_triple_id(x))
             .collect()
     }
 
     fn node_structure(&self, node: LocalNode) -> Option<&Sexp> {
-        if is_triple_id(node.id()) {
+        if self.is_triple_id(node.id()) {
             return None;
         }
 
@@ -243,7 +193,7 @@ impl Environment for MemEnvironment {
         }
     }
     fn node_structure_mut(&mut self, node: LocalNode) -> Option<&mut Sexp> {
-        if is_triple_id(node.id()) {
+        if self.is_triple_id(node.id()) {
             return None;
         }
 
@@ -253,7 +203,7 @@ impl Environment for MemEnvironment {
         }
     }
     fn node_as_triple(&self, node: LocalNode) -> Option<LocalTriple> {
-        if !is_triple_id(node.id()) {
+        if !self.is_triple_id(node.id()) {
             return None;
         }
 
@@ -273,7 +223,7 @@ impl Environment for MemEnvironment {
         triple_index_unchecked(triple.node().id())
     }
     fn triple_from_index(&self, index: usize) -> LocalTriple {
-        index_to_triple_id(index)
+        self.index_to_triple_id(index)
     }
 }
 
@@ -285,12 +235,6 @@ impl Clone for MemEnvironment {
 }
 
 
-fn is_triple_id(id: LocalId) -> bool {
-    id.leading_ones() > 0
-}
-fn index_to_triple_id(index: usize) -> LocalTriple {
-    LocalTriple::new((index as LocalId) | !(LocalId::MAX >> 1))
-}
 fn triple_index_unchecked(id: LocalId) -> usize {
     (id & (LocalId::MAX >> 1)) as usize
 }

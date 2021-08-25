@@ -10,3 +10,4 @@ pub mod mem_environment;
 // Private mods.
 #[cfg(test)]
 mod append_vec;
+mod mem_backend;
