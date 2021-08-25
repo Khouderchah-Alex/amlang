@@ -85,19 +85,33 @@ impl MemEnvironment {
         &self.triples[triple_index_unchecked(triple.id())]
     }
 
-    fn env_id(&self) -> LocalId {
-        // Technically, this is a bit of a layer violation, but by assuming the
-        // self node exists, the env can identify itself at this layer.
-        if let Node::Structured(Sexp::Primitive(Primitive::Node(node))) = self.nodes[0] {
-            node.env().id()
-        } else {
-            panic!();
-        }
+    fn push_node(&mut self, node: Node) {
+        self.nodes.push(node);
+    }
+
+    fn push_triple(&mut self, triple: Triple) {
+        self.triples.push(triple);
+    }
+
+    fn push_node_edges(&mut self, edges: Edges) {
+        self.node_edges.push(edges);
+    }
+
+    fn push_triple_edges(&mut self, edges: Edges) {
+        self.triple_edges.push(edges);
+    }
+
+    fn node_count(&self) -> usize {
+        self.nodes.len()
+    }
+
+    fn triple_count(&self) -> usize {
+        self.triples.len()
     }
 
 
     fn next_node_id(&self) -> LocalNode {
-        let num: LocalId = self.nodes.len() as LocalId;
+        let num: LocalId = self.node_count() as LocalId;
         // TODO(scale, sec) Any problems with crash upon exhaustion? Probably
         // not a concern unless/until parts of an Environment can be offloaded.
         assert!(!is_triple_id(num));
@@ -107,29 +121,41 @@ impl MemEnvironment {
     fn next_triple_id(&self) -> LocalTriple {
         // TODO(scale, sec) Any problems with crash upon exhaustion? Probably
         // not a concern unless/until parts of an Environment can be offloaded.
-        assert!(!is_triple_id(self.triples.len() as LocalId));
+        assert!(!is_triple_id(self.triple_count() as LocalId));
 
-        index_to_triple_id(self.triples.len())
+        index_to_triple_id(self.triple_count())
+    }
+
+    fn env_id(&self) -> LocalId {
+        // Technically, this is a bit of a layer violation, but by assuming the
+        // self node exists, the env can identify itself at this layer.
+        if let Node::Structured(Sexp::Primitive(Primitive::Node(node))) =
+            self.node_unchecked(LocalNode::default())
+        {
+            node.env().id()
+        } else {
+            panic!();
+        }
     }
 }
 
 impl Environment for MemEnvironment {
     fn all_nodes(&self) -> NodeSet {
-        (0..self.nodes.len())
+        (0..self.node_count())
             .map(|x| LocalNode::new(x as LocalId))
             .collect()
     }
 
     fn insert_atom(&mut self) -> LocalNode {
         let id = self.next_node_id();
-        self.nodes.push(Node::Atomic);
-        self.node_edges.push(Edges::default());
+        self.push_node(Node::Atomic);
+        self.push_node_edges(Edges::default());
         id
     }
     fn insert_structure(&mut self, structure: Sexp) -> LocalNode {
         let id = self.next_node_id();
-        self.nodes.push(Node::Structured(structure));
-        self.node_edges.push(Edges::default());
+        self.push_node(Node::Structured(structure));
+        self.push_node_edges(Edges::default());
         id
     }
     fn insert_triple(
@@ -144,12 +170,12 @@ impl Environment for MemEnvironment {
         self.edges_mut(predicate).as_predicate.insert(id);
         self.edges_mut(object).as_object.insert(id);
 
-        self.triples.push(Triple {
+        self.push_triple(Triple {
             subject,
             predicate,
             object,
         });
-        self.triple_edges.push(Edges::default());
+        self.push_triple_edges(Edges::default());
         id
     }
 
@@ -201,7 +227,7 @@ impl Environment for MemEnvironment {
             .cloned()
     }
     fn match_all(&self) -> TripleSet {
-        (0..self.triples.len())
+        (0..self.triple_count())
             .map(|x| index_to_triple_id(x))
             .collect()
     }
