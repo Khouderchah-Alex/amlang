@@ -101,6 +101,18 @@ impl<'a, T: Clone + Default + 'a> AppendVec<T> {
     }
 }
 
+impl<T: Clone + Default> IntoIterator for AppendVec<T> {
+    type Item = T;
+    type IntoIter = std::vec::IntoIter<T>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        let mut vec = Vec::with_capacity(self.len());
+        for elem in self.vec {
+            vec.push(elem.into_inner())
+        }
+        vec.into_iter()
+    }
+}
 
 impl<T: Clone + Default> Index<usize> for AppendVec<T> {
     type Output = T;
