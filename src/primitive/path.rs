@@ -6,9 +6,6 @@ use super::Primitive;
 use crate::sexp::Sexp;
 
 
-/// Path which can be used as an identifier (amlang designator).
-///
-/// Currently this means only alphabetic characters and underscore.
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct Path(PathBuf);
 
