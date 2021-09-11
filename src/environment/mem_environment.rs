@@ -4,7 +4,7 @@ use std::fmt::Debug;
 
 use super::environment::{Environment, NodeSet, TripleSet};
 use super::local_node::{LocalId, LocalNode, LocalTriple};
-use super::mem_backend::root_backend::RootBackend;
+use super::mem_backend::simple_backend::SimpleBackend;
 use super::mem_backend::{index_id_conv::*, Edges, MemBackend, Node, Triple};
 use crate::sexp::Sexp;
 
@@ -19,7 +19,7 @@ impl MemEnvironment {
         // TODO(perf) Could either use compile-time generics, or rely on dynamic
         // dispatch to impl lazy-loading through stub backend.
         Self {
-            backend: Box::new(RootBackend::default()),
+            backend: Box::new(SimpleBackend::default()),
         }
     }
 }

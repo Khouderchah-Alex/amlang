@@ -4,12 +4,12 @@ use super::{index_id_conv::*, Edges, MemBackend, Node, Triple};
 use crate::environment::local_node::LocalNode;
 
 
-/// Self-sufficient MemBackend implementation.
+/// Simple MemBackend implementation.
 ///
-/// Not thread-safe, but can be used in higher-order MemBackends to achieve
-/// thread-safety.
+/// Not thread-safe or production-ready, but could be used for
+/// local testing, simple local deployments, or as a fake in tests.
 #[derive(Debug, Default)]
-pub struct RootBackend {
+pub struct SimpleBackend {
     nodes: Vec<Node>,
     triples: Vec<Triple>,
 
@@ -17,7 +17,7 @@ pub struct RootBackend {
     triple_edges: Vec<Edges>,
 }
 
-impl MemBackend for RootBackend {
+impl MemBackend for SimpleBackend {
     fn edges(&self, node: LocalNode) -> &Edges {
         // TODO(sec) Under what conditions could IDs be faked?
         trace!("Env {}: edge lookup: {}", self.env_id(), node.id());

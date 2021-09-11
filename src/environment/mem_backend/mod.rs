@@ -5,4 +5,4 @@ pub use repr::*;
 // Public mods.
 pub mod mem_backend;
 pub mod repr;
-pub mod root_backend;
+pub mod simple_backend;
