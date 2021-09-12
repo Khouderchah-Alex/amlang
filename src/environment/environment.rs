@@ -1,6 +1,5 @@
 //! Environment abstraction.
 
-use log::warn;
 use std::collections::BTreeSet;
 use std::fmt;
 
@@ -86,10 +85,6 @@ where
     T: 'static + Environment + Clone,
 {
     fn clone_box(&self) -> Box<EnvObject> {
-        warn!(
-            "Env @ {} being empty-cloned.",
-            self.node_structure(LocalNode::default()).unwrap(),
-        );
         Box::new(self.clone())
     }
 }

@@ -1,5 +1,6 @@
 //! Implementation of Environment based on underlying MemBackend.
 
+use log::warn;
 use std::fmt::Debug;
 
 use super::environment::{Environment, NodeSet, TripleSet};
@@ -168,6 +169,10 @@ impl Environment for MemEnvironment {
 // We need this for dyn Environment to be cloneable. Just return a new env.
 impl Clone for MemEnvironment {
     fn clone(&self) -> Self {
+        warn!(
+            "Env @ {} being empty-cloned.",
+            self.node_structure(LocalNode::default()).unwrap(),
+        );
         MemEnvironment::new()
     }
 }
