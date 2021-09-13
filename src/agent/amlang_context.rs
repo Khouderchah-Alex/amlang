@@ -1,12 +1,13 @@
-use std::cell::UnsafeCell;
-
 use crate::environment::environment::EnvObject;
 use crate::environment::LocalNode;
 
 
-#[derive(Debug)]
+// TODO(perf) Make generic over Environment, but in a manner consistent with
+// library usage and without pushing templating over most of the codebase
+// (e.g. changing build flag to select Overlay class).
+#[derive(Clone, Debug)]
 pub struct AmlangContext {
-    meta: UnsafeCell<Box<EnvObject>>,
+    meta: Box<EnvObject>,
 
     // Available in all envs.
     self_node: LocalNode,
@@ -39,7 +40,7 @@ pub struct AmlangContext {
 impl AmlangContext {
     pub(super) fn new(meta: Box<EnvObject>, self_node: LocalNode, designation: LocalNode) -> Self {
         Self {
-            meta: UnsafeCell::new(meta),
+            meta,
 
             self_node,
             designation: designation.clone(),
@@ -68,9 +69,11 @@ impl AmlangContext {
         }
     }
 
-    pub fn meta(&self) -> &mut EnvObject {
-        // TODO(func) Need to develop SharedEnv to do this safely long-term.
-        unsafe { &mut **self.meta.get() }
+    pub fn meta(&self) -> &EnvObject {
+        &*self.meta
+    }
+    pub fn meta_mut(&mut self) -> &mut EnvObject {
+        &mut *self.meta
     }
 
     pub fn lang_env(&self) -> LocalNode {

@@ -4,7 +4,6 @@ use std::collections::btree_map::Entry;
 use std::collections::VecDeque;
 use std::convert::TryFrom;
 use std::io::{stdout, BufWriter};
-use std::sync::Arc;
 
 use super::amlang_context::AmlangContext;
 use super::continuation::Continuation;
@@ -24,7 +23,7 @@ pub struct AgentState {
     exec_state: Continuation<ExecFrame>,
     designation_chain: VecDeque<LocalNode>,
 
-    context: Arc<AmlangContext>,
+    context: AmlangContext,
 }
 
 pub const AMLANG_DESIGNATION: &str = "__designatedBy";
@@ -43,7 +42,7 @@ struct EnvFrame {
 
 
 impl AgentState {
-    pub fn new(pos: Node, context: Arc<AmlangContext>) -> Self {
+    pub fn new(pos: Node, context: AmlangContext) -> Self {
         let env_state = Continuation::new(EnvFrame { pos });
         // TODO(func) Provide better root node.
         let exec_state = Continuation::new(ExecFrame::new(pos));
@@ -56,7 +55,10 @@ impl AgentState {
     }
 
     pub fn context(&self) -> &AmlangContext {
-        &*self.context
+        &self.context
+    }
+    pub fn context_mut(&mut self) -> &mut AmlangContext {
+        &mut self.context
     }
 }
 
@@ -123,7 +125,7 @@ impl AgentState {
 // Core functionality.
 impl AgentState {
     pub fn access_env(&mut self, meta_node: LocalNode) -> Option<&mut EnvObject> {
-        let meta = self.context.meta();
+        let meta = self.context.meta_mut();
         if meta_node == LocalNode::default() {
             return Some(meta);
         }
@@ -323,18 +325,32 @@ impl AgentState {
             });
         }
 
-        let meta = self.context.meta();
+        let imports_node = self.context.imports;
+        let import_table_node = self.context.import_table;
+        let env = self.pos().env();
         let import_triple =
-            meta.get_or_insert_triple(self.pos().env(), self.context.imports, original.env());
-        let matches = meta.match_but_object(import_triple.node(), self.context.import_table);
+            self.context
+                .meta_mut()
+                .get_or_insert_triple(env, imports_node, original.env());
+        let matches = self
+            .context
+            .meta()
+            .match_but_object(import_triple.node(), import_table_node);
         let table_node = match matches.len() {
             0 => {
                 let table = LocalNodeTable::default().into();
-                let table_node = meta.insert_structure(table);
-                meta.insert_triple(import_triple.node(), self.context.import_table, table_node);
+                let table_node = self.context.meta_mut().insert_structure(table);
+                self.context.meta_mut().insert_triple(
+                    import_triple.node(),
+                    import_table_node,
+                    table_node,
+                );
                 table_node
             }
-            1 => meta.triple_object(*matches.iter().next().unwrap()),
+            1 => self
+                .context
+                .meta()
+                .triple_object(*matches.iter().next().unwrap()),
             _ => panic!("Found multiple import tables for single import triple"),
         };
 
@@ -353,7 +369,7 @@ impl AgentState {
 
         let imported = self.env().insert_structure(original.into());
         if let Ok(table) =
-            <&mut LocalNodeTable>::try_from(self.context.meta().node_structure_mut(table_node))
+            <&mut LocalNodeTable>::try_from(self.context.meta_mut().node_structure_mut(table_node))
         {
             table.insert(original.local(), imported);
         } else {
