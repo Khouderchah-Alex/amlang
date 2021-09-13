@@ -31,7 +31,7 @@ impl<T: Environment + Clone> SerialOverlay<T> {
     }
 }
 
-impl<T: 'static + Environment + Clone> Environment for SerialOverlay<T> {
+impl<T: Environment + Clone> Environment for SerialOverlay<T> {
     fn all_nodes(&self) -> NodeSet {
         self.base().all_nodes()
     }
