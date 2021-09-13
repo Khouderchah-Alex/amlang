@@ -26,7 +26,7 @@ impl<T: Environment + Clone> SerialOverlay<T> {
         }
     }
 
-    pub fn base(&self) -> &mut T {
+    fn base(&self) -> &mut T {
         unsafe { &mut *self.base.get() }
     }
 }
