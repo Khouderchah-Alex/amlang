@@ -9,11 +9,9 @@ use super::agent::Agent;
 use super::agent_state::{AgentState, AMLANG_DESIGNATION};
 use super::amlang_context::AmlangContext;
 use super::amlang_wrappers::quote_wrapper;
+use super::env_policy::EnvPolicy;
 use crate::builtins::generate_builtin_map;
 use crate::environment::environment::EnvObject;
-use crate::environment::mem_backend::SimpleBackend;
-use crate::environment::mem_environment::MemEnvironment;
-use crate::environment::serial_overlay::SerialOverlay;
 use crate::environment::LocalNode;
 use crate::lang_err;
 use crate::model::{Eval, Model, Ret};
@@ -28,8 +26,10 @@ use crate::token::file_stream::{self, FileStream, FileStreamError};
 use DeserializeError::*;
 
 
-pub struct EnvManager {
+pub struct EnvManager<Policy: EnvPolicy> {
     state: AgentState,
+    #[allow(dead_code)]
+    policy: Policy,
 }
 
 #[derive(Debug)]
@@ -50,14 +50,14 @@ pub enum DeserializeError {
 macro_rules! bootstrap_context {
     (
         $manager:expr,
-        $context:expr,
         $($node:ident : $query:expr),+
         $(,)?
     ) => {
         let ($($node,)+) = {
+            let desig_node = $manager.state().context().designation();
             let table = if let Ok(table) =
                 <&SymbolTable>::try_from(
-                    $manager.state_mut().env().node_structure($context.designation())
+                    $manager.state_mut().env().node_structure(desig_node)
                 ) {
                 table
             } else {
@@ -77,23 +77,19 @@ macro_rules! bootstrap_context {
         };
 
         // Fill in placeholder'd context nodes.
-        $($context.$node = $node;)+
-
-        // Manager no longer needed.
-        ::std::mem::drop($manager);
+        let context = $manager.state_mut().context_mut();
+        $(context.$node = $node;)+
     };
 }
 
-impl EnvManager {
+impl<Policy: EnvPolicy> EnvManager<Policy> {
     pub fn bootstrap<P: AsRef<StdPath>>(meta_path: P) -> Result<Self, DeserializeError> {
-        // Initially create meta as MemEnvironment.
-        let mut meta = Box::new(SerialOverlay::new(Box::new(
-            MemEnvironment::<SimpleBackend>::new(),
-        )));
-        EnvManager::initialize_env(LocalNode::default(), &mut *meta);
+        let mut meta = Policy::DefaultEnv::default();
+        EnvManager::<Policy>::initialize_env(LocalNode::default(), &mut meta);
 
-        let mut context = AmlangContext::new(
-            meta,
+        let policy = Policy::from_root_env(meta);
+        let context = AmlangContext::new(
+            policy.new_overlay(),
             LocalNode::new(0), // self
             LocalNode::new(1), // designation
         );
@@ -101,11 +97,14 @@ impl EnvManager {
         // Bootstrap meta env.
         let meta_state = AgentState::new(
             Node::new(LocalNode::default(), context.self_node()),
-            context.clone(),
+            context,
         );
-        let mut manager = Self { state: meta_state };
+        let mut manager = Self {
+            state: meta_state,
+            policy: policy,
+        };
         manager.deserialize_curr_env(meta_path)?;
-        bootstrap_context!(manager, context,
+        bootstrap_context!(manager,
                            imports: "__imports",
                            import_table: "__import_table",
                            serialize_path: "__serialize_path",
@@ -114,15 +113,10 @@ impl EnvManager {
 
         // Make context usable for bootstrapping lang.
         {
-            let meta_state = AgentState::new(
-                Node::new(LocalNode::default(), context.self_node()),
-                context.clone(),
-            );
-            let l = meta_state.find_env("lang.env").unwrap();
-            std::mem::drop(meta_state);
-
-            EnvManager::initialize_env_node(context.meta_mut(), l);
-            context.lang_env = l;
+            let lang_env = manager.state().find_env("lang.env").unwrap();
+            let context = manager.state_mut().context_mut();
+            EnvManager::<Policy>::initialize_env_node(context.meta_mut(), lang_env);
+            context.lang_env = lang_env;
 
             // TODO(flex) Find more flexible approch to bootstrapping these nodes.
             context.lambda = LocalNode::new(13);
@@ -131,15 +125,13 @@ impl EnvManager {
         }
 
         // Bootstrap lang env.
-        let lang_state = AgentState::new(
-            Node::new(context.lang_env(), context.self_node()),
-            context.clone(),
-        );
-        let mut manager = Self { state: lang_state };
+        let lang_env = manager.state().context().lang_env();
+        let serialize_path = manager.state().context().serialize_path;
+        manager.state_mut().jump_env(lang_env);
         let lang_path = {
             let meta = manager.state().context().meta();
             let lang_path_triple = meta
-                .match_but_object(context.lang_env(), context.serialize_path)
+                .match_but_object(lang_env, serialize_path)
                 .iter()
                 .next()
                 .unwrap()
@@ -151,7 +143,7 @@ impl EnvManager {
                 .clone()
         };
         manager.deserialize_curr_env(lang_path.as_std_path())?;
-        bootstrap_context!(manager, context,
+        bootstrap_context!(manager,
                            quote: "quote",
                            lambda: "lambda",
                            def: "def",
@@ -169,48 +161,39 @@ impl EnvManager {
         );
         info!("Lang env bootstrapping complete.");
 
-        let mut bootstrapped = Self {
-            state: AgentState::new(
-                Node::new(context.lang_env(), context.self_node()),
-                context.clone(),
-            ),
-        };
-
+        // Since we've bootstrapped the lang by here, we can clone the context
+        // without worrying about using stale/placeholder values.
+        let context = manager.state().context().clone();
+        let env_triples = context.meta().match_predicate(serialize_path);
         // TODO(func) Allow for delayed loading of environments.
-        let env_triples = bootstrapped
-            .state()
-            .context()
-            .meta()
-            .match_predicate(context.serialize_path);
         for triple in env_triples {
             let subject_node = context.meta().triple_subject(triple);
             if subject_node == context.lang_env {
                 continue;
             }
+
             let object_node = context.meta().triple_object(triple);
             let object = context.meta().node_structure(object_node).unwrap();
-            let path = <&Path>::try_from(&*object).unwrap();
+            let env_path = <&Path>::try_from(&*object).unwrap();
 
-            EnvManager::initialize_env_node(
-                bootstrapped.state_mut().context_mut().meta_mut(),
+            EnvManager::<Policy>::initialize_env_node(
+                manager.state_mut().context_mut().meta_mut(),
                 subject_node,
             );
-            bootstrapped
+            manager
                 .state_mut()
                 .jump(Node::new(subject_node, LocalNode::default()));
-            bootstrapped.deserialize_curr_env(path.as_std_path())?;
+            manager.deserialize_curr_env(env_path.as_std_path())?;
         }
 
-        bootstrapped.state_mut().jump_env(context.lang_env);
-        Ok(bootstrapped)
+        manager.state_mut().jump_env(lang_env);
+        Ok(manager)
     }
 
     pub fn create_env<P: AsRef<StdPath>>(&mut self, path: P) -> LocalNode {
         let serialize_path = self.state().context().serialize_path;
         let meta = self.state_mut().context_mut().meta_mut();
-        // Initially create as MemEnvironment.
-        let env_node =
-            meta.insert_structure(Box::new(MemEnvironment::<SimpleBackend>::new()).into());
+        let env_node = meta.insert_structure(Box::new(Policy::DefaultEnv::default()).into());
 
         let path_node = meta.insert_structure(Path::new(path.as_ref().to_path_buf()).into());
         meta.insert_triple(env_node, serialize_path, path_node);
@@ -221,7 +204,7 @@ impl EnvManager {
             } else {
                 panic!()
             };
-        EnvManager::initialize_env(env_node, &mut **env);
+        EnvManager::<Policy>::initialize_env(env_node, &mut **env);
         env_node
     }
 
@@ -388,8 +371,7 @@ impl EnvManager {
 
     fn initialize_env_node(meta: &mut EnvObject, env_node: LocalNode) {
         if let Some(sexp) = meta.node_structure_mut(env_node) {
-            // Initially create as MemEnvironment.
-            *sexp = Box::new(MemEnvironment::<SimpleBackend>::new()).into();
+            *sexp = Box::new(Policy::DefaultEnv::default()).into();
             let env = if let Some(Sexp::Primitive(Primitive::Env(env))) =
                 meta.node_structure_mut(env_node)
             {
@@ -397,7 +379,7 @@ impl EnvManager {
             } else {
                 panic!()
             };
-            EnvManager::initialize_env(env_node, &mut **env);
+            EnvManager::<Policy>::initialize_env(env_node, &mut **env);
         } else {
             panic!()
         }
@@ -666,7 +648,7 @@ impl EnvManager {
     }
 }
 
-impl Agent for EnvManager {
+impl<Policy: EnvPolicy> Agent for EnvManager<Policy> {
     fn state(&self) -> &AgentState {
         &self.state
     }
@@ -675,7 +657,7 @@ impl Agent for EnvManager {
     }
 }
 
-impl Eval for EnvManager {
+impl<Policy: EnvPolicy> Eval for EnvManager<Policy> {
     fn eval(&mut self, _structure: HeapSexp) -> Ret {
         Ok(Sexp::default())
     }

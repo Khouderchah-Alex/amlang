@@ -2,6 +2,7 @@ use std::path::Path;
 
 use amlang::agent::agent::Agent;
 use amlang::agent::amlang_agent::{AmlangAgent, RunError};
+use amlang::agent::env_policy::SimplePolicy;
 use amlang::primitive::symbol_policies::policy_base;
 use amlang::sexp::Sexp;
 use amlang::token::string_stream::StringStream;
@@ -17,10 +18,11 @@ pub fn setup() -> Result<AmlangAgent, String> {
     amlang::init(start_dir)?;
 
     // Bootstrap/deserialize.
-    let manager = match amlang::agent::env_manager::EnvManager::bootstrap(META_ENV_PATH) {
-        Ok(val) => val,
-        Err(err) => return Err(format!("{:?}", err)),
-    };
+    let manager =
+        match amlang::agent::env_manager::EnvManager::<SimplePolicy>::bootstrap(META_ENV_PATH) {
+            Ok(val) => val,
+            Err(err) => return Err(format!("{:?}", err)),
+        };
 
     // Prep agent.
     let mut agent_state = manager.state().clone();

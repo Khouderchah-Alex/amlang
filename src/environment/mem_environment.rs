@@ -9,16 +9,14 @@ use super::mem_backend::{index_id_conv::*, Edges, MemBackend, Node, Triple};
 use crate::sexp::Sexp;
 
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct MemEnvironment<Backend: MemBackend> {
     backend: Backend,
 }
 
 impl<Backend: MemBackend> MemEnvironment<Backend> {
     pub fn new() -> Self {
-        Self {
-            backend: Default::default(),
-        }
+        Default::default()
     }
 }
 

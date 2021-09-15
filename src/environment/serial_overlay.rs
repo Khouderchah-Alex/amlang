@@ -20,9 +20,9 @@ pub struct SerialOverlay<T: Environment> {
 }
 
 impl<T: Environment> SerialOverlay<T> {
-    pub fn new(base: Box<T>) -> Self {
+    pub fn new(base: T) -> Self {
         Self {
-            base: Arc::new(UnsafeCell::new(*base)),
+            base: Arc::new(UnsafeCell::new(base)),
         }
     }
 
