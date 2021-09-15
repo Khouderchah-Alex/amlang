@@ -10,7 +10,7 @@ use crate::sexp::Sexp;
 
 
 #[derive(Debug)]
-pub struct MemEnvironment<Backend: MemBackend + 'static> {
+pub struct MemEnvironment<Backend: MemBackend> {
     backend: Backend,
 }
 
@@ -163,7 +163,7 @@ impl<Backend: MemBackend> Environment for MemEnvironment<Backend> {
     }
 }
 
-// We need this for dyn Environment to be cloneable. Just return a new env.
+// We need this for Environment: DynClone. Just return a new env.
 impl<Backend: MemBackend> Clone for MemEnvironment<Backend> {
     fn clone(&self) -> Self {
         warn!(

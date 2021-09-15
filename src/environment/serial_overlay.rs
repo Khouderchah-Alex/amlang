@@ -15,11 +15,11 @@ use crate::sexp::Sexp;
 /// relevant). This is trivial for serial execution; concurrent deployments
 /// should look into different overlay implementations.
 #[derive(Clone)]
-pub struct SerialOverlay<T: 'static + Environment + Clone> {
+pub struct SerialOverlay<T: Environment> {
     base: Arc<UnsafeCell<T>>,
 }
 
-impl<T: Environment + Clone> SerialOverlay<T> {
+impl<T: Environment> SerialOverlay<T> {
     pub fn new(base: Box<T>) -> Self {
         Self {
             base: Arc::new(UnsafeCell::new(*base)),

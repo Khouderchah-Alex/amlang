@@ -1,5 +1,6 @@
 //! Environment abstraction.
 
+use dyn_clone::DynClone;
 use std::collections::BTreeSet;
 use std::fmt;
 
@@ -15,7 +16,7 @@ pub type TripleSet = BTreeSet<LocalTriple>;
 
 /// Triple store of Nodes, which can be atoms, structures, or triples.
 /// Always contains at least one node, which represents itself.
-pub trait Environment: EnvClone {
+pub trait Environment: DynClone {
     fn all_nodes(&self) -> NodeSet;
 
     fn insert_atom(&mut self) -> LocalNode;
@@ -76,28 +77,10 @@ pub trait Environment: EnvClone {
 }
 
 
-pub trait EnvClone {
-    fn clone_box(&self) -> Box<EnvObject>;
-}
-
-impl<T> EnvClone for T
-where
-    T: 'static + Environment + Clone,
-{
-    fn clone_box(&self) -> Box<EnvObject> {
-        Box::new(self.clone())
-    }
-}
-
-impl Clone for Box<EnvObject> {
-    fn clone(&self) -> Self {
-        self.clone_box()
-    }
-}
-
-
 impl fmt::Debug for Box<EnvObject> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "[Env @ {:p}]", self)
     }
 }
+
+dyn_clone::clone_trait_object!(Environment);
