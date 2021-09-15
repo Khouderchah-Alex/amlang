@@ -6,7 +6,7 @@ use crate::primitive::Primitive;
 use crate::sexp::Sexp;
 
 
-pub trait MemBackend: Debug {
+pub trait MemBackend: Debug + Default {
     fn edges(&self, node: LocalNode) -> &Edges;
     fn edges_mut(&mut self, node: LocalNode) -> &mut Edges;
 

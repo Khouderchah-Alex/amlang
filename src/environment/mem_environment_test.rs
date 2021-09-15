@@ -1,9 +1,11 @@
 use super::*;
 
+use crate::environment::mem_backend::SimpleBackend;
+
 
 #[test]
 fn atomic_insertion() {
-    let mut env = MemEnvironment::new();
+    let mut env = MemEnvironment::<SimpleBackend>::new();
     let a = env.insert_atom();
     let b = env.insert_atom();
     let c = env.insert_atom();
@@ -18,7 +20,7 @@ fn atomic_insertion() {
 
 #[test]
 fn structure_insertion() {
-    let mut env = MemEnvironment::new();
+    let mut env = MemEnvironment::<SimpleBackend>::new();
     let a = env.insert_structure("(1 2 3)".parse().unwrap());
     assert_eq!(env.node_structure(a).unwrap(), &"(1 2 3)".parse().unwrap());
 
@@ -39,7 +41,7 @@ fn structure_insertion() {
 
 #[test]
 fn meta_triple_insertion() {
-    let mut env = MemEnvironment::new();
+    let mut env = MemEnvironment::<SimpleBackend>::new();
     let a = env.insert_atom();
     let b = env.insert_atom();
     let c = env.insert_atom();

@@ -5,27 +5,24 @@ use std::fmt::Debug;
 
 use super::environment::{Environment, NodeSet, TripleSet};
 use super::local_node::{LocalId, LocalNode, LocalTriple};
-use super::mem_backend::simple_backend::SimpleBackend;
 use super::mem_backend::{index_id_conv::*, Edges, MemBackend, Node, Triple};
 use crate::sexp::Sexp;
 
 
 #[derive(Debug)]
-pub struct MemEnvironment {
-    backend: Box<dyn MemBackend>,
+pub struct MemEnvironment<Backend: MemBackend + 'static> {
+    backend: Backend,
 }
 
-impl MemEnvironment {
+impl<Backend: MemBackend> MemEnvironment<Backend> {
     pub fn new() -> Self {
-        // TODO(perf) Could either use compile-time generics, or rely on dynamic
-        // dispatch to impl lazy-loading through stub backend.
         Self {
-            backend: Box::new(SimpleBackend::default()),
+            backend: Default::default(),
         }
     }
 }
 
-impl Environment for MemEnvironment {
+impl<Backend: MemBackend> Environment for MemEnvironment<Backend> {
     fn all_nodes(&self) -> NodeSet {
         (0..self.backend.node_count())
             .map(|x| LocalNode::new(x as LocalId))
@@ -167,7 +164,7 @@ impl Environment for MemEnvironment {
 }
 
 // We need this for dyn Environment to be cloneable. Just return a new env.
-impl Clone for MemEnvironment {
+impl<Backend: MemBackend> Clone for MemEnvironment<Backend> {
     fn clone(&self) -> Self {
         warn!(
             "Env @ {} being empty-cloned.",

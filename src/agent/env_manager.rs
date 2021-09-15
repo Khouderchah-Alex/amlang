@@ -11,6 +11,7 @@ use super::amlang_context::AmlangContext;
 use super::amlang_wrappers::quote_wrapper;
 use crate::builtins::generate_builtin_map;
 use crate::environment::environment::EnvObject;
+use crate::environment::mem_backend::SimpleBackend;
 use crate::environment::mem_environment::MemEnvironment;
 use crate::environment::serial_overlay::SerialOverlay;
 use crate::environment::LocalNode;
@@ -86,7 +87,9 @@ macro_rules! bootstrap_context {
 impl EnvManager {
     pub fn bootstrap<P: AsRef<StdPath>>(meta_path: P) -> Result<Self, DeserializeError> {
         // Initially create meta as MemEnvironment.
-        let mut meta = Box::new(SerialOverlay::new(Box::new(MemEnvironment::new())));
+        let mut meta = Box::new(SerialOverlay::new(Box::new(
+            MemEnvironment::<SimpleBackend>::new(),
+        )));
         EnvManager::initialize_env(LocalNode::default(), &mut *meta);
 
         let mut context = AmlangContext::new(
@@ -206,7 +209,8 @@ impl EnvManager {
         let serialize_path = self.state().context().serialize_path;
         let meta = self.state_mut().context_mut().meta_mut();
         // Initially create as MemEnvironment.
-        let env_node = meta.insert_structure(Box::new(MemEnvironment::new()).into());
+        let env_node =
+            meta.insert_structure(Box::new(MemEnvironment::<SimpleBackend>::new()).into());
 
         let path_node = meta.insert_structure(Path::new(path.as_ref().to_path_buf()).into());
         meta.insert_triple(env_node, serialize_path, path_node);
@@ -385,7 +389,7 @@ impl EnvManager {
     fn initialize_env_node(meta: &mut EnvObject, env_node: LocalNode) {
         if let Some(sexp) = meta.node_structure_mut(env_node) {
             // Initially create as MemEnvironment.
-            *sexp = Box::new(MemEnvironment::new()).into();
+            *sexp = Box::new(MemEnvironment::<SimpleBackend>::new()).into();
             let env = if let Some(Sexp::Primitive(Primitive::Env(env))) =
                 meta.node_structure_mut(env_node)
             {
