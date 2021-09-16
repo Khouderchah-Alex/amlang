@@ -114,8 +114,8 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         // Make context usable for bootstrapping lang.
         {
             let lang_env = manager.state().find_env("lang.env").unwrap();
+            manager.initialize_env_node(lang_env);
             let context = manager.state_mut().context_mut();
-            EnvManager::<Policy>::initialize_env_node(context.meta_mut(), lang_env);
             context.lang_env = lang_env;
 
             // TODO(flex) Find more flexible approch to bootstrapping these nodes.
@@ -176,10 +176,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
             let object = context.meta().node_structure(object_node).unwrap();
             let env_path = <&Path>::try_from(&*object).unwrap();
 
-            EnvManager::<Policy>::initialize_env_node(
-                manager.state_mut().context_mut().meta_mut(),
-                subject_node,
-            );
+            manager.initialize_env_node(subject_node);
             manager
                 .state_mut()
                 .jump(Node::new(subject_node, LocalNode::default()));
@@ -369,7 +366,8 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         }
     }
 
-    fn initialize_env_node(meta: &mut EnvObject, env_node: LocalNode) {
+    fn initialize_env_node(&mut self, env_node: LocalNode) {
+        let meta = self.state_mut().context_mut().meta_mut();
         if let Some(sexp) = meta.node_structure_mut(env_node) {
             *sexp = Box::new(Policy::DefaultEnv::default()).into();
             let env = if let Some(Sexp::Primitive(Primitive::Env(env))) =
