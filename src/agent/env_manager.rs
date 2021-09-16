@@ -205,6 +205,44 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         env_node
     }
 
+
+    fn initialize_env(env_node: LocalNode, env: &mut EnvObject) {
+        // Set up self node.
+        let _self_node = env.insert_structure(Node::new(LocalNode::default(), env_node).into());
+
+        // Set up designation node.
+        let designation = env.insert_structure(SymbolTable::default().into());
+        if let Ok(table) = <&mut SymbolTable>::try_from(env.node_structure_mut(designation)) {
+            table.insert(
+                AMLANG_DESIGNATION.to_symbol_or_panic(policy_admin),
+                Node::new(env_node, designation),
+            );
+        } else {
+            panic!("Env designation isn't a symbol table");
+        }
+    }
+
+    fn initialize_env_node(&mut self, env_node: LocalNode) {
+        let meta = self.state_mut().context_mut().meta_mut();
+        if let Some(sexp) = meta.node_structure_mut(env_node) {
+            *sexp = Box::new(Policy::DefaultEnv::default()).into();
+            let env = if let Some(Sexp::Primitive(Primitive::Env(env))) =
+                meta.node_structure_mut(env_node)
+            {
+                env
+            } else {
+                panic!()
+            };
+            EnvManager::<Policy>::initialize_env(env_node, &mut **env);
+        } else {
+            panic!()
+        }
+    }
+}
+
+
+// {,De}serialization functionality.
+impl<Policy: EnvPolicy> EnvManager<Policy> {
     pub fn serialize_full<P: AsRef<StdPath>>(&mut self, out_path: P) -> std::io::Result<()> {
         let original_pos = self.state().pos();
 
@@ -349,39 +387,6 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         Ok(())
     }
 
-
-    fn initialize_env(env_node: LocalNode, env: &mut EnvObject) {
-        // Set up self node.
-        let _self_node = env.insert_structure(Node::new(LocalNode::default(), env_node).into());
-
-        // Set up designation node.
-        let designation = env.insert_structure(SymbolTable::default().into());
-        if let Ok(table) = <&mut SymbolTable>::try_from(env.node_structure_mut(designation)) {
-            table.insert(
-                AMLANG_DESIGNATION.to_symbol_or_panic(policy_admin),
-                Node::new(env_node, designation),
-            );
-        } else {
-            panic!("Env designation isn't a symbol table");
-        }
-    }
-
-    fn initialize_env_node(&mut self, env_node: LocalNode) {
-        let meta = self.state_mut().context_mut().meta_mut();
-        if let Some(sexp) = meta.node_structure_mut(env_node) {
-            *sexp = Box::new(Policy::DefaultEnv::default()).into();
-            let env = if let Some(Sexp::Primitive(Primitive::Env(env))) =
-                meta.node_structure_mut(env_node)
-            {
-                env
-            } else {
-                panic!()
-            };
-            EnvManager::<Policy>::initialize_env(env_node, &mut **env);
-        } else {
-            panic!()
-        }
-    }
 
     fn serialize_list_internal<W: std::io::Write>(
         &mut self,
@@ -645,6 +650,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         Ok(())
     }
 }
+
 
 impl<Policy: EnvPolicy> Agent for EnvManager<Policy> {
     fn state(&self) -> &AgentState {
