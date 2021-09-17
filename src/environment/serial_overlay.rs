@@ -32,6 +32,10 @@ impl<T: Environment> SerialOverlay<T> {
 }
 
 impl<T: Environment + Clone> Environment for SerialOverlay<T> {
+    fn type_name(&self) -> &'static str {
+        "SerialOverlay"
+    }
+
     fn all_nodes(&self) -> NodeSet {
         self.base().all_nodes()
     }

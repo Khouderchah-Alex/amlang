@@ -21,6 +21,10 @@ impl<Backend: MemBackend> MemEnvironment<Backend> {
 }
 
 impl<Backend: MemBackend> Environment for MemEnvironment<Backend> {
+    fn type_name(&self) -> &'static str {
+        "MemEnvironment"
+    }
+
     fn all_nodes(&self) -> NodeSet {
         (0..self.backend.node_count())
             .map(|x| LocalNode::new(x as LocalId))

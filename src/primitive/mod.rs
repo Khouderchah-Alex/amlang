@@ -60,7 +60,7 @@ impl fmt::Display for Primitive {
             Primitive::SymbolTable(table) => write!(f, "{:?}", table),
             Primitive::LocalNodeTable(table) => write!(f, "{:?}", table),
             Primitive::Procedure(proc) => write!(f, "{:?}", proc),
-            Primitive::Env(_env) => write!(f, "[Env]"),
+            Primitive::Env(env) => write!(f, "{:?}", env),
         }
     }
 }

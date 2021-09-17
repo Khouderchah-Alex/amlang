@@ -17,6 +17,7 @@ pub type TripleSet = BTreeSet<LocalTriple>;
 /// Triple store of Nodes, which can be atoms, structures, or triples.
 /// Always contains at least one node, which represents itself.
 pub trait Environment: DynClone {
+    fn type_name(&self) -> &'static str;
     fn all_nodes(&self) -> NodeSet;
 
     fn insert_atom(&mut self) -> LocalNode;
@@ -79,7 +80,7 @@ pub trait Environment: DynClone {
 
 impl fmt::Debug for Box<EnvObject> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "[Env @ {:p}]", self)
+        write!(f, "[{} @ {:p}]", self.type_name(), self)
     }
 }
 
