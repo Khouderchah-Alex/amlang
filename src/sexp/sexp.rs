@@ -333,6 +333,18 @@ impl fmt::Display for Cons {
     }
 }
 
+impl TryFrom<Sexp> for Primitive {
+    type Error = ();
+
+    fn try_from(value: Sexp) -> Result<Self, Self::Error> {
+        if let Sexp::Primitive(primitive) = value {
+            Ok(primitive)
+        } else {
+            Err(())
+        }
+    }
+}
+
 impl TryFrom<Sexp> for Cons {
     type Error = ();
 

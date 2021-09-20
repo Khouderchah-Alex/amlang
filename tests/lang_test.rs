@@ -1,8 +1,11 @@
 mod common;
 
+use std::convert::TryFrom;
+
 use amlang::agent::amlang_agent::RunError;
+use amlang::agent::Agent;
 use amlang::lang_err::{ErrKind, LangErr};
-use amlang::primitive::Number;
+use amlang::primitive::{Number, Primitive};
 
 
 #[test]
@@ -64,4 +67,41 @@ fn lambda_duplicate_argname() {
             ..
         }))
     ));
+}
+
+#[test]
+fn def_atom() {
+    let mut lang_agent = common::setup().unwrap();
+
+    let results = common::results(&mut lang_agent, "(def 'a)");
+    // Atom should designate to itself.
+    assert_eq!(
+        lang_agent
+            .state_mut()
+            .designate(Primitive::try_from(results[0].clone()).unwrap())
+            .unwrap(),
+        results[0],
+    );
+}
+
+#[test]
+fn def_number() {
+    let mut lang_agent = common::setup().unwrap();
+
+    let results = common::results(&mut lang_agent, "(def 'a 2)");
+    assert_eq!(
+        lang_agent
+            .state_mut()
+            .designate(Primitive::try_from(results[0].clone()).unwrap())
+            .unwrap(),
+        Number::Integer(2).into()
+    );
+}
+
+#[test]
+fn def_lambda() {
+    let mut lang_agent = common::setup().unwrap();
+
+    let results = common::results(&mut lang_agent, "(def 'a (lambda (e) (+ e 2))) (a 2)");
+    assert_eq!(results[1], Number::Integer(4).into());
 }
