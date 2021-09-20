@@ -258,8 +258,16 @@ impl AmlangAgent {
                 }
 
                 let val_node = if let Some(s) = val {
-                    let val = self.exec(s)?;
-                    self.state_mut().env().insert_structure(val)
+                    let original = self.state_mut().designate(Primitive::Node(s))?;
+                    let meaning = self.eval(original.into())?;
+                    let meaning_node = self.history_insert(meaning);
+                    let val = self.exec(meaning_node)?;
+                    // Don't recreate existing Nodes.
+                    if let Ok(node) = <Node>::try_from(&val) {
+                        node.local()
+                    } else {
+                        self.state_mut().env().insert_structure(val)
+                    }
                 } else {
                     self.state_mut().env().insert_atom()
                 };
@@ -403,7 +411,11 @@ impl AmlangAgent {
         }
     }
 
-    fn evlis(&mut self, structures: Option<HeapSexp>) -> Result<Vec<Node>, LangErr> {
+    fn evlis(
+        &mut self,
+        structures: Option<HeapSexp>,
+        should_eval: bool,
+    ) -> Result<Vec<Node>, LangErr> {
         if structures.is_none() {
             return Ok(vec![]);
         }
@@ -415,6 +427,16 @@ impl AmlangAgent {
                 // TODO(perf) Return Cow.
                 let mut args = Vec::<Node>::with_capacity(cons.iter().count());
                 for structure in cons.into_iter() {
+                    if !should_eval {
+                        args.push(
+                            self.state_mut()
+                                .env()
+                                .insert_structure(*structure)
+                                .globalize(self.state()),
+                        );
+                        continue;
+                    }
+
                     let val = self.eval(structure)?;
                     // Don't recreate existing Nodes.
                     if let Ok(node) = <Node>::try_from(&val) {
@@ -485,6 +507,7 @@ impl Eval for AmlangAgent {
                         _ if Node::new(context.lang_env(), context.lambda) == node => {
                             let (params, body) = make_lambda_wrapper(cdr, &self.state())?;
                             let proc = self.make_lambda(params, body)?;
+                            // TODO(flex) Don't insert so eval return val is consistent.
                             return Ok(self
                                 .state_mut()
                                 .env()
@@ -493,7 +516,7 @@ impl Eval for AmlangAgent {
                                 .into());
                         }
                         _ if Node::new(context.lang_env(), context.branch) == node => {
-                            let args = self.evlis(cdr)?;
+                            let args = self.evlis(cdr, true)?;
                             if args.len() != 3 {
                                 return err!(WrongArgumentCount {
                                     given: args.len(),
@@ -505,7 +528,8 @@ impl Eval for AmlangAgent {
                             return Ok(proc.into());
                         }
                         _ => {
-                            let args = self.evlis(cdr)?;
+                            let should_eval = Node::new(context.lang_env(), context.def) != node;
+                            let args = self.evlis(cdr, should_eval)?;
                             return Ok(Procedure::Application(node, args).into());
                         }
                     }

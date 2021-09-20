@@ -73,7 +73,7 @@ fn lambda_duplicate_argname() {
 fn def_atom() {
     let mut lang_agent = common::setup().unwrap();
 
-    let results = common::results(&mut lang_agent, "(def 'a)");
+    let results = common::results(&mut lang_agent, "(def a)");
     // Atom should designate to itself.
     assert_eq!(
         lang_agent
@@ -88,7 +88,7 @@ fn def_atom() {
 fn def_number() {
     let mut lang_agent = common::setup().unwrap();
 
-    let results = common::results(&mut lang_agent, "(def 'a 2)");
+    let results = common::results(&mut lang_agent, "(def a 2)");
     assert_eq!(
         lang_agent
             .state_mut()
@@ -102,6 +102,6 @@ fn def_number() {
 fn def_lambda() {
     let mut lang_agent = common::setup().unwrap();
 
-    let results = common::results(&mut lang_agent, "(def 'a (lambda (e) (+ e 2))) (a 2)");
+    let results = common::results(&mut lang_agent, "(def a (lambda (e) (+ e 2))) (a 2)");
     assert_eq!(results[1], Number::Integer(4).into());
 }
