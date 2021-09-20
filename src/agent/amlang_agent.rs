@@ -262,12 +262,7 @@ impl AmlangAgent {
                     let meaning = self.eval(original.into())?;
                     let meaning_node = self.history_insert(meaning);
                     let val = self.exec(meaning_node)?;
-                    // Don't recreate existing Nodes.
-                    if let Ok(node) = <Node>::try_from(&val) {
-                        node.local()
-                    } else {
-                        self.state_mut().env().insert_structure(val)
-                    }
+                    self.eval_to_node(val)?.local()
                 } else {
                     self.state_mut().env().insert_atom()
                 };
@@ -411,6 +406,21 @@ impl AmlangAgent {
         }
     }
 
+    // If we need Nodes in a particular context, we must abstract existing
+    // Sexps into the env. However, if the sexp is already a Node, just use it
+    // directly rather than create a stack of abstractions.
+    fn eval_to_node(&mut self, sexp: Sexp) -> Result<Node, LangErr> {
+        if let Ok(node) = <Node>::try_from(&sexp) {
+            Ok(node)
+        } else {
+            Ok(self
+                .state_mut()
+                .env()
+                .insert_structure(sexp)
+                .globalize(self.state()))
+        }
+    }
+
     fn evlis(
         &mut self,
         structures: Option<HeapSexp>,
@@ -438,17 +448,7 @@ impl AmlangAgent {
                     }
 
                     let val = self.eval(structure)?;
-                    // Don't recreate existing Nodes.
-                    if let Ok(node) = <Node>::try_from(&val) {
-                        args.push(node.into());
-                    } else {
-                        args.push(
-                            self.state_mut()
-                                .env()
-                                .insert_structure(val)
-                                .globalize(self.state()),
-                        );
-                    }
+                    args.push(self.eval_to_node(val)?);
                 }
                 Ok(args)
             }
