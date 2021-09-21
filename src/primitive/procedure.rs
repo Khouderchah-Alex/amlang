@@ -9,7 +9,7 @@ use crate::sexp::{HeapSexp, Sexp};
 #[derive(Clone, Debug, PartialEq)]
 pub enum Procedure {
     Application(Node, Vec<Node>),
-    Abstraction(Vec<Node>, Node),
+    Abstraction(Vec<Node>, Node, bool),
     Sequence(Vec<Node>),
     Branch(Node, Node, Node), // Pred, A, B.
 }
@@ -23,9 +23,13 @@ impl Model for Procedure {
                 let apply_node = Node::new(context.lang_env(), context.apply);
                 list!(apply_node, *func, args,)
             }
-            Procedure::Abstraction(params, body) => {
-                let lambda_node = Node::new(context.lang_env(), context.lambda);
-                list!(lambda_node, params, *body,)
+            Procedure::Abstraction(params, body, reflect) => {
+                let special_node = if *reflect {
+                    Node::new(context.lang_env(), context.fexpr)
+                } else {
+                    Node::new(context.lang_env(), context.lambda)
+                };
+                list!(special_node, params, *body,)
             }
             Procedure::Branch(pred, a, b) => {
                 let branch_node = Node::new(context.lang_env(), context.branch);

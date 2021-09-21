@@ -68,7 +68,12 @@ impl AmlangAgent {
     }
 
 
-    fn make_lambda(&mut self, params: Vec<Symbol>, body: Sexp) -> Result<Procedure, LangErr> {
+    fn make_lambda(
+        &mut self,
+        params: Vec<Symbol>,
+        body: Sexp,
+        reflect: bool,
+    ) -> Result<Procedure, LangErr> {
         let mut surface = Vec::new();
         let mut frame = SymbolTable::default();
         for symbol in params {
@@ -98,7 +103,7 @@ impl AmlangAgent {
                 .env()
                 .insert_structure(body_eval)
                 .globalize(self.state());
-            Ok(Procedure::Abstraction(surface, body_node))
+            Ok(Procedure::Abstraction(surface, body_node, reflect))
         })();
         self.eval_state.pop();
         res
@@ -168,7 +173,7 @@ impl AmlangAgent {
 
                 builtin.call(args, &self.state())
             }
-            Sexp::Primitive(Primitive::Procedure(Procedure::Abstraction(params, body_node))) => {
+            Sexp::Primitive(Primitive::Procedure(Procedure::Abstraction(params, body_node, _))) => {
                 if arg_nodes.len() != params.len() {
                     return err_ctx!(
                         self.state(),
@@ -504,9 +509,12 @@ impl Eval for AmlangAgent {
                         _ if Node::new(context.lang_env(), context.quote) == node => {
                             return quote_wrapper(cdr);
                         }
-                        _ if Node::new(context.lang_env(), context.lambda) == node => {
+                        _ if Node::new(context.lang_env(), context.lambda) == node
+                            || Node::new(context.lang_env(), context.fexpr) == node =>
+                        {
                             let (params, body) = make_lambda_wrapper(cdr, &self.state())?;
-                            let proc = self.make_lambda(params, body)?;
+                            let reflect = node.local() == context.fexpr;
+                            let proc = self.make_lambda(params, body, reflect)?;
                             // TODO(flex) Don't insert so eval return val is consistent.
                             return Ok(self
                                 .state_mut()
@@ -528,7 +536,15 @@ impl Eval for AmlangAgent {
                             return Ok(proc.into());
                         }
                         _ => {
-                            let should_eval = Node::new(context.lang_env(), context.def) != node;
+                            let def_node = Node::new(context.lang_env(), context.def);
+                            let should_eval =
+                                match self.state_mut().designate(Primitive::Node(node))? {
+                                    // Don't evaluate args of reflective Abstractions.
+                                    Sexp::Primitive(Primitive::Procedure(
+                                        Procedure::Abstraction(_, _, true),
+                                    )) => false,
+                                    _ => node != def_node,
+                                };
                             let args = self.evlis(cdr, should_eval)?;
                             return Ok(Procedure::Application(node, args).into());
                         }

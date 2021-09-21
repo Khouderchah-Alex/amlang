@@ -70,6 +70,14 @@ fn lambda_duplicate_argname() {
 }
 
 #[test]
+fn basic_fexpr() {
+    let mut lang_agent = common::setup().unwrap();
+
+    let results = common::results(&mut lang_agent, "((fexpr (a) (car (cdr a))) (+ 1 2))");
+    assert_eq!(results, vec![Number::Integer(1).into()]);
+}
+
+#[test]
 fn def_atom() {
     let mut lang_agent = common::setup().unwrap();
 

@@ -146,6 +146,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         bootstrap_context!(manager,
                            quote: "quote",
                            lambda: "lambda",
+                           fexpr: "fexpr",
                            def: "def",
                            tell: "tell",
                            curr: "curr",
@@ -526,7 +527,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
                         }
                     }
                     return Ok(Procedure::Application(fnode, arg_nodes).into());
-                } else if node.local() == context.lambda {
+                } else if node.local() == context.lambda || node.local() == context.fexpr {
                     if cdr.is_none() {
                         return err!(WrongArgumentCount {
                             given: 0,
@@ -535,6 +536,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
                         .map_err(|e| LangErr(e));
                     }
 
+                    let reflect = node.local() == context.fexpr;
                     let (params, body) =
                         break_by_types!(*cdr.unwrap(), Cons, Symbol).map_err(|e| LangErr(e))?;
                     let mut param_nodes = Vec::with_capacity(params.iter().count());
@@ -546,7 +548,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
                         }
                     }
                     let body_node = self.parse_symbol(&body)?;
-                    return Ok(Procedure::Abstraction(param_nodes, body_node).into());
+                    return Ok(Procedure::Abstraction(param_nodes, body_node, reflect).into());
                 } else if node.local() == context.branch {
                     if cdr.is_none() {
                         return err!(WrongArgumentCount {

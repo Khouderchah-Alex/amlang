@@ -22,6 +22,7 @@ pub struct AmlangContext {
     // All below are relative to lang_env.
     pub quote: LocalNode,
     pub lambda: LocalNode,
+    pub fexpr: LocalNode,
     pub def: LocalNode,
     pub tell: LocalNode,
     pub curr: LocalNode,
@@ -54,6 +55,7 @@ impl AmlangContext {
 
             quote: designation.clone(),
             lambda: designation.clone(),
+            fexpr: designation.clone(),
             def: designation.clone(),
             tell: designation.clone(),
             curr: designation.clone(),
