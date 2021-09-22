@@ -118,10 +118,14 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
             let context = manager.state_mut().context_mut();
             context.lang_env = lang_env;
 
-            // TODO(flex) Find more flexible approch to bootstrapping these nodes.
+            // TODO(flex) Find more flexible approch to bootstrapping Procedure
+            // nodes. It's worth noting that these are only needed for
+            // deserializing Procedures in the lang env (since otherwise the
+            // context is already fully bootstrapped).
             context.lambda = LocalNode::new(13);
             context.apply = LocalNode::new(33);
             context.branch = LocalNode::new(41);
+            context.fexpr = LocalNode::new(45);
         }
 
         // Bootstrap lang env.
