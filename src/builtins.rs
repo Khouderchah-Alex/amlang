@@ -29,7 +29,7 @@ macro_rules! builtins {
 
 // Used for bootstrapping and auxiliary purposes, not as an environment.
 pub fn generate_builtin_map() -> HashMap<&'static str, BuiltIn> {
-    builtins![add, sub, mul, div, car, cdr, cons]
+    builtins![add, sub, mul, div, car, cdr, cons, println]
 }
 
 
@@ -213,4 +213,19 @@ pub fn cons(mut args: Args, state: &AgentState) -> Ret {
     let cdr = args.pop().unwrap().into();
     let car = args.pop().unwrap().into();
     Ok(*sexp::cons(car, cdr).unwrap())
+}
+
+pub fn println(mut args: Args, state: &AgentState) -> Ret {
+    if args.len() != 1 {
+        return err_ctx!(
+            state,
+            WrongArgumentCount {
+                given: args.len(),
+                expected: ExpectedCount::Exactly(1),
+            }
+        );
+    }
+
+    println!("{}", args.pop().unwrap());
+    Ok(Sexp::default())
 }
