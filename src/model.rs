@@ -1,5 +1,7 @@
 use crate::agent::agent_state::AgentState;
+use crate::agent::amlang_context::AmlangContext;
 use crate::lang_err::LangErr;
+use crate::primitive::{Node, Primitive};
 use crate::sexp::{HeapSexp, Sexp};
 
 
@@ -13,4 +15,18 @@ pub trait Eval {
 pub trait Model {
     /// Model -> structure according to (possibly implicit) metamodel.
     fn reify(&self, state: &mut AgentState) -> HeapSexp;
+
+    /// Model <- structure according to (possibly implicit) metamodel.
+    ///
+    /// |process_primitive| is used so that reflect code can be written
+    /// uniformly in the face of, say, a structure made of unresolved Symbols
+    /// vs one made of resolved Nodes.
+    fn reflect<F>(
+        structure: HeapSexp,
+        context: &mut AmlangContext,
+        process_primitive: F,
+    ) -> Result<Self, LangErr>
+    where
+        Self: Sized,
+        F: FnMut(&Primitive) -> Result<Node, LangErr>;
 }

@@ -1,9 +1,12 @@
+use std::borrow::Cow;
 use std::convert::TryFrom;
 
 use super::{Node, Primitive};
 use crate::agent::agent_state::AgentState;
+use crate::agent::amlang_context::AmlangContext;
+use crate::lang_err::{ExpectedCount, LangErr};
 use crate::model::Model;
-use crate::sexp::{HeapSexp, Sexp};
+use crate::sexp::{Cons, HeapSexp, Sexp};
 
 
 #[derive(Clone, Debug, PartialEq)]
@@ -36,6 +39,78 @@ impl Model for Procedure {
                 list!(branch_node, *pred, *a, *b,)
             }
             _ => panic!(),
+        }
+    }
+
+    fn reflect<F>(
+        structure: HeapSexp,
+        context: &mut AmlangContext,
+        mut process_primitive: F,
+    ) -> Result<Self, LangErr>
+    where
+        F: FnMut(&Primitive) -> Result<Node, LangErr>,
+    {
+        let (command, cdr) = break_by_types!(*structure, Primitive; remainder)?;
+        let node = process_primitive(&command)?;
+        if node.local() == context.apply {
+            if cdr.is_none() {
+                return err!(WrongArgumentCount {
+                    given: 0,
+                    expected: ExpectedCount::Exactly(2),
+                });
+            }
+
+            let (func, args) = break_by_types!(*cdr.unwrap(), Primitive, Cons)?;
+            let fnode = process_primitive(&func)?;
+            let mut arg_nodes = Vec::with_capacity(args.iter().count());
+            for arg in args {
+                if let Ok(p) = <&Primitive>::try_from(&*arg) {
+                    arg_nodes.push(process_primitive(&p)?);
+                } else {
+                    return err!(InvalidSexp(*arg));
+                }
+            }
+            Ok(Procedure::Application(fnode, arg_nodes).into())
+        } else if node.local() == context.lambda || node.local() == context.fexpr {
+            if cdr.is_none() {
+                return err!(WrongArgumentCount {
+                    given: 0,
+                    expected: ExpectedCount::AtLeast(2),
+                });
+            }
+
+            let reflect = node.local() == context.fexpr;
+            let (params, body) = break_by_types!(*cdr.unwrap(), Cons, Primitive)?;
+            let mut param_nodes = Vec::with_capacity(params.iter().count());
+            for param in params {
+                if let Ok(p) = <&Primitive>::try_from(&*param) {
+                    param_nodes.push(process_primitive(&p)?);
+                } else {
+                    return err!(InvalidSexp(*param));
+                }
+            }
+            let body_node = process_primitive(&body)?;
+            Ok(Procedure::Abstraction(param_nodes, body_node, reflect).into())
+        } else if node.local() == context.branch {
+            if cdr.is_none() {
+                return err!(WrongArgumentCount {
+                    given: 0,
+                    expected: ExpectedCount::Exactly(3),
+                });
+            }
+
+            let (pred, a, b) = break_by_types!(*cdr.unwrap(), Primitive, Primitive, Primitive)?;
+            Ok(Procedure::Branch(
+                process_primitive(&pred)?,
+                process_primitive(&a)?,
+                process_primitive(&b)?,
+            )
+            .into())
+        } else {
+            err!(InvalidArgument {
+                given: command.into(),
+                expected: Cow::Borrowed("Procedure variant")
+            })
         }
     }
 }

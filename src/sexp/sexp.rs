@@ -345,6 +345,18 @@ impl TryFrom<Sexp> for Primitive {
     }
 }
 
+impl<'a> TryFrom<&'a Sexp> for &'a Primitive {
+    type Error = ();
+
+    fn try_from(value: &'a Sexp) -> Result<Self, Self::Error> {
+        if let Sexp::Primitive(primitive) = value {
+            Ok(primitive)
+        } else {
+            Err(())
+        }
+    }
+}
+
 impl TryFrom<Sexp> for Cons {
     type Error = ();
 

@@ -5,6 +5,8 @@
 use std::fmt;
 
 use crate::agent::agent_state::AgentState;
+use crate::agent::amlang_context::AmlangContext;
+use crate::lang_err::LangErr;
 use crate::model::Model;
 use crate::primitive::Node;
 use crate::sexp::HeapSexp;
@@ -53,6 +55,14 @@ impl Model for LocalTriple {
         let p = Node::new(e, env.triple_predicate(*self));
         let o = Node::new(e, env.triple_object(*self));
         list!(s, p, o,)
+    }
+
+    fn reflect<F>(
+        _structure: HeapSexp,
+        _context: &mut AmlangContext,
+        _process_primitive: F,
+    ) -> Result<Self, LangErr> {
+        unimplemented!();
     }
 }
 

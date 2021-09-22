@@ -503,70 +503,24 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
             let context = self.state().context();
 
             // Note(subtle): during the initial deserialization of the lang env,
-            // these context nodes are only valid because they're specially set
+            // Procedure context nodes are only valid because they're specially set
             // before actual context bootstrapping occurs.
             if node.env() == context.lang_env() {
-                if node.local() == context.apply {
-                    if cdr.is_none() {
-                        return err!(WrongArgumentCount {
-                            given: 0,
-                            expected: lang_err::ExpectedCount::Exactly(2),
-                        })
-                        .map_err(|e| LangErr(e));
-                    }
-
-                    let (func, args) =
-                        break_by_types!(*cdr.unwrap(), Symbol, Cons).map_err(|e| LangErr(e))?;
-                    let fnode = self.parse_symbol(&func)?;
-                    let mut arg_nodes = Vec::with_capacity(args.iter().count());
-                    for arg in args {
-                        if let Ok(sym) = <&Symbol>::try_from(&*arg) {
-                            arg_nodes.push(self.parse_symbol(sym)?);
-                        } else {
-                            return err!(InvalidSexp(*arg)).map_err(|e| LangErr(e));
-                        }
-                    }
-                    return Ok(Procedure::Application(fnode, arg_nodes).into());
-                } else if node.local() == context.lambda || node.local() == context.fexpr {
-                    if cdr.is_none() {
-                        return err!(WrongArgumentCount {
-                            given: 0,
-                            expected: lang_err::ExpectedCount::AtLeast(2),
-                        })
-                        .map_err(|e| LangErr(e));
-                    }
-
-                    let reflect = node.local() == context.fexpr;
-                    let (params, body) =
-                        break_by_types!(*cdr.unwrap(), Cons, Symbol).map_err(|e| LangErr(e))?;
-                    let mut param_nodes = Vec::with_capacity(params.iter().count());
-                    for param in params {
-                        if let Ok(sym) = <&Symbol>::try_from(&*param) {
-                            param_nodes.push(self.parse_symbol(sym)?);
-                        } else {
-                            return err!(InvalidSexp(*param)).map_err(|e| LangErr(e));
-                        }
-                    }
-                    let body_node = self.parse_symbol(&body)?;
-                    return Ok(Procedure::Abstraction(param_nodes, body_node, reflect).into());
-                } else if node.local() == context.branch {
-                    if cdr.is_none() {
-                        return err!(WrongArgumentCount {
-                            given: 0,
-                            expected: lang_err::ExpectedCount::Exactly(3),
-                        })
-                        .map_err(|e| LangErr(e));
-                    }
-
-                    let (pred, a, b) = break_by_types!(*cdr.unwrap(), Symbol, Symbol, Symbol)
-                        .map_err(|e| LangErr(e))?;
-                    return Ok(Procedure::Branch(
-                        self.parse_symbol(&pred)?,
-                        self.parse_symbol(&a)?,
-                        self.parse_symbol(&b)?,
-                    )
-                    .into());
-                }
+                return Ok(Procedure::reflect(
+                    Sexp::Cons(Cons::new(Some(HeapSexp::new(command.into())), cdr)).into(),
+                    // TODO(perf) Perhaps make parse_symbol an associated
+                    // function which takes &mut AgentState, side-steppibg the
+                    // borrow issue here that necessitates cloning.
+                    &mut self.state().context().clone(),
+                    |p| match p {
+                        Primitive::Node(n) => Ok(*n),
+                        // TODO(func) Pass error; probably combined with above todo.
+                        Primitive::Symbol(s) => Ok(self.parse_symbol(&s).unwrap()),
+                        _ => panic!(),
+                    },
+                )
+                .map_err(|e| LangErr(e))?
+                .into());
             }
         }
 
