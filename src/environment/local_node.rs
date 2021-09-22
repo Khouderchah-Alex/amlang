@@ -46,7 +46,7 @@ impl LocalTriple {
 
 
 impl Model for LocalTriple {
-    fn generate_structure(&self, state: &mut AgentState) -> HeapSexp {
+    fn reify(&self, state: &mut AgentState) -> HeapSexp {
         let e = state.pos().env();
         let env = state.env();
         let s = Node::new(e, env.triple_subject(*self));

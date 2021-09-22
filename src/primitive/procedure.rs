@@ -16,7 +16,7 @@ pub enum Procedure {
 
 
 impl Model for Procedure {
-    fn generate_structure(&self, state: &mut AgentState) -> HeapSexp {
+    fn reify(&self, state: &mut AgentState) -> HeapSexp {
         let context = state.context();
         match self {
             Procedure::Application(func, args) => {

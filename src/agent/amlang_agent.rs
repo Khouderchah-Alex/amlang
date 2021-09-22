@@ -619,7 +619,7 @@ impl AmlangAgent {
         let triples = self.state_mut().env().match_any(local);
         for triple in triples {
             print!("    ");
-            let structure = triple.generate_structure(self.state_mut());
+            let structure = triple.reify(self.state_mut());
             self.state_mut().print_list(&structure);
             println!("");
         }

@@ -200,14 +200,14 @@ impl AgentState {
                     .unwrap()
                     .node_as_triple(node.local())
                 {
-                    Ok(*triple.generate_structure(self))
+                    Ok(*triple.reify(self))
                 } else {
                     // Atoms are self-designating.
                     Ok(node.into())
                 }
             }
             // Procedure -> Structure
-            Primitive::Procedure(proc) => Ok(*proc.generate_structure(self)),
+            Primitive::Procedure(proc) => Ok(*proc.reify(self)),
             // Base case for self-designating.
             _ => Ok(designator.clone().into()),
         }
@@ -264,7 +264,7 @@ impl AgentState {
             .iter()
             .next()
         {
-            return err!(DuplicateTriple(*triple.generate_structure(self)));
+            return err!(DuplicateTriple(*triple.reify(self)));
         }
 
         let triple = self.env().insert_triple(subject, predicate, object);
@@ -437,7 +437,7 @@ impl AgentState {
                     .unwrap()
                     .node_as_triple(node.local())
                 {
-                    let s = triple.generate_structure(self);
+                    let s = triple.reify(self);
                     self.write_list_internal(w, &s, depth + 1)
                 } else {
                     let s = if let Some(structure) = self
@@ -467,7 +467,7 @@ impl AgentState {
                 }
             }
             Primitive::Procedure(procedure) => {
-                let s = procedure.generate_structure(self);
+                let s = procedure.reify(self);
                 self.write_list_internal(w, &s, depth + 1)
             }
             _ => write!(w, "{}", primitive),

@@ -11,6 +11,6 @@ pub trait Eval {
 }
 
 pub trait Model {
-    /// Model structure according to (possibly implicit) metamodel.
-    fn generate_structure(&self, state: &mut AgentState) -> HeapSexp;
+    /// Model -> structure according to (possibly implicit) metamodel.
+    fn reify(&self, state: &mut AgentState) -> HeapSexp;
 }

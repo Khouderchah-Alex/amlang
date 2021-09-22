@@ -326,7 +326,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         write!(&mut w, "(triples")?;
         for triple in self.state_mut().env().match_all() {
             write!(&mut w, "\n    ")?;
-            let s = triple.generate_structure(self.state_mut());
+            let s = triple.reify(self.state_mut());
             self.serialize_list_internal(&mut w, &s, 1)?;
         }
         writeln!(&mut w, "\n)")?;
@@ -414,7 +414,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
             }
             Primitive::BuiltIn(builtin) => write!(w, "(__builtin {})", builtin.name()),
             Primitive::Procedure(proc) => {
-                let proc_sexp = proc.generate_structure(self.state_mut());
+                let proc_sexp = proc.reify(self.state_mut());
                 self.serialize_list_internal(w, &proc_sexp, depth + 1)
             }
             Primitive::Node(node) => {
