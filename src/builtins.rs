@@ -226,6 +226,7 @@ pub fn println(mut args: Args, state: &mut AgentState) -> Ret {
         );
     }
 
-    println!("{}", args.pop().unwrap());
+    state.print_list(&args.pop().unwrap());
+    println!("");
     Ok(Sexp::default())
 }
