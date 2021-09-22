@@ -171,7 +171,7 @@ impl AmlangAgent {
                     args.push(self.exec(node)?);
                 }
 
-                builtin.call(args, &self.state())
+                builtin.call(args, self.state_mut())
             }
             Sexp::Primitive(Primitive::Procedure(Procedure::Abstraction(params, body_node, _))) => {
                 if arg_nodes.len() != params.len() {

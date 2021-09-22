@@ -33,7 +33,7 @@ pub fn generate_builtin_map() -> HashMap<&'static str, BuiltIn> {
 }
 
 
-pub fn add(args: Args, state: &AgentState) -> Ret {
+pub fn add(args: Args, state: &mut AgentState) -> Ret {
     let mut curr = Number::default();
     for arg in args {
         if let Sexp::Primitive(Primitive::Number(num)) = arg {
@@ -52,7 +52,7 @@ pub fn add(args: Args, state: &AgentState) -> Ret {
     Ok(curr.into())
 }
 
-pub fn sub(args: Args, state: &AgentState) -> Ret {
+pub fn sub(args: Args, state: &mut AgentState) -> Ret {
     if args.len() < 1 {
         return err_ctx!(
             state,
@@ -87,7 +87,7 @@ pub fn sub(args: Args, state: &AgentState) -> Ret {
     Ok(curr.into())
 }
 
-pub fn mul(args: Args, state: &AgentState) -> Ret {
+pub fn mul(args: Args, state: &mut AgentState) -> Ret {
     let mut curr = Number::Integer(1);
     for arg in args {
         if let Sexp::Primitive(Primitive::Number(num)) = arg {
@@ -106,7 +106,7 @@ pub fn mul(args: Args, state: &AgentState) -> Ret {
     Ok(curr.into())
 }
 
-pub fn div(args: Args, state: &AgentState) -> Ret {
+pub fn div(args: Args, state: &mut AgentState) -> Ret {
     if args.len() < 1 {
         return err_ctx!(
             state,
@@ -141,7 +141,7 @@ pub fn div(args: Args, state: &AgentState) -> Ret {
     Ok(curr.into())
 }
 
-pub fn car(mut args: Args, state: &AgentState) -> Ret {
+pub fn car(mut args: Args, state: &mut AgentState) -> Ret {
     if args.len() != 1 {
         return err_ctx!(
             state,
@@ -170,7 +170,7 @@ pub fn car(mut args: Args, state: &AgentState) -> Ret {
     }
 }
 
-pub fn cdr(mut args: Args, state: &AgentState) -> Ret {
+pub fn cdr(mut args: Args, state: &mut AgentState) -> Ret {
     if args.len() != 1 {
         return err_ctx!(
             state,
@@ -199,7 +199,7 @@ pub fn cdr(mut args: Args, state: &AgentState) -> Ret {
     }
 }
 
-pub fn cons(mut args: Args, state: &AgentState) -> Ret {
+pub fn cons(mut args: Args, state: &mut AgentState) -> Ret {
     if args.len() != 2 {
         return err_ctx!(
             state,
@@ -215,7 +215,7 @@ pub fn cons(mut args: Args, state: &AgentState) -> Ret {
     Ok(*sexp::cons(car, cdr).unwrap())
 }
 
-pub fn println(mut args: Args, state: &AgentState) -> Ret {
+pub fn println(mut args: Args, state: &mut AgentState) -> Ret {
     if args.len() != 1 {
         return err_ctx!(
             state,

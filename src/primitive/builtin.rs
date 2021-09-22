@@ -14,11 +14,11 @@ pub type Args = Vec<Sexp>;
 #[derive(Clone, Copy)]
 pub struct BuiltIn {
     name: &'static str,
-    fun: fn(Args, &AgentState) -> Ret,
+    fun: fn(Args, &mut AgentState) -> Ret,
 }
 
 impl BuiltIn {
-    pub fn new(name: &'static str, fun: fn(Args, &AgentState) -> Ret) -> BuiltIn {
+    pub fn new(name: &'static str, fun: fn(Args, &mut AgentState) -> Ret) -> BuiltIn {
         BuiltIn { name, fun }
     }
 
@@ -26,7 +26,7 @@ impl BuiltIn {
         self.name
     }
 
-    pub fn call(&self, args: Args, state: &AgentState) -> Ret {
+    pub fn call(&self, args: Args, state: &mut AgentState) -> Ret {
         (self.fun)(args, state)
     }
 }
