@@ -96,14 +96,28 @@ impl AmlangAgent {
                 }
                 Sexp::Cons(cons) => cons,
             };
-            // TODO(func) Allow for sequence.
-            let body_eval = self.eval(Box::new(cons.car().unwrap().clone()))?;
-            let body_node = self
-                .state_mut()
-                .env()
-                .insert_structure(body_eval)
-                .globalize(self.state());
-            Ok(Procedure::Abstraction(surface, body_node, reflect))
+
+            let mut body_nodes = vec![];
+            for elem in cons.into_iter() {
+                let eval = self.eval(elem)?;
+                let node = self
+                    .state_mut()
+                    .env()
+                    .insert_structure(eval)
+                    .globalize(self.state());
+                body_nodes.push(node);
+            }
+
+            if body_nodes.len() == 1 {
+                Ok(Procedure::Abstraction(surface, body_nodes[0], reflect))
+            } else {
+                let seq_node = self
+                    .state_mut()
+                    .env()
+                    .insert_structure(Procedure::Sequence(body_nodes).into())
+                    .globalize(self.state());
+                Ok(Procedure::Abstraction(surface, seq_node, reflect))
+            }
         })();
         self.eval_state.pop();
         res

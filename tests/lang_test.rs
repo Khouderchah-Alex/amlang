@@ -5,7 +5,7 @@ use std::convert::TryFrom;
 use amlang::agent::amlang_agent::RunError;
 use amlang::agent::Agent;
 use amlang::lang_err::{ErrKind, LangErr};
-use amlang::primitive::{Number, Primitive};
+use amlang::primitive::{Node, Number, Primitive};
 
 
 #[test]
@@ -40,11 +40,28 @@ fn basic_arithmetic() {
 }
 
 #[test]
-fn basic_lambda() {
+fn lambda_single_body() {
     let mut lang_agent = common::setup().unwrap();
 
     let results = common::results(&mut lang_agent, "((lambda (a) (+ a a)) 4)");
     assert_eq!(results, vec![Number::Integer(8).into()]);
+}
+
+#[test]
+fn lambda_seq_body() {
+    let mut lang_agent = common::setup().unwrap();
+
+    let results = common::results(&mut lang_agent, "((lambda (a) (jump a) (curr)) lambda)");
+    assert_eq!(
+        results,
+        vec![
+            Node::new(
+                lang_agent.state().context().lang_env(),
+                lang_agent.state().context().lambda
+            )
+            .into()
+        ]
+    );
 }
 
 #[test]
