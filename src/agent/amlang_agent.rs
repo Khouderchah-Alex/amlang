@@ -142,8 +142,15 @@ impl AmlangAgent {
                         }
                         Ok(self.exec(ca)?)
                     }
+                    Procedure::Sequence(seq) => {
+                        let mut result = Sexp::default();
+                        for elem in seq {
+                            let concrete = self.state().concretize(elem);
+                            result = self.exec(concrete)?;
+                        }
+                        Ok(result)
+                    }
                     lambda @ Procedure::Abstraction(..) => Ok(lambda.into()),
-                    _ => panic!("Unsupported procedure type: {:?}", proc),
                 }
             }
             _ => Ok(meaning),
@@ -534,6 +541,10 @@ impl Eval for AmlangAgent {
 
                             let proc = Procedure::Branch(args[0], args[1], args[2]);
                             return Ok(proc.into());
+                        }
+                        _ if Node::new(context.lang_env(), context.progn) == node => {
+                            let args = self.evlis(cdr, true)?;
+                            return Ok(Procedure::Sequence(args).into());
                         }
                         _ => {
                             let def_node = Node::new(context.lang_env(), context.def);

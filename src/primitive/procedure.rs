@@ -6,7 +6,7 @@ use crate::agent::agent_state::AgentState;
 use crate::agent::amlang_context::AmlangContext;
 use crate::lang_err::{ExpectedCount, LangErr};
 use crate::model::Model;
-use crate::sexp::{Cons, HeapSexp, Sexp};
+use crate::sexp::{cons, Cons, HeapSexp, Sexp};
 
 
 #[derive(Clone, Debug, PartialEq)]
@@ -34,11 +34,18 @@ impl Model for Procedure {
                 };
                 list!(special_node, params, *body,)
             }
+            Procedure::Sequence(seq) => {
+                let progn_node = Node::new(context.lang_env(), context.progn);
+                cons(
+                    Some(HeapSexp::new(progn_node.into())),
+                    Some(HeapSexp::new(seq.into())),
+                )
+                .unwrap()
+            }
             Procedure::Branch(pred, a, b) => {
                 let branch_node = Node::new(context.lang_env(), context.branch);
                 list!(branch_node, *pred, *a, *b,)
             }
-            _ => panic!(),
         }
     }
 
@@ -91,6 +98,27 @@ impl Model for Procedure {
             }
             let body_node = process_primitive(&body)?;
             Ok(Procedure::Abstraction(param_nodes, body_node, reflect).into())
+        } else if node.local() == context.progn {
+            let mut seq = vec![];
+            if cdr.is_some() {
+                match *cdr.unwrap() {
+                    Sexp::Cons(list) => {
+                        for sexp in list.into_iter() {
+                            match *sexp {
+                                Sexp::Primitive(p) => seq.push(process_primitive(&p)?),
+                                Sexp::Cons(c) => return err!(InvalidSexp(c.into())),
+                            }
+                        }
+                    }
+                    s @ _ => {
+                        return err!(InvalidArgument {
+                            given: s,
+                            expected: Cow::Borrowed("list of Procedure nodes")
+                        });
+                    }
+                }
+            }
+            Ok(Procedure::Sequence(seq).into())
         } else if node.local() == context.branch {
             if cdr.is_none() {
                 return err!(WrongArgumentCount {

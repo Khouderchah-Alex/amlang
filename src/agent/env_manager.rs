@@ -126,6 +126,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
             context.apply = LocalNode::new(33);
             context.branch = LocalNode::new(41);
             context.fexpr = LocalNode::new(45);
+            context.progn = LocalNode::new(49);
         }
 
         // Bootstrap lang env.
@@ -162,6 +163,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
                            exec: "exec",
                            import: "import",
                            branch: "if",
+                           progn: "progn",
                            env_find: "env_find",
         );
         info!("Lang env bootstrapping complete.");
