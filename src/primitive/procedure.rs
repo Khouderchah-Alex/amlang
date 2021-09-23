@@ -3,7 +3,6 @@ use std::convert::TryFrom;
 
 use super::{Node, Primitive};
 use crate::agent::agent_state::AgentState;
-use crate::agent::amlang_context::AmlangContext;
 use crate::lang_err::{ExpectedCount, LangErr};
 use crate::model::Model;
 use crate::sexp::{cons, Cons, HeapSexp, Sexp};
@@ -51,14 +50,15 @@ impl Model for Procedure {
 
     fn reflect<F>(
         structure: HeapSexp,
-        context: &mut AmlangContext,
+        state: &mut AgentState,
         mut process_primitive: F,
     ) -> Result<Self, LangErr>
     where
-        F: FnMut(&Primitive) -> Result<Node, LangErr>,
+        F: FnMut(&mut AgentState, &Primitive) -> Result<Node, LangErr>,
     {
         let (command, cdr) = break_by_types!(*structure, Primitive; remainder)?;
-        let node = process_primitive(&command)?;
+        let node = process_primitive(state, &command)?;
+        let context = state.context();
         if node.local() == context.apply {
             if cdr.is_none() {
                 return err!(WrongArgumentCount {
@@ -68,11 +68,11 @@ impl Model for Procedure {
             }
 
             let (func, args) = break_by_types!(*cdr.unwrap(), Primitive, Cons)?;
-            let fnode = process_primitive(&func)?;
+            let fnode = process_primitive(state, &func)?;
             let mut arg_nodes = Vec::with_capacity(args.iter().count());
             for arg in args {
                 if let Ok(p) = <&Primitive>::try_from(&*arg) {
-                    arg_nodes.push(process_primitive(&p)?);
+                    arg_nodes.push(process_primitive(state, &p)?);
                 } else {
                     return err!(InvalidSexp(*arg));
                 }
@@ -91,12 +91,12 @@ impl Model for Procedure {
             let mut param_nodes = Vec::with_capacity(params.iter().count());
             for param in params {
                 if let Ok(p) = <&Primitive>::try_from(&*param) {
-                    param_nodes.push(process_primitive(&p)?);
+                    param_nodes.push(process_primitive(state, &p)?);
                 } else {
                     return err!(InvalidSexp(*param));
                 }
             }
-            let body_node = process_primitive(&body)?;
+            let body_node = process_primitive(state, &body)?;
             Ok(Procedure::Abstraction(param_nodes, body_node, reflect).into())
         } else if node.local() == context.progn {
             let mut seq = vec![];
@@ -105,7 +105,7 @@ impl Model for Procedure {
                     Sexp::Cons(list) => {
                         for sexp in list.into_iter() {
                             match *sexp {
-                                Sexp::Primitive(p) => seq.push(process_primitive(&p)?),
+                                Sexp::Primitive(p) => seq.push(process_primitive(state, &p)?),
                                 Sexp::Cons(c) => return err!(InvalidSexp(c.into())),
                             }
                         }
@@ -129,9 +129,9 @@ impl Model for Procedure {
 
             let (pred, a, b) = break_by_types!(*cdr.unwrap(), Primitive, Primitive, Primitive)?;
             Ok(Procedure::Branch(
-                process_primitive(&pred)?,
-                process_primitive(&a)?,
-                process_primitive(&b)?,
+                process_primitive(state, &pred)?,
+                process_primitive(state, &a)?,
+                process_primitive(state, &b)?,
             )
             .into())
         } else {

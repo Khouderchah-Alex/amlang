@@ -1,5 +1,4 @@
 use crate::agent::agent_state::AgentState;
-use crate::agent::amlang_context::AmlangContext;
 use crate::lang_err::LangErr;
 use crate::primitive::{Node, Primitive};
 use crate::sexp::{HeapSexp, Sexp};
@@ -23,10 +22,10 @@ pub trait Model {
     /// vs one made of resolved Nodes.
     fn reflect<F>(
         structure: HeapSexp,
-        context: &mut AmlangContext,
+        state: &mut AgentState,
         process_primitive: F,
     ) -> Result<Self, LangErr>
     where
         Self: Sized,
-        F: FnMut(&Primitive) -> Result<Node, LangErr>;
+        F: FnMut(&mut AgentState, &Primitive) -> Result<Node, LangErr>;
 }

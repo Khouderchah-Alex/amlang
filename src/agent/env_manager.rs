@@ -476,18 +476,21 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
     }
 
     fn parse_symbol(&mut self, sym: &Symbol) -> Result<Node, DeserializeError> {
+        EnvManager::<Policy>::parse_symbol_inner(self.state_mut(), sym).map_err(|e| LangErr(e))
+    }
+
+    fn parse_symbol_inner(state: &mut AgentState, sym: &Symbol) -> Result<Node, lang_err::LangErr> {
         match policy_admin(sym.as_str()).unwrap() {
-            AdminSymbolInfo::Identifier => err!(UnboundSymbol(sym.clone())).map_err(|e| LangErr(e)),
-            AdminSymbolInfo::LocalNode(node) => Ok(node.globalize(self.state())),
+            AdminSymbolInfo::Identifier => err!(UnboundSymbol(sym.clone())),
+            AdminSymbolInfo::LocalNode(node) => Ok(node.globalize(state)),
             AdminSymbolInfo::LocalTriple(idx) => {
-                let triple = self.state_mut().env().triple_from_index(idx);
-                Ok(triple.node().globalize(self.state()))
+                let triple = state.env().triple_from_index(idx);
+                Ok(triple.node().globalize(state))
             }
             AdminSymbolInfo::GlobalNode(env, node) => Ok(Node::new(env, node)),
-            AdminSymbolInfo::GlobalTriple(env, idx) => Ok(Node::new(
-                env,
-                self.state_mut().env().triple_from_index(idx).node(),
-            )),
+            AdminSymbolInfo::GlobalTriple(env, idx) => {
+                Ok(Node::new(env, state.env().triple_from_index(idx).node()))
+            }
         }
     }
 
@@ -514,14 +517,12 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
             if node.env() == context.lang_env() {
                 return Ok(Procedure::reflect(
                     Sexp::Cons(Cons::new(Some(HeapSexp::new(command.into())), cdr)).into(),
-                    // TODO(perf) Perhaps make parse_symbol an associated
-                    // function which takes &mut AgentState, side-steppibg the
-                    // borrow issue here that necessitates cloning.
-                    &mut self.state().context().clone(),
-                    |p| match p {
+                    self.state_mut(),
+                    |state, p| match p {
                         Primitive::Node(n) => Ok(*n),
-                        // TODO(func) Pass error; probably combined with above todo.
-                        Primitive::Symbol(s) => Ok(self.parse_symbol(&s).unwrap()),
+                        Primitive::Symbol(s) => {
+                            Ok(EnvManager::<Policy>::parse_symbol_inner(state, &s)?)
+                        }
                         _ => panic!(),
                     },
                 )

@@ -5,7 +5,6 @@
 use std::fmt;
 
 use crate::agent::agent_state::AgentState;
-use crate::agent::amlang_context::AmlangContext;
 use crate::lang_err::LangErr;
 use crate::model::Model;
 use crate::primitive::Node;
@@ -59,7 +58,7 @@ impl Model for LocalTriple {
 
     fn reflect<F>(
         _structure: HeapSexp,
-        _context: &mut AmlangContext,
+        _state: &mut AgentState,
         _process_primitive: F,
     ) -> Result<Self, LangErr> {
         unimplemented!();
