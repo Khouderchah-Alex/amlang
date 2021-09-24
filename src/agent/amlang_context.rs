@@ -38,6 +38,7 @@ pub struct AmlangContext {
     pub env_find: LocalNode,
     pub t: LocalNode,
     pub f: LocalNode,
+    pub eq: LocalNode,
 }
 
 
@@ -74,6 +75,7 @@ impl AmlangContext {
             env_find: designation.clone(),
             t: designation.clone(),
             f: designation.clone(),
+            eq: designation.clone(),
         }
     }
 

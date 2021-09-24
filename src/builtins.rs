@@ -5,7 +5,7 @@ use crate::agent::agent_state::AgentState;
 use crate::lang_err::ExpectedCount;
 use crate::model::Ret;
 use crate::primitive::builtin::Args;
-use crate::primitive::{BuiltIn, Number, Primitive};
+use crate::primitive::{BuiltIn, Node, Number, Primitive};
 use crate::sexp::{self, Sexp};
 
 
@@ -29,7 +29,7 @@ macro_rules! builtins {
 
 // Used for bootstrapping and auxiliary purposes, not as an environment.
 pub fn generate_builtin_map() -> HashMap<&'static str, BuiltIn> {
-    builtins![add, sub, mul, div, car, cdr, cons, println]
+    builtins![add, sub, mul, div, car, cdr, cons, println, eq]
 }
 
 
@@ -229,4 +229,23 @@ pub fn println(mut args: Args, state: &mut AgentState) -> Ret {
     state.print_list(&args.pop().unwrap());
     println!("");
     Ok(Sexp::default())
+}
+
+pub fn eq(args: Args, state: &mut AgentState) -> Ret {
+    if args.len() != 2 {
+        return err_ctx!(
+            state,
+            WrongArgumentCount {
+                given: args.len(),
+                expected: ExpectedCount::Exactly(2),
+            }
+        );
+    }
+
+    let local = if args[0] == args[1] {
+        state.context().t
+    } else {
+        state.context().f
+    };
+    Ok(Node::new(state.context().lang_env(), local).into())
 }

@@ -65,6 +65,20 @@ fn lambda_seq_body() {
 }
 
 #[test]
+fn lambda_branch_body() {
+    let mut lang_agent = common::setup().unwrap();
+
+    let results = common::results(
+        &mut lang_agent,
+        "(def a (lambda (e) (if (eq e 1) 0 (+ e 2))))
+         (a 1)
+         (a 2)",
+    );
+    assert_eq!(results[1], Number::Integer(0).into());
+    assert_eq!(results[2], Number::Integer(4).into());
+}
+
+#[test]
 fn lambda_nested_exec() {
     let mut lang_agent = common::setup().unwrap();
 
