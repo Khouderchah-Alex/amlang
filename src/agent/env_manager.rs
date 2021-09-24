@@ -165,6 +165,8 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
                            branch: "if",
                            progn: "progn",
                            env_find: "env_find",
+                           t: "true",
+                           f: "false",
         );
         info!("Lang env bootstrapping complete.");
 

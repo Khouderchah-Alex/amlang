@@ -11,7 +11,7 @@ use crate::environment::LocalNode;
 use crate::lang_err::{ExpectedCount, LangErr};
 use crate::model::{Eval, Model, Ret};
 use crate::parser::{parse_sexp, ParseError};
-use crate::primitive::{AmString, Node, Number, Primitive, Procedure, Symbol, SymbolTable};
+use crate::primitive::{AmString, Node, Primitive, Procedure, Symbol, SymbolTable};
 use crate::sexp::{Cons, HeapSexp, Sexp, SexpIntoIter};
 use crate::token::TokenInfo;
 
@@ -151,10 +151,20 @@ impl AmlangAgent {
 
                         let cond = self.exec(cpred)?;
                         // TODO(func) Integrate actual boolean type.
-                        if cond != Number::Integer(1).into() {
-                            return Ok(self.exec(cb)?);
+                        let context = self.state().context();
+                        if cond == Node::new(context.lang_env(), context.t).into() {
+                            Ok(self.exec(ca)?)
+                        } else if cond == Node::new(context.lang_env(), context.f).into() {
+                            Ok(self.exec(cb)?)
+                        } else {
+                            err_ctx!(
+                                self.state(),
+                                InvalidArgument {
+                                    given: cond,
+                                    expected: Cow::Borrowed("true or false Node"),
+                                }
+                            )
                         }
-                        Ok(self.exec(ca)?)
                     }
                     Procedure::Sequence(seq) => {
                         let mut result = Sexp::default();
