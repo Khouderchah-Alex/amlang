@@ -319,10 +319,12 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
 
             if write_structure {
                 write!(&mut w, "(")?;
+            } else {
+                write!(&mut w, " ")?;
             }
             self.serialize_list_internal(&mut w, &node.globalize(self.state()).into(), 0)?;
             if write_structure {
-                write!(&mut w, "\t")?;
+                write!(&mut w, "  ")?;
                 if add_quote {
                     write!(&mut w, "'")?;
                 }
