@@ -45,8 +45,7 @@ pub enum DeserializeError {
     LangErr(lang_err::LangErr),
 }
 
-// Consumes manager and replaces placeholder'd context nodes through
-// AmlangDesignation lookups.
+/// Replace placeholder'd context nodes through AmlangDesignation lookups.
 macro_rules! bootstrap_context {
     (
         $manager:expr,
