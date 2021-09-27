@@ -534,61 +534,59 @@ impl Eval for AmlangAgent {
                 };
 
                 let eval_car = self.eval(car)?;
-                if let Ok(node) = <Node>::try_from(&eval_car) {
-                    let context = self.state().context();
-                    match node {
-                        _ if Node::new(context.lang_env(), context.quote) == node => {
-                            return quote_wrapper(cdr);
+                let node = match eval_car {
+                    Sexp::Primitive(Primitive::Procedure(_))
+                    | Sexp::Primitive(Primitive::Node(_)) => self.eval_to_node(eval_car)?,
+                    _ => {
+                        return err!(InvalidArgument {
+                            given: Cons::new(Some(Box::new(eval_car)), cdr).into(),
+                            expected: Cow::Borrowed("special form or Procedure application"),
+                        });
+                    }
+                };
+                let context = self.state().context();
+                match node {
+                    _ if Node::new(context.lang_env(), context.quote) == node => {
+                        return quote_wrapper(cdr);
+                    }
+                    _ if Node::new(context.lang_env(), context.lambda) == node
+                        || Node::new(context.lang_env(), context.fexpr) == node =>
+                    {
+                        let (params, body) = make_lambda_wrapper(cdr, &self.state())?;
+                        let reflect = node.local() == context.fexpr;
+                        let proc = self.make_lambda(params, body, reflect)?;
+                        return Ok(proc.into());
+                    }
+                    _ if Node::new(context.lang_env(), context.branch) == node => {
+                        let args = self.evlis(cdr, true)?;
+                        if args.len() != 3 {
+                            return err!(WrongArgumentCount {
+                                given: args.len(),
+                                expected: ExpectedCount::Exactly(3),
+                            });
                         }
-                        _ if Node::new(context.lang_env(), context.lambda) == node
-                            || Node::new(context.lang_env(), context.fexpr) == node =>
-                        {
-                            let (params, body) = make_lambda_wrapper(cdr, &self.state())?;
-                            let reflect = node.local() == context.fexpr;
-                            let proc = self.make_lambda(params, body, reflect)?;
-                            // TODO(flex) Don't insert so eval return val is consistent.
-                            return Ok(self
-                                .state_mut()
-                                .env()
-                                .insert_structure(proc.into())
-                                .globalize(self.state())
-                                .into());
-                        }
-                        _ if Node::new(context.lang_env(), context.branch) == node => {
-                            let args = self.evlis(cdr, true)?;
-                            if args.len() != 3 {
-                                return err!(WrongArgumentCount {
-                                    given: args.len(),
-                                    expected: ExpectedCount::Exactly(3),
-                                });
-                            }
-
-                            let proc = Procedure::Branch(args[0], args[1], args[2]);
-                            return Ok(proc.into());
-                        }
-                        _ if Node::new(context.lang_env(), context.progn) == node => {
-                            let args = self.evlis(cdr, true)?;
-                            return Ok(Procedure::Sequence(args).into());
-                        }
-                        _ => {
-                            let def_node = Node::new(context.lang_env(), context.def);
-                            let should_eval =
-                                match self.state_mut().designate(Primitive::Node(node))? {
-                                    // Don't evaluate args of reflective Abstractions.
-                                    Sexp::Primitive(Primitive::Procedure(
-                                        Procedure::Abstraction(_, _, true),
-                                    )) => false,
-                                    _ => node != def_node,
-                                };
-                            let args = self.evlis(cdr, should_eval)?;
-                            return Ok(Procedure::Application(node, args).into());
-                        }
+                        let proc = Procedure::Branch(args[0], args[1], args[2]);
+                        return Ok(proc.into());
+                    }
+                    _ if Node::new(context.lang_env(), context.progn) == node => {
+                        let args = self.evlis(cdr, true)?;
+                        return Ok(Procedure::Sequence(args).into());
+                    }
+                    _ => {
+                        let def_node = Node::new(context.lang_env(), context.def);
+                        let should_eval = match self.state_mut().designate(Primitive::Node(node))? {
+                            // Don't evaluate args of reflective Abstractions.
+                            Sexp::Primitive(Primitive::Procedure(Procedure::Abstraction(
+                                _,
+                                _,
+                                true,
+                            ))) => false,
+                            _ => node != def_node,
+                        };
+                        let args = self.evlis(cdr, should_eval)?;
+                        return Ok(Procedure::Application(node, args).into());
                     }
                 }
-                return err!(InvalidArgument {
-                    given: Cons::new(Some(Box::new(eval_car)), cdr).into(),
-                    expected: Cow::Borrowed("special form or functional application"),
-                });
             }
         }
     }
