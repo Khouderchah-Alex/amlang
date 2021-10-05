@@ -54,7 +54,7 @@ impl<'a> Entry<'a> {
         }
     }
 
-    /// Presents an Option with ownership. Since since Entries may own the
+    /// Presents an Option with ownership. Since Entries may own the
     /// structures in some impls, this may simply pass ownership without
     /// additional copies.
     ///
