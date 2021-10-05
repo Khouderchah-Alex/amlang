@@ -4,32 +4,37 @@ use crate::environment::serial_overlay::SerialOverlay;
 use crate::environment::Environment;
 
 
-pub trait EnvPolicy {
+pub trait EnvPolicy: Default {
     // Note the 'static requirement due to the fact that
     // Primitive::Env uses dyn Environment, which implicitly is
     // + 'static.
-    type DefaultEnv: Environment + Default + 'static;
+    type BaseEnv: Environment + Default + 'static;
+    // Form of BaseEnv to be stored.
+    //
+    // Ideally, this would be set to something that will clone sanely
+    // (like an overlay), such that structure clones from e.g.
+    // AgentState::designate() work as expected even for env nodes.
+    // However, certain deployments may be able to side-step this
+    // matter without needing this to clone nicely.
+    //
+    // This also allows, for example, Overlay types which require
+    // ownership of the BaseEnv.
+    type StoredEnv: Environment + 'static;
     type Overlay: Environment + 'static;
 
-    fn from_root_env(env: Self::DefaultEnv) -> Self;
-    fn new_overlay(&self) -> Box<Self::Overlay>;
+    fn new_stored_env(&mut self, base: Self::BaseEnv) -> Box<Self::StoredEnv>;
 }
 
 
-pub struct SimplePolicy {
-    root: <Self as EnvPolicy>::Overlay,
-}
+#[derive(Default)]
+pub struct SimplePolicy {}
 
 impl EnvPolicy for SimplePolicy {
-    type DefaultEnv = MemEnvironment<SimpleBackend>;
-    type Overlay = SerialOverlay<Self::DefaultEnv>;
+    type BaseEnv = MemEnvironment<SimpleBackend>;
+    type StoredEnv = Self::Overlay;
+    type Overlay = SerialOverlay<Self::BaseEnv>;
 
-    fn from_root_env(env: Self::DefaultEnv) -> Self {
-        Self {
-            root: Self::Overlay::new(env),
-        }
-    }
-    fn new_overlay(&self) -> Box<Self::Overlay> {
-        Box::new(self.root.clone())
+    fn new_stored_env(&mut self, base: Self::BaseEnv) -> Box<Self::StoredEnv> {
+        Box::new(Self::StoredEnv::new(base))
     }
 }

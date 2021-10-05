@@ -41,8 +41,6 @@ pub enum Primitive {
     Procedure(Procedure),
     // Presumably only present in meta env Nodes, but this comes down
     // to how base Agents are implemented.
-    //
-    // TODO(func) SharedEnv impl.
     Env(Box<EnvObject>),
 }
 

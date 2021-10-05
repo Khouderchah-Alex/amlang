@@ -11,7 +11,7 @@ use super::amlang_context::AmlangContext;
 use super::amlang_wrappers::quote_wrapper;
 use super::env_policy::EnvPolicy;
 use crate::builtins::generate_builtin_map;
-use crate::environment::environment::EnvObject;
+use crate::environment::environment::Environment;
 use crate::environment::LocalNode;
 use crate::lang_err;
 use crate::model::{Eval, Model, Ret};
@@ -28,7 +28,6 @@ use DeserializeError::*;
 
 pub struct EnvManager<Policy: EnvPolicy> {
     state: AgentState,
-    #[allow(dead_code)]
     policy: Policy,
 }
 
@@ -83,12 +82,11 @@ macro_rules! bootstrap_context {
 
 impl<Policy: EnvPolicy> EnvManager<Policy> {
     pub fn bootstrap<P: AsRef<StdPath>>(meta_path: P) -> Result<Self, DeserializeError> {
-        let mut meta = Policy::DefaultEnv::default();
-        EnvManager::<Policy>::initialize_env(LocalNode::default(), &mut meta);
+        let mut policy = Policy::default();
+        let meta = EnvManager::create_env(&mut policy, LocalNode::default());
 
-        let policy = Policy::from_root_env(meta);
         let context = AmlangContext::new(
-            policy.new_overlay(),
+            meta,
             LocalNode::new(0), // self
             LocalNode::new(1), // designation
         );
@@ -196,26 +194,25 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         Ok(manager)
     }
 
-    pub fn create_env<P: AsRef<StdPath>>(&mut self, path: P) -> LocalNode {
+    pub fn insert_new_env<P: AsRef<StdPath>>(&mut self, path: P) -> LocalNode {
         let serialize_path = self.state().context().serialize_path;
-        let meta = self.state_mut().context_mut().meta_mut();
-        let env_node = meta.insert_structure(Box::new(Policy::DefaultEnv::default()).into());
+        let env_node = self
+            .state_mut()
+            .context_mut()
+            .meta_mut()
+            .insert_structure(Sexp::default());
+        self.initialize_env_node(env_node);
 
+        let meta = self.state_mut().context_mut().meta_mut();
         let path_node = meta.insert_structure(Path::new(path.as_ref().to_path_buf()).into());
         meta.insert_triple(env_node, serialize_path, path_node);
 
-        let env =
-            if let Some(Sexp::Primitive(Primitive::Env(env))) = meta.node_structure_mut(env_node) {
-                env
-            } else {
-                panic!()
-            };
-        EnvManager::<Policy>::initialize_env(env_node, &mut **env);
         env_node
     }
 
+    fn create_env(policy: &mut Policy, env_node: LocalNode) -> Box<Policy::StoredEnv> {
+        let mut env = Policy::BaseEnv::default();
 
-    fn initialize_env(env_node: LocalNode, env: &mut EnvObject) {
         // Set up self node.
         let _self_node = env.insert_structure(Node::new(LocalNode::default(), env_node).into());
 
@@ -229,23 +226,14 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         } else {
             panic!("Env designation isn't a symbol table");
         }
+
+        policy.new_stored_env(env)
     }
 
     fn initialize_env_node(&mut self, env_node: LocalNode) {
+        let env = EnvManager::create_env(&mut self.policy, env_node);
         let meta = self.state_mut().context_mut().meta_mut();
-        if let Some(sexp) = meta.node_structure_mut(env_node) {
-            *sexp = Box::new(Policy::DefaultEnv::default()).into();
-            let env = if let Some(Sexp::Primitive(Primitive::Env(env))) =
-                meta.node_structure_mut(env_node)
-            {
-                env
-            } else {
-                panic!()
-            };
-            EnvManager::<Policy>::initialize_env(env_node, &mut **env);
-        } else {
-            panic!()
-        }
+        *meta.node_structure_mut(env_node).unwrap() = env.into();
     }
 }
 
@@ -295,11 +283,6 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         for node in self.state_mut().env().all_nodes() {
             write!(&mut w, "\n    ")?;
 
-            // Subtle: Cloning of Env doesn't actually copy data. In this case,
-            // the resulting Env object will be invalid and should only stand as
-            // a placeholder to determine typing.
-            //
-            // TODO(func) SharedEnv impl.
             let s = self.state_mut().env().node_structure(node).cloned();
             let (write_structure, add_quote) = match &s {
                 Some(sexp) => match sexp {
