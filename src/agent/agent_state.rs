@@ -325,10 +325,15 @@ impl AgentState {
         let imports_node = self.context.imports;
         let import_table_node = self.context.import_table;
         let env = self.pos().env();
-        let import_triple =
-            self.context
-                .meta_mut()
-                .get_or_insert_triple(env, imports_node, original.env());
+        let import_triple = {
+            let meta = self.context.meta_mut();
+            if let Some(triple) = meta.match_triple(env, imports_node, original.env()) {
+                triple
+            } else {
+                meta.insert_triple(env, imports_node, original.env())
+            }
+        };
+
         let matches = self
             .context
             .meta()

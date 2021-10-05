@@ -29,18 +29,6 @@ pub trait Environment: DynClone {
         predicate: LocalNode,
         object: LocalNode,
     ) -> LocalTriple;
-    fn get_or_insert_triple(
-        &mut self,
-        subject: LocalNode,
-        predicate: LocalNode,
-        object: LocalNode,
-    ) -> LocalTriple {
-        if let Some(triple) = self.match_triple(subject, predicate, object) {
-            triple
-        } else {
-            self.insert_triple(subject, predicate, object)
-        }
-    }
 
     fn match_subject(&self, subject: LocalNode) -> TripleSet;
     fn match_predicate(&self, predicate: LocalNode) -> TripleSet;
