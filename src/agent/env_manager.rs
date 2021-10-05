@@ -58,10 +58,10 @@ macro_rules! bootstrap_context {
                 <&SymbolTable>::try_from(
                     $manager.state_mut().env().node_structure(desig_node)
                 ) {
-                table
-            } else {
-                panic!("Env designation isn't a symbol table");
-            };
+                    table
+                } else {
+                    panic!("Env designation isn't a symbol table");
+                };
 
             let lookup = |s: &str| -> Result<LocalNode, DeserializeError> {
                 if let Some(node) = table.lookup(s) {
