@@ -79,11 +79,11 @@ impl AmlangContext {
         }
     }
 
-    pub fn meta(&self) -> &EnvObject {
-        &*self.meta
+    pub fn meta(&self) -> &Box<EnvObject> {
+        &self.meta
     }
-    pub fn meta_mut(&mut self) -> &mut EnvObject {
-        &mut *self.meta
+    pub fn meta_mut(&mut self) -> &mut Box<EnvObject> {
+        &mut self.meta
     }
 
     pub fn lang_env(&self) -> LocalNode {

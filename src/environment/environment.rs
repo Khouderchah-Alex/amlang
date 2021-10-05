@@ -4,6 +4,7 @@ use dyn_clone::DynClone;
 use std::collections::BTreeSet;
 use std::fmt;
 
+use super::entry::{Entry, EntryMut};
 use super::local_node::{LocalNode, LocalTriple};
 use crate::sexp::Sexp;
 
@@ -66,8 +67,8 @@ pub trait Environment: DynClone {
         triples.union(&self.match_object(node)).cloned().collect()
     }
 
-    fn node_structure(&self, node: LocalNode) -> Option<&Sexp>;
-    fn node_structure_mut(&mut self, node: LocalNode) -> Option<&mut Sexp>;
+    fn node_structure(&self, node: LocalNode) -> Entry;
+    fn node_structure_mut(&mut self, node: LocalNode) -> EntryMut;
     fn node_as_triple(&self, node: LocalNode) -> Option<LocalTriple>;
 
     fn triple_subject(&self, triple: LocalTriple) -> LocalNode;

@@ -22,7 +22,10 @@ fn atomic_insertion() {
 fn structure_insertion() {
     let mut env = MemEnvironment::<SimpleBackend>::new();
     let a = env.insert_structure("(1 2 3)".parse().unwrap());
-    assert_eq!(env.node_structure(a).unwrap(), &"(1 2 3)".parse().unwrap());
+    assert_eq!(
+        env.node_structure(a).structure(),
+        &"(1 2 3)".parse().unwrap()
+    );
 
     let b = env.insert_atom();
     let c = env.insert_atom();
@@ -30,7 +33,7 @@ fn structure_insertion() {
     let t = env.insert_triple(a, b, c);
     assert_eq!(env.triple_subject(t), a);
     assert_eq!(
-        env.node_structure(env.triple_subject(t)).unwrap(),
+        env.node_structure(env.triple_subject(t)).structure(),
         &"(1 2 3)".parse().unwrap()
     );
 

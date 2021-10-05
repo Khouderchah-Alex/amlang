@@ -1,6 +1,7 @@
 use std::cell::UnsafeCell;
 use std::sync::Arc;
 
+use super::entry::{Entry, EntryMut};
 use super::environment::{Environment, NodeSet, TripleSet};
 use super::local_node::{LocalNode, LocalTriple};
 use crate::sexp::Sexp;
@@ -85,10 +86,10 @@ impl<T: Environment + Clone> Environment for SerialOverlay<T> {
         self.base().match_all()
     }
 
-    fn node_structure(&self, node: LocalNode) -> Option<&Sexp> {
+    fn node_structure(&self, node: LocalNode) -> Entry {
         self.base().node_structure(node)
     }
-    fn node_structure_mut(&mut self, node: LocalNode) -> Option<&mut Sexp> {
+    fn node_structure_mut(&mut self, node: LocalNode) -> EntryMut {
         self.base().node_structure_mut(node)
     }
     fn node_as_triple(&self, node: LocalNode) -> Option<LocalTriple> {

@@ -124,21 +124,20 @@ impl AgentState {
 
 // Core functionality.
 impl AgentState {
-    pub fn access_env(&mut self, meta_node: LocalNode) -> Option<&mut EnvObject> {
+    pub fn access_env(&mut self, meta_node: LocalNode) -> Option<&mut Box<EnvObject>> {
         let meta = self.context.meta_mut();
         if meta_node == LocalNode::default() {
             return Some(meta);
         }
 
-        if let Some(Sexp::Primitive(Primitive::Env(env))) = meta.node_structure_mut(meta_node) {
-            Some(env.as_mut())
-        } else {
-            None
-        }
+        meta.node_structure_mut(meta_node).env()
     }
 
-    pub fn env(&mut self) -> &mut EnvObject {
-        // TODO(sec) Verify.
+    pub fn env(&mut self) -> &mut Box<EnvObject> {
+        // Note(sec) Verification of jumps makes this unwrap safe *if*
+        // we can assume that env nodes will not have their structures
+        // changed to non-envs. If needed, this can be implemented
+        // through EnvPolicy and/or Entry impls.
         self.access_env(self.pos().env()).unwrap()
     }
 
@@ -152,7 +151,7 @@ impl AgentState {
         let names = env.match_but_object(node.local(), designation);
         if let Some(name_node) = names.iter().next() {
             let name = env.triple_object(*name_node);
-            if let Ok(sym) = Symbol::try_from(env.node_structure(name).cloned().unwrap()) {
+            if let Ok(sym) = Symbol::try_from(env.node_structure(name).owned().unwrap()) {
                 return Some(sym);
             }
         }
@@ -170,7 +169,8 @@ impl AgentState {
 
         for i in 0..self.designation_chain.len() {
             let env = self.access_env(self.designation_chain[i]).unwrap();
-            let table = <&SymbolTable>::try_from(env.node_structure(designation)).unwrap();
+            let entry = env.node_structure(designation);
+            let table = <&SymbolTable>::try_from(entry.as_option()).unwrap();
             if let Some(node) = table.lookup(name) {
                 return Ok(node);
             }
@@ -188,6 +188,7 @@ impl AgentState {
                     .access_env(node.env())
                     .unwrap()
                     .node_structure(node.local())
+                    .as_option()
                 {
                     Ok(structure.clone())
                 } else if let Some(triple) = self
@@ -210,14 +211,14 @@ impl AgentState {
 
     pub fn name_node(&mut self, name: LocalNode, node: LocalNode) -> Result<Node, LangErr> {
         let name_sexp = self.env().node_structure(name);
-        let symbol = if let Ok(symbol) = <Symbol>::try_from(name_sexp.cloned()) {
+        let symbol = if let Ok(symbol) = <Symbol>::try_from(name_sexp.owned()) {
             symbol
         } else {
             return err!(InvalidArgument {
                 given: self
                     .env()
                     .node_structure(name)
-                    .cloned()
+                    .owned()
                     .unwrap_or(Sexp::default()),
                 expected: Cow::Borrowed("Node abstracting Symbol"),
             });
@@ -235,7 +236,8 @@ impl AgentState {
 
         let designation = self.context().designation();
         // Use designation of current environment.
-        if let Ok(table) = <&mut SymbolTable>::try_from(self.env().node_structure_mut(designation))
+        if let Ok(table) =
+            <&mut SymbolTable>::try_from(self.env().node_structure_mut(designation).as_option())
         {
             table.insert(symbol, global_node);
         } else {
@@ -350,7 +352,7 @@ impl AgentState {
         };
 
         if let Ok(table) =
-            <&LocalNodeTable>::try_from(self.context.meta().node_structure(table_node))
+            <&LocalNodeTable>::try_from(self.context.meta().node_structure(table_node).as_option())
         {
             if let Some(imported) = table.lookup(&original.local()) {
                 return Ok(imported.globalize(&self));
@@ -363,9 +365,12 @@ impl AgentState {
         };
 
         let imported = self.env().insert_structure(original.into());
-        if let Ok(table) =
-            <&mut LocalNodeTable>::try_from(self.context.meta_mut().node_structure_mut(table_node))
-        {
+        if let Ok(table) = <&mut LocalNodeTable>::try_from(
+            self.context
+                .meta_mut()
+                .node_structure_mut(table_node)
+                .as_option(),
+        ) {
             table.insert(original.local(), imported);
         } else {
             return err!(InvalidState {
@@ -381,7 +386,8 @@ impl AgentState {
         let triples = meta.match_predicate(self.context.serialize_path);
         for triple in triples {
             let object_node = meta.triple_object(triple);
-            let object = meta.node_structure(object_node).unwrap();
+            let entry = meta.node_structure(object_node);
+            let object = entry.structure();
             if let Ok(path) = <&Path>::try_from(object) {
                 if path.as_std_path().ends_with(s.as_ref()) {
                     return Some(meta.triple_subject(triple));
@@ -439,6 +445,7 @@ impl AgentState {
                         .access_env(node.env())
                         .unwrap()
                         .node_structure(node.local())
+                        .as_option()
                     {
                         write!(w, "{}->", node)?;
                         structure.clone()

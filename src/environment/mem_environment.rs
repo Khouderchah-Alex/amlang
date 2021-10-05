@@ -3,6 +3,7 @@
 use log::warn;
 use std::fmt::Debug;
 
+use super::entry::{Entry, EntryMut};
 use super::environment::{Environment, NodeSet, TripleSet};
 use super::local_node::{LocalId, LocalNode, LocalTriple};
 use super::mem_backend::{index_id_conv::*, Edges, MemBackend, Node, Triple};
@@ -120,25 +121,27 @@ impl<Backend: MemBackend> Environment for MemEnvironment<Backend> {
             .collect()
     }
 
-    fn node_structure(&self, node: LocalNode) -> Option<&Sexp> {
+    fn node_structure(&self, node: LocalNode) -> Entry {
         if is_triple_id(node.id()) {
-            return None;
+            return None.into();
         }
 
         match &self.backend.node_unchecked(node) {
             Node::Atomic => None,
             Node::Structured(structure) => Some(structure),
         }
+        .into()
     }
-    fn node_structure_mut(&mut self, node: LocalNode) -> Option<&mut Sexp> {
+    fn node_structure_mut(&mut self, node: LocalNode) -> EntryMut {
         if is_triple_id(node.id()) {
-            return None;
+            return None.into();
         }
 
         match self.backend.node_mut_unchecked(node) {
             Node::Atomic => None,
             Node::Structured(structure) => Some(structure),
         }
+        .into()
     }
     fn node_as_triple(&self, node: LocalNode) -> Option<LocalTriple> {
         if !is_triple_id(node.id()) {
@@ -170,7 +173,7 @@ impl<Backend: MemBackend> Clone for MemEnvironment<Backend> {
     fn clone(&self) -> Self {
         warn!(
             "Env @ {} being empty-cloned.",
-            self.node_structure(LocalNode::default()).unwrap(),
+            self.node_structure(LocalNode::default()).structure(),
         );
         MemEnvironment::new()
     }
