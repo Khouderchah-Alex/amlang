@@ -12,10 +12,10 @@ pub trait Eval {
 }
 
 pub trait Model {
-    /// Model -> structure according to (possibly implicit) metamodel.
+    /// Model -> Structure according to (possibly implicit) metamodel.
     fn reify(&self, state: &mut AgentState) -> HeapSexp;
 
-    /// Model <- structure according to (possibly implicit) metamodel.
+    /// Structure -> Model according to (possibly implicit) metamodel.
     ///
     /// |process_primitive| is used so that reflect code can be written
     /// uniformly in the face of, say, a structure made of unresolved Symbols
