@@ -16,15 +16,23 @@ pub mod symbol;
 pub mod symbol_policies;
 pub mod table;
 
-pub use self::builtin::BuiltIn;
-pub use self::node::Node;
-pub use self::number::Number;
-pub use self::path::Path;
-pub use self::procedure::Procedure;
-pub use self::string::AmString;
-pub use self::symbol::{Symbol, ToSymbol};
-pub use self::table::{LocalNodeTable, SymbolTable};
-pub use crate::environment::environment::EnvObject;
+/// Some modules tend to interact with most primitive types rather
+/// than just a few. Provide this for those clients to ::* use.
+pub mod prelude {
+    pub use super::Primitive;
+
+    pub use super::builtin::BuiltIn;
+    pub use super::node::Node;
+    pub use super::number::Number;
+    pub use super::path::Path;
+    pub use super::procedure::Procedure;
+    pub use super::string::AmString;
+    pub use super::symbol::{Symbol, ToSymbol};
+    pub use super::table::{LocalNodeTable, SymbolTable};
+    pub use crate::environment::environment::EnvObject;
+}
+/// All other clients can simply pick out what to use as normal.
+pub use prelude::*;
 
 
 #[derive(Clone, Debug)]

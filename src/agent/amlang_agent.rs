@@ -11,7 +11,7 @@ use crate::environment::LocalNode;
 use crate::lang_err::{ExpectedCount, LangErr};
 use crate::model::{Eval, Model, Ret};
 use crate::parser::{parse_sexp, ParseError};
-use crate::primitive::{AmString, Node, Primitive, Procedure, Symbol, SymbolTable};
+use crate::primitive::prelude::*;
 use crate::sexp::{Cons, HeapSexp, Sexp, SexpIntoIter};
 use crate::token::TokenInfo;
 

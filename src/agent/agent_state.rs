@@ -11,9 +11,9 @@ use crate::environment::environment::{EnvObject, TripleSet};
 use crate::environment::LocalNode;
 use crate::lang_err::LangErr;
 use crate::model::Model;
+use crate::primitive::prelude::*;
 use crate::primitive::symbol_policies::policy_admin;
 use crate::primitive::table::Table;
-use crate::primitive::{LocalNodeTable, Node, Path, Primitive, Symbol, SymbolTable, ToSymbol};
 use crate::sexp::Sexp;
 
 

@@ -16,10 +16,8 @@ use crate::environment::LocalNode;
 use crate::lang_err;
 use crate::model::{Eval, Model, Ret};
 use crate::parser::{self, parse_sexp};
+use crate::primitive::prelude::*;
 use crate::primitive::symbol_policies::{policy_admin, AdminSymbolInfo};
-use crate::primitive::{
-    AmString, BuiltIn, Node, Path, Primitive, Procedure, Symbol, SymbolTable, ToSymbol,
-};
 use crate::sexp::{Cons, HeapSexp, Sexp, SexpIntoIter};
 use crate::token::file_stream::{self, FileStream, FileStreamError};
 

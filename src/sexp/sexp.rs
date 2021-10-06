@@ -8,11 +8,8 @@ use super::cons_list::ConsList;
 use crate::environment::Environment;
 use crate::lang_err::{ExpectedCount, LangErr};
 use crate::parser::{parse_sexp, ParseError};
+use crate::primitive::prelude::*;
 use crate::primitive::symbol_policies::policy_base;
-use crate::primitive::{
-    AmString, BuiltIn, LocalNodeTable, Node, Number, Path, Primitive, Procedure, Symbol,
-    SymbolTable,
-};
 use crate::token::string_stream::StringStream;
 use crate::token::TokenizeError;
 
