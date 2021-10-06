@@ -284,7 +284,9 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
             let s = self.state_mut().env().node_structure(node).owned();
             let (write_structure, add_quote) = match &s {
                 Some(sexp) => match sexp {
+                    // TODO(func) Serialize both of these. Perhaps impl Model?
                     Sexp::Primitive(Primitive::SymbolTable(_)) => (false, false),
+                    Sexp::Primitive(Primitive::LocalNodeTable(_)) => (false, false),
                     // Don't quote structures with special deserialize ops.
                     Sexp::Primitive(Primitive::BuiltIn(_)) => (true, false),
                     Sexp::Primitive(Primitive::Procedure(_)) => (true, false),
