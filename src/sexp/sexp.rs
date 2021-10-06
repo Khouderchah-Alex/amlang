@@ -435,7 +435,7 @@ impl TryFrom<Sexp> for SexpIntoIter {
 
     fn try_from(value: Sexp) -> Result<Self, Self::Error> {
         match value {
-            Sexp::Primitive(primitive) => err!(InvalidSexp(primitive.clone().into())),
+            Sexp::Primitive(primitive) => err_nost!(InvalidSexp(primitive.clone().into())),
             Sexp::Cons(cons) => Ok(cons.into_iter()),
         }
     }
@@ -447,10 +447,10 @@ impl TryFrom<Option<HeapSexp>> for SexpIntoIter {
     fn try_from(value: Option<HeapSexp>) -> Result<Self, Self::Error> {
         match value {
             Some(sexp) => match *sexp {
-                Sexp::Primitive(primitive) => err!(InvalidSexp(primitive.clone().into())),
+                Sexp::Primitive(primitive) => err_nost!(InvalidSexp(primitive.clone().into())),
                 Sexp::Cons(cons) => Ok(cons.into_iter()),
             },
-            None => err!(WrongArgumentCount {
+            None => err_nost!(WrongArgumentCount {
                 given: 0,
                 expected: ExpectedCount::AtLeast(1),
             }),

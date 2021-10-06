@@ -61,7 +61,7 @@ impl Model for Procedure {
         let context = state.context();
         if node.local() == context.apply {
             if cdr.is_none() {
-                return err!(WrongArgumentCount {
+                return err_nost!(WrongArgumentCount {
                     given: 0,
                     expected: ExpectedCount::Exactly(2),
                 });
@@ -74,13 +74,13 @@ impl Model for Procedure {
                 if let Ok(p) = <&Primitive>::try_from(&*arg) {
                     arg_nodes.push(process_primitive(state, &p)?);
                 } else {
-                    return err!(InvalidSexp(*arg));
+                    return err_nost!(InvalidSexp(*arg));
                 }
             }
             Ok(Procedure::Application(fnode, arg_nodes).into())
         } else if node.local() == context.lambda || node.local() == context.fexpr {
             if cdr.is_none() {
-                return err!(WrongArgumentCount {
+                return err_nost!(WrongArgumentCount {
                     given: 0,
                     expected: ExpectedCount::AtLeast(2),
                 });
@@ -93,7 +93,7 @@ impl Model for Procedure {
                 if let Ok(p) = <&Primitive>::try_from(&*param) {
                     param_nodes.push(process_primitive(state, &p)?);
                 } else {
-                    return err!(InvalidSexp(*param));
+                    return err_nost!(InvalidSexp(*param));
                 }
             }
             let body_node = process_primitive(state, &body)?;
@@ -106,12 +106,12 @@ impl Model for Procedure {
                         for sexp in list.into_iter() {
                             match *sexp {
                                 Sexp::Primitive(p) => seq.push(process_primitive(state, &p)?),
-                                Sexp::Cons(c) => return err!(InvalidSexp(c.into())),
+                                Sexp::Cons(c) => return err_nost!(InvalidSexp(c.into())),
                             }
                         }
                     }
                     s @ _ => {
-                        return err!(InvalidArgument {
+                        return err_nost!(InvalidArgument {
                             given: s,
                             expected: Cow::Borrowed("list of Procedure nodes")
                         });
@@ -121,7 +121,7 @@ impl Model for Procedure {
             Ok(Procedure::Sequence(seq).into())
         } else if node.local() == context.branch {
             if cdr.is_none() {
-                return err!(WrongArgumentCount {
+                return err_nost!(WrongArgumentCount {
                     given: 0,
                     expected: ExpectedCount::Exactly(3),
                 });
@@ -135,7 +135,7 @@ impl Model for Procedure {
             )
             .into())
         } else {
-            err!(InvalidArgument {
+            err_nost!(InvalidArgument {
                 given: command.into(),
                 expected: Cow::Borrowed("Procedure variant")
             })

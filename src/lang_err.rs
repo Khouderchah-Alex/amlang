@@ -8,18 +8,25 @@ use crate::primitive::Symbol;
 use crate::sexp::Sexp;
 
 
+/// Creates a stateful LangErr.
+///
+/// Called as:  err!(state, error).
+/// Stateful errors should always be used when possible.
 macro_rules! err {
-    ($($kind:tt)+) => {
-        Err(crate::lang_err::LangErr::empty_context(
+    ($state:expr, $($kind:tt)+) => {
+        Err(crate::lang_err::LangErr::with_state(
+            $state.clone(),
             crate::lang_err::ErrKind::$($kind)+,
         ))
     };
 }
-
-macro_rules! err_ctx {
-    ($state:expr, $($kind:tt)+) => {
-        Err(crate::lang_err::LangErr::with_context(
-            $state.clone(),
+/// Creates a stateless LangErr.
+///
+/// Called as:  err_nost!(error).
+/// Stateful errors are always preferred when possible.
+macro_rules! err_nost {
+    ($($kind:tt)+) => {
+        Err(crate::lang_err::LangErr::empty_state(
             crate::lang_err::ErrKind::$($kind)+,
         ))
     };
@@ -61,12 +68,12 @@ pub enum ExpectedCount {
 
 impl LangErr {
     // Prefer using err! for convenience.
-    pub fn empty_context(kind: ErrKind) -> Self {
+    pub fn empty_state(kind: ErrKind) -> Self {
         Self { state: None, kind }
     }
 
-    // Prefer using err_ctx! for convenience.
-    pub fn with_context(state: AgentState, kind: ErrKind) -> Self {
+    // Prefer using err! for convenience.
+    pub fn with_state(state: AgentState, kind: ErrKind) -> Self {
         Self {
             state: Some(state),
             kind,

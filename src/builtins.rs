@@ -39,7 +39,7 @@ pub fn add(args: Args, state: &mut AgentState) -> Ret {
         if let Sexp::Primitive(Primitive::Number(num)) = arg {
             curr += num;
         } else {
-            return err_ctx!(
+            return err!(
                 state,
                 InvalidArgument {
                     given: arg.clone(),
@@ -54,7 +54,7 @@ pub fn add(args: Args, state: &mut AgentState) -> Ret {
 
 pub fn sub(args: Args, state: &mut AgentState) -> Ret {
     if args.len() < 1 {
-        return err_ctx!(
+        return err!(
             state,
             WrongArgumentCount {
                 given: 0,
@@ -74,7 +74,7 @@ pub fn sub(args: Args, state: &mut AgentState) -> Ret {
                 curr -= num;
             }
         } else {
-            return err_ctx!(
+            return err!(
                 state,
                 InvalidArgument {
                     given: arg.clone(),
@@ -93,7 +93,7 @@ pub fn mul(args: Args, state: &mut AgentState) -> Ret {
         if let Sexp::Primitive(Primitive::Number(num)) = arg {
             curr *= num;
         } else {
-            return err_ctx!(
+            return err!(
                 state,
                 InvalidArgument {
                     given: arg.clone(),
@@ -108,7 +108,7 @@ pub fn mul(args: Args, state: &mut AgentState) -> Ret {
 
 pub fn div(args: Args, state: &mut AgentState) -> Ret {
     if args.len() < 1 {
-        return err_ctx!(
+        return err!(
             state,
             WrongArgumentCount {
                 given: 0,
@@ -128,7 +128,7 @@ pub fn div(args: Args, state: &mut AgentState) -> Ret {
                 curr /= num;
             }
         } else {
-            return err_ctx!(
+            return err!(
                 state,
                 InvalidArgument {
                     given: arg.clone(),
@@ -143,7 +143,7 @@ pub fn div(args: Args, state: &mut AgentState) -> Ret {
 
 pub fn car(mut args: Args, state: &mut AgentState) -> Ret {
     if args.len() != 1 {
-        return err_ctx!(
+        return err!(
             state,
             WrongArgumentCount {
                 given: args.len(),
@@ -160,7 +160,7 @@ pub fn car(mut args: Args, state: &mut AgentState) -> Ret {
             Ok(Sexp::default())
         }
     } else {
-        err_ctx!(
+        err!(
             state,
             InvalidArgument {
                 given: first,
@@ -172,7 +172,7 @@ pub fn car(mut args: Args, state: &mut AgentState) -> Ret {
 
 pub fn cdr(mut args: Args, state: &mut AgentState) -> Ret {
     if args.len() != 1 {
-        return err_ctx!(
+        return err!(
             state,
             WrongArgumentCount {
                 given: args.len(),
@@ -189,7 +189,7 @@ pub fn cdr(mut args: Args, state: &mut AgentState) -> Ret {
             Ok(Sexp::default())
         }
     } else {
-        err_ctx!(
+        err!(
             state,
             InvalidArgument {
                 given: first,
@@ -201,7 +201,7 @@ pub fn cdr(mut args: Args, state: &mut AgentState) -> Ret {
 
 pub fn cons(mut args: Args, state: &mut AgentState) -> Ret {
     if args.len() != 2 {
-        return err_ctx!(
+        return err!(
             state,
             WrongArgumentCount {
                 given: args.len(),
@@ -217,7 +217,7 @@ pub fn cons(mut args: Args, state: &mut AgentState) -> Ret {
 
 pub fn println(mut args: Args, state: &mut AgentState) -> Ret {
     if args.len() != 1 {
-        return err_ctx!(
+        return err!(
             state,
             WrongArgumentCount {
                 given: args.len(),
@@ -233,7 +233,7 @@ pub fn println(mut args: Args, state: &mut AgentState) -> Ret {
 
 pub fn eq(args: Args, state: &mut AgentState) -> Ret {
     if args.len() != 2 {
-        return err_ctx!(
+        return err!(
             state,
             WrongArgumentCount {
                 given: args.len(),

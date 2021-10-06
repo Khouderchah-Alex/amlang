@@ -175,7 +175,7 @@ impl AgentState {
                 return Ok(node);
             }
         }
-        err!(UnboundSymbol(name.clone()))
+        err_nost!(UnboundSymbol(name.clone()))
     }
 
     pub fn designate(&mut self, designator: Primitive) -> Result<Sexp, LangErr> {
@@ -214,7 +214,7 @@ impl AgentState {
         let symbol = if let Ok(symbol) = <Symbol>::try_from(name_sexp.owned()) {
             symbol
         } else {
-            return err!(InvalidArgument {
+            return err_nost!(InvalidArgument {
                 given: self
                     .env()
                     .node_structure(name)
@@ -229,7 +229,7 @@ impl AgentState {
         // designations; that is, only fail if the designation exists earlier in
         // the chain than the current environment.
         if let Ok(_) = self.resolve(&symbol) {
-            return err!(AlreadyBoundSymbol(symbol));
+            return err_nost!(AlreadyBoundSymbol(symbol));
         }
 
         let global_node = node.globalize(&self);
@@ -261,7 +261,7 @@ impl AgentState {
             .iter()
             .next()
         {
-            return err!(DuplicateTriple(*triple.reify(self)));
+            return err_nost!(DuplicateTriple(*triple.reify(self)));
         }
 
         let triple = self.env().insert_triple(subject, predicate, object);
@@ -316,7 +316,7 @@ impl AgentState {
 
     pub fn import(&mut self, original: Node) -> Result<Node, LangErr> {
         if original.env() == self.pos().env() {
-            return err!(InvalidArgument {
+            return err_nost!(InvalidArgument {
                 given: original.into(),
                 expected: Cow::Borrowed("Node outside of current env"),
             });
@@ -363,7 +363,7 @@ impl AgentState {
                 return Ok(imported.globalize(&self));
             }
         } else {
-            return err!(InvalidState {
+            return err_nost!(InvalidState {
                 actual: Cow::Borrowed("import table triple object has no table"),
                 expected: Cow::Borrowed("has table"),
             });
@@ -378,7 +378,7 @@ impl AgentState {
         ) {
             table.insert(original.local(), imported);
         } else {
-            return err!(InvalidState {
+            return err_nost!(InvalidState {
                 actual: Cow::Borrowed("import table triple object has no table"),
                 expected: Cow::Borrowed("has table"),
             });

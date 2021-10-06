@@ -65,7 +65,7 @@ macro_rules! bootstrap_context {
                 if let Some(node) = table.lookup(s) {
                     Ok(node.local())
                 } else {
-                    err!(UnboundSymbol(s.to_symbol_or_panic(policy_admin))).map_err(|e| LangErr(e))
+                    err_nost!(UnboundSymbol(s.to_symbol_or_panic(policy_admin))).map_err(|e| LangErr(e))
                 }
             };
             (
@@ -468,7 +468,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
 
     fn parse_symbol_inner(state: &mut AgentState, sym: &Symbol) -> Result<Node, lang_err::LangErr> {
         match policy_admin(sym.as_str()).unwrap() {
-            AdminSymbolInfo::Identifier => err!(UnboundSymbol(sym.clone())),
+            AdminSymbolInfo::Identifier => err_nost!(UnboundSymbol(sym.clone())),
             AdminSymbolInfo::LocalNode(node) => Ok(node.globalize(state)),
             AdminSymbolInfo::LocalTriple(idx) => {
                 let triple = state.env().triple_from_index(idx);

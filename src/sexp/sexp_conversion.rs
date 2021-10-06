@@ -9,7 +9,7 @@ macro_rules! break_by_types {
         {
             match $sexp {
                 Sexp::Primitive(primitive) => {
-                    err!(InvalidSexp(primitive.clone().into()))
+                    err_nost!(InvalidSexp(primitive.clone().into()))
                 }
                 Sexp::Cons(cons) => {
                     let mut iter = cons.into_iter();
@@ -28,7 +28,7 @@ macro_rules! break_by_types {
                                             i += 1;
                                             <$type>::try_from(*sexp).unwrap()
                                         } else {
-                                            return err!(InvalidArgument{
+                                            return err_nost!(InvalidArgument{
                                                 given: *sexp.clone(),
                                                 expected: std::borrow::Cow::Owned(
                                                     "type ".to_string() + stringify!($type)
@@ -37,7 +37,7 @@ macro_rules! break_by_types {
                                         }
                                     }
                                     None =>  {
-                                        return err!(WrongArgumentCount{
+                                        return err_nost!(WrongArgumentCount{
                                             given: i,
                                             expected: crate::lang_err::ExpectedCount::Exactly(
                                                 expected
@@ -59,7 +59,7 @@ macro_rules! break_by_types {
                             iter = Cons::default().into_iter();
                         )*
                         if let Some(_) = iter.next() {
-                            return err!(WrongArgumentCount{
+                            return err_nost!(WrongArgumentCount{
                                 given: i + 1 + iter.count(),
                                 expected: crate::lang_err::ExpectedCount::Exactly(i),
                             });

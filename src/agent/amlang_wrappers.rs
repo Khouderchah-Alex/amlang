@@ -10,7 +10,7 @@ use crate::sexp::{Cons, HeapSexp, Sexp};
 
 pub fn quote_wrapper(args: Option<HeapSexp>) -> Ret {
     if args.is_none() {
-        return err!(WrongArgumentCount {
+        return err_nost!(WrongArgumentCount {
             given: 0,
             expected: ExpectedCount::Exactly(1),
         });
@@ -25,7 +25,7 @@ pub fn make_lambda_wrapper(
     state: &AgentState,
 ) -> Result<(Vec<Symbol>, Sexp), LangErr> {
     if args.is_none() {
-        return err_ctx!(
+        return err!(
             state,
             WrongArgumentCount {
                 given: 0,
@@ -41,7 +41,7 @@ pub fn make_lambda_wrapper(
         let name = match *param {
             Sexp::Primitive(Primitive::Symbol(symbol)) => symbol,
             _ => {
-                return err_ctx!(
+                return err!(
                     state,
                     InvalidArgument {
                         given: param.clone().into(),
@@ -56,7 +56,7 @@ pub fn make_lambda_wrapper(
     return match body {
         Some(hsexp) => match *hsexp {
             Sexp::Cons(cons) => Ok((params, cons.into())),
-            Sexp::Primitive(primitive) => err_ctx!(
+            Sexp::Primitive(primitive) => err!(
                 state,
                 InvalidArgument {
                     given: primitive.into(),
@@ -64,7 +64,7 @@ pub fn make_lambda_wrapper(
                 }
             ),
         },
-        None => err_ctx!(
+        None => err!(
             state,
             WrongArgumentCount {
                 given: 1,
@@ -76,7 +76,7 @@ pub fn make_lambda_wrapper(
 
 pub fn tell_wrapper(args: &Vec<Node>, state: &AgentState) -> Result<(Node, Node, Node), LangErr> {
     if args.len() != 3 {
-        return err_ctx!(
+        return err!(
             state,
             WrongArgumentCount {
                 given: args.len(),
@@ -93,7 +93,7 @@ pub fn tell_wrapper(args: &Vec<Node>, state: &AgentState) -> Result<(Node, Node,
 
 pub fn def_wrapper(args: &Vec<Node>, state: &AgentState) -> Result<(Node, Option<Node>), LangErr> {
     if args.len() < 1 {
-        return err_ctx!(
+        return err!(
             state,
             WrongArgumentCount {
                 given: args.len(),
@@ -101,7 +101,7 @@ pub fn def_wrapper(args: &Vec<Node>, state: &AgentState) -> Result<(Node, Option
             }
         );
     } else if args.len() > 2 {
-        return err_ctx!(
+        return err!(
             state,
             WrongArgumentCount {
                 given: args.len(),
@@ -117,7 +117,7 @@ pub fn def_wrapper(args: &Vec<Node>, state: &AgentState) -> Result<(Node, Option
 
 pub fn apply_wrapper(args: &Vec<Node>, state: &AgentState) -> Result<(Node, Node), LangErr> {
     if args.len() != 2 {
-        return err_ctx!(
+        return err!(
             state,
             WrongArgumentCount {
                 given: args.len(),
