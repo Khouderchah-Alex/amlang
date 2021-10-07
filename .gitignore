@@ -1,4 +1,10 @@
+# Ignore for libraries.
+Cargo.lock
+
+# Build artifacts.
 /target
+
+# Temp/backup files.
 *~
 \#*\#
 .\#*
