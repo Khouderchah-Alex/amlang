@@ -2,9 +2,11 @@
 
 use std::convert::TryFrom;
 use std::fmt;
+use std::io::Write;
 use std::str::FromStr;
 
 use super::cons_list::ConsList;
+use super::fmt_io_bridge::FmtIoBridge;
 use crate::environment::Environment;
 use crate::lang_err::{ExpectedCount, LangErr};
 use crate::parser::{parse_sexp, ParseError};
@@ -22,7 +24,7 @@ pub enum Sexp {
     Cons(Cons),
 }
 
-#[derive(Clone, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct Cons {
     car: Option<HeapSexp>,
     cdr: Option<HeapSexp>,
@@ -65,8 +67,6 @@ impl Sexp {
         panic!("Expected {:?} to be Cons", self);
     }
 
-    // TODO This needs to be merged with list_fmt. Struggling to make generic
-    // over io:: and fmt::Write led to this duplication.
     pub fn write_list<W, F, P>(
         &self,
         w: &mut W,
@@ -162,53 +162,6 @@ impl Cons {
     pub fn set_cdr(&mut self, new: Option<HeapSexp>) {
         self.cdr = new;
     }
-
-    fn list_fmt(&self, f: &mut fmt::Formatter<'_>, depth: usize) -> fmt::Result {
-        // Any list longer than this will simply be suffixed with "..." after these
-        // many elements.
-        const MAX_DISPLAY_LENGTH: usize = 64;
-        const MAX_DISPLAY_DEPTH: usize = 32;
-
-        if depth >= MAX_DISPLAY_DEPTH {
-            return write!(f, "(..)");
-        }
-
-        let mut pos: usize = 0;
-        let mut outer_quote = false;
-        for val in self.iter() {
-            if pos == 0 {
-                if let Ok(symbol) = <&Symbol>::try_from(val) {
-                    if symbol.as_str() == "quote" {
-                        outer_quote = true;
-                        write!(f, "'")?;
-                        pos += 1;
-                        continue;
-                    }
-                }
-                write!(f, "(")?;
-            }
-
-            if pos >= MAX_DISPLAY_LENGTH {
-                write!(f, "...")?;
-                break;
-            }
-
-            if pos > 0 && !outer_quote {
-                write!(f, " ")?;
-            }
-            match val {
-                Sexp::Primitive(primitive) => write!(f, "{}", primitive)?,
-                Sexp::Cons(cons) => cons.list_fmt(f, depth + 1)?,
-            }
-
-            pos += 1;
-        }
-
-        if pos == 0 {
-            write!(f, "(")?;
-        }
-        if !outer_quote { write!(f, ")") } else { Ok(()) }
-    }
 }
 
 impl SexpIntoIter {
@@ -281,12 +234,6 @@ impl fmt::Debug for Sexp {
     }
 }
 
-impl fmt::Debug for Cons {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(&self, f)
-    }
-}
-
 impl Default for Sexp {
     fn default() -> Self {
         Sexp::Cons(Cons::default())
@@ -295,40 +242,15 @@ impl Default for Sexp {
 
 impl fmt::Display for Sexp {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Sexp::Primitive(primitive) => write!(f, "{}", primitive),
-            Sexp::Cons(cons) => {
-                if f.alternate() {
-                    write!(f, "{:#}", cons)
-                } else {
-                    write!(f, "{}", cons)
-                }
-            }
+        match self.write_list(
+            &mut FmtIoBridge::new(f),
+            0,
+            &mut |writer, primitive, _depth| write!(writer, "{}", primitive),
+            &mut |writer, paren, _depth| write!(writer, "{}", paren),
+        ) {
+            Ok(()) => Ok(()),
+            Err(_) => Err(fmt::Error),
         }
-    }
-}
-
-impl fmt::Display for Cons {
-    /// Note: alternate does not check for loops and doesn't have a max depth.
-    /// Do NOT use the alternate formatting for untrusted S-exps.
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // Normal print this with list shorthand.
-        if !f.alternate() {
-            return self.list_fmt(f, 0);
-        }
-
-        // Alternate print as sets of Cons.
-        write!(f, "(")?;
-        match self.car() {
-            Some(val) => write!(f, "{:#}", val)?,
-            None => write!(f, "NIL")?,
-        };
-        write!(f, " . ")?;
-        match self.cdr() {
-            Some(val) => write!(f, "{:#}", val)?,
-            None => write!(f, "NIL")?,
-        };
-        write!(f, ")")
     }
 }
 
