@@ -470,7 +470,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
 
     fn parse_symbol_inner(state: &mut AgentState, sym: &Symbol) -> Result<Node, lang_err::LangErr> {
         match policy_admin(sym.as_str()).unwrap() {
-            AdminSymbolInfo::Identifier => err_nost!(UnboundSymbol(sym.clone())),
+            AdminSymbolInfo::Identifier => err!(state, UnboundSymbol(sym.clone())),
             AdminSymbolInfo::LocalNode(node) => Ok(node.globalize(state)),
             AdminSymbolInfo::LocalTriple(idx) => {
                 let triple = state.env().triple_from_index(idx);
@@ -521,9 +521,11 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         }
 
         match command.as_str() {
-            "quote" => Ok(quote_wrapper(cdr).map_err(|e| LangErr(e))?),
+            "quote" => Ok(quote_wrapper(cdr, self.state()).map_err(|e| LangErr(e))?),
             "__builtin" => {
-                if let Ok(sym) = <Symbol>::try_from(quote_wrapper(cdr).map_err(|e| LangErr(e))?) {
+                if let Ok(sym) =
+                    <Symbol>::try_from(quote_wrapper(cdr, self.state()).map_err(|e| LangErr(e))?)
+                {
                     if let Some(builtin) = builtins.get(sym.as_str()) {
                         Ok(builtin.clone().into())
                     } else {

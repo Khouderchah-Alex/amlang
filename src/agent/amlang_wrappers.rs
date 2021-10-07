@@ -8,12 +8,15 @@ use crate::primitive::{Node, Primitive, Symbol};
 use crate::sexp::{Cons, HeapSexp, Sexp};
 
 
-pub fn quote_wrapper(args: Option<HeapSexp>) -> Ret {
+pub fn quote_wrapper(args: Option<HeapSexp>, state: &AgentState) -> Ret {
     if args.is_none() {
-        return err_nost!(WrongArgumentCount {
-            given: 0,
-            expected: ExpectedCount::Exactly(1),
-        });
+        return err!(
+            state,
+            WrongArgumentCount {
+                given: 0,
+                expected: ExpectedCount::Exactly(1),
+            }
+        );
     }
 
     let (val,) = break_by_types!(*args.unwrap(), Sexp)?;

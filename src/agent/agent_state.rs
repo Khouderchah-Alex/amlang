@@ -176,7 +176,7 @@ impl AgentState {
                 return Ok(node);
             }
         }
-        err_nost!(UnboundSymbol(name.clone()))
+        err!(self, UnboundSymbol(name.clone()))
     }
 
     pub fn designate(&mut self, designator: Primitive) -> Result<Sexp, LangErr> {
@@ -215,14 +215,17 @@ impl AgentState {
         let symbol = if let Ok(symbol) = <Symbol>::try_from(name_sexp.owned()) {
             symbol
         } else {
-            return err_nost!(InvalidArgument {
-                given: self
-                    .env()
-                    .node_structure(name)
-                    .owned()
-                    .unwrap_or(Sexp::default()),
-                expected: Cow::Borrowed("Node abstracting Symbol"),
-            });
+            return err!(
+                self,
+                InvalidArgument {
+                    given: self
+                        .env()
+                        .node_structure(name)
+                        .owned()
+                        .unwrap_or(Sexp::default()),
+                    expected: Cow::Borrowed("Node abstracting Symbol"),
+                }
+            );
         };
 
         // TODO(func) This prevents us from using an existing designation
@@ -230,7 +233,7 @@ impl AgentState {
         // designations; that is, only fail if the designation exists earlier in
         // the chain than the current environment.
         if let Ok(_) = self.resolve(&symbol) {
-            return err_nost!(AlreadyBoundSymbol(symbol));
+            return err!(self, AlreadyBoundSymbol(symbol));
         }
 
         let global_node = node.globalize(&self);
@@ -262,7 +265,7 @@ impl AgentState {
             .iter()
             .next()
         {
-            return err_nost!(DuplicateTriple(*triple.reify(self)));
+            return err!(self, DuplicateTriple(*triple.reify(self)));
         }
 
         let triple = self.env().insert_triple(subject, predicate, object);
@@ -317,10 +320,13 @@ impl AgentState {
 
     pub fn import(&mut self, original: Node) -> Result<Node, LangErr> {
         if original.env() == self.pos().env() {
-            return err_nost!(InvalidArgument {
-                given: original.into(),
-                expected: Cow::Borrowed("Node outside of current env"),
-            });
+            return err!(
+                self,
+                InvalidArgument {
+                    given: original.into(),
+                    expected: Cow::Borrowed("Node outside of current env"),
+                }
+            );
         }
 
         let imports_node = self.context.imports;
@@ -364,10 +370,13 @@ impl AgentState {
                 return Ok(imported.globalize(&self));
             }
         } else {
-            return err_nost!(InvalidState {
-                actual: Cow::Borrowed("import table triple object has no table"),
-                expected: Cow::Borrowed("has table"),
-            });
+            return err!(
+                self,
+                InvalidState {
+                    actual: Cow::Borrowed("import table triple object has no table"),
+                    expected: Cow::Borrowed("has table"),
+                }
+            );
         };
 
         let imported = self.env().insert_structure(original.into());
@@ -379,10 +388,13 @@ impl AgentState {
         ) {
             table.insert(original.local(), imported);
         } else {
-            return err_nost!(InvalidState {
-                actual: Cow::Borrowed("import table triple object has no table"),
-                expected: Cow::Borrowed("has table"),
-            });
+            return err!(
+                self,
+                InvalidState {
+                    actual: Cow::Borrowed("import table triple object has no table"),
+                    expected: Cow::Borrowed("has table"),
+                }
+            );
         };
         Ok(imported.globalize(&self))
     }

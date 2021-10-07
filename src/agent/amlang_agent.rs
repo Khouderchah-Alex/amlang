@@ -79,10 +79,13 @@ impl AmlangAgent {
         for symbol in params {
             let node = self.state_mut().env().insert_atom().globalize(self.state());
             if frame.contains_key(&symbol) {
-                return err_nost!(InvalidArgument {
-                    given: symbol.into(),
-                    expected: Cow::Borrowed("unique name within argument list")
-                });
+                return err!(
+                    self.state(),
+                    InvalidArgument {
+                        given: symbol.into(),
+                        expected: Cow::Borrowed("unique name within argument list")
+                    }
+                );
             }
             frame.insert(symbol, node);
             surface.push(node);
@@ -92,7 +95,7 @@ impl AmlangAgent {
         let res = (|| {
             let cons = match body {
                 Sexp::Primitive(primitive) => {
-                    return err_nost!(InvalidSexp(primitive.clone().into()));
+                    return err!(self.state(), InvalidSexp(primitive.clone().into()));
                 }
                 Sexp::Cons(cons) => cons,
             };
@@ -467,7 +470,7 @@ impl AmlangAgent {
         }
 
         return match *structures.unwrap() {
-            Sexp::Primitive(primitive) => err_nost!(InvalidSexp(primitive.clone().into())),
+            Sexp::Primitive(primitive) => err!(self.state(), InvalidSexp(primitive.clone().into())),
 
             Sexp::Cons(cons) => {
                 // TODO(perf) Return Cow.
@@ -530,7 +533,7 @@ impl Eval for AmlangAgent {
                 let (car, cdr) = cons.consume();
                 let car = match car {
                     Some(car) => car,
-                    None => return err_nost!(InvalidSexp(Cons::new(car, cdr).into())),
+                    None => return err!(self.state(), InvalidSexp(Cons::new(car, cdr).into())),
                 };
 
                 let eval_car = self.eval(car)?;
@@ -538,16 +541,19 @@ impl Eval for AmlangAgent {
                     Sexp::Primitive(Primitive::Procedure(_))
                     | Sexp::Primitive(Primitive::Node(_)) => self.eval_to_node(eval_car)?,
                     _ => {
-                        return err_nost!(InvalidArgument {
-                            given: Cons::new(Some(Box::new(eval_car)), cdr).into(),
-                            expected: Cow::Borrowed("special form or Procedure application"),
-                        });
+                        return err!(
+                            self.state(),
+                            InvalidArgument {
+                                given: Cons::new(Some(Box::new(eval_car)), cdr).into(),
+                                expected: Cow::Borrowed("special form or Procedure application"),
+                            }
+                        );
                     }
                 };
                 let context = self.state().context();
                 match node {
                     _ if Node::new(context.lang_env(), context.quote) == node => {
-                        return quote_wrapper(cdr);
+                        return quote_wrapper(cdr, self.state());
                     }
                     _ if Node::new(context.lang_env(), context.lambda) == node
                         || Node::new(context.lang_env(), context.fexpr) == node =>
@@ -560,10 +566,13 @@ impl Eval for AmlangAgent {
                     _ if Node::new(context.lang_env(), context.branch) == node => {
                         let args = self.evlis(cdr, true)?;
                         if args.len() != 3 {
-                            return err_nost!(WrongArgumentCount {
-                                given: args.len(),
-                                expected: ExpectedCount::Exactly(3),
-                            });
+                            return err!(
+                                self.state(),
+                                WrongArgumentCount {
+                                    given: args.len(),
+                                    expected: ExpectedCount::Exactly(3),
+                                }
+                            );
                         }
                         let proc = Procedure::Branch(args[0], args[1], args[2]);
                         return Ok(proc.into());
