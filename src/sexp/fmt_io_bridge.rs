@@ -35,6 +35,9 @@ impl<'a, F: fmt::Write> io::Write for FmtIoBridge<'a, F> {
     }
 
     fn flush(&mut self) -> std::result::Result<(), std::io::Error> {
-        unimplemented!("fmt::Writes are not flushable")
+        Err(io::Error::new(
+            io::ErrorKind::Unsupported,
+            "fmt::Writes are not flushable",
+        ))
     }
 }
