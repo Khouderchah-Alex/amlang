@@ -15,7 +15,10 @@ pub fn setup() -> Result<AmlangAgent, String> {
     let crate_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
     let file_dir = Path::new(file!()).parent().unwrap();
     let start_dir = crate_dir.join(file_dir).canonicalize().unwrap();
-    amlang::init(start_dir)?;
+    amlang::init(start_dir).unwrap();
+
+    // Integration tests will call this method multiple times; ignore the error.
+    if let Err(_err) = env_logger::try_init() {}
 
     // Bootstrap/deserialize.
     let manager =

@@ -29,6 +29,7 @@ pub struct EnvManager<Policy: EnvPolicy> {
     policy: Policy,
 }
 
+// TODO(func) impl Error.
 #[derive(Debug)]
 pub enum DeserializeError {
     FileStreamError(file_stream::FileStreamError),
