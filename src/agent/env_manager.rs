@@ -386,9 +386,12 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         structure: &Sexp,
         depth: usize,
     ) -> std::io::Result<()> {
-        structure.write_list(w, depth, &mut |writer, primitive, depth| {
-            self.serialize_primitive(writer, primitive, depth)
-        })
+        structure.write_list(
+            w,
+            depth,
+            &mut |writer, primitive, depth| self.serialize_primitive(writer, primitive, depth),
+            &mut |writer, paren, _depth| write!(writer, "{}", paren),
+        )
     }
 
     fn serialize_primitive<W: std::io::Write>(

@@ -67,15 +67,17 @@ impl Sexp {
 
     // TODO This needs to be merged with list_fmt. Struggling to make generic
     // over io:: and fmt::Write led to this duplication.
-    pub fn write_list<W, F>(
+    pub fn write_list<W, F, P>(
         &self,
         w: &mut W,
         depth: usize,
         write_primitive: &mut F,
+        write_paren: &mut P,
     ) -> std::io::Result<()>
     where
         W: std::io::Write,
         F: FnMut(&mut W, &Primitive, usize) -> std::io::Result<()>,
+        P: FnMut(&mut W, &str, usize) -> std::io::Result<()>,
     {
         // Any list longer than this will simply be suffixed with "..." after these
         // many elements.
@@ -102,7 +104,7 @@ impl Sexp {
                         continue;
                     }
                 }
-                write!(w, "(")?;
+                write_paren(w, "(", depth)?;
             }
 
             if pos >= MAX_DISPLAY_LENGTH {
@@ -113,16 +115,16 @@ impl Sexp {
             if pos > 0 && !outer_quote {
                 write!(w, " ")?;
             }
-            val.write_list(w, depth + 1, write_primitive)?;
+            val.write_list(w, depth + 1, write_primitive, write_paren)?;
 
             pos += 1;
         }
 
         if pos == 0 {
-            write!(w, "(")?;
+            write_paren(w, "(", depth)?;
         }
         if !outer_quote {
-            write!(w, ")")?;
+            write_paren(w, ")", depth)?;
         }
         Ok(())
     }

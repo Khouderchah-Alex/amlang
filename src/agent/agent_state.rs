@@ -1,3 +1,4 @@
+use colored::*;
 use log::debug;
 use std::borrow::Cow;
 use std::collections::btree_map::Entry;
@@ -419,9 +420,26 @@ impl AgentState {
         structure: &Sexp,
         depth: usize,
     ) -> std::io::Result<()> {
-        structure.write_list(w, depth, &mut |writer, primitive, depth| {
-            self.write_primitive(writer, primitive, depth)
-        })
+        fn paren_color(depth: usize) -> (u8, u8, u8) {
+            match depth % 6 {
+                0 => (0, 255, 204),
+                1 => (204, 51, 0),
+                2 => (153, 255, 102),
+                3 => (153, 102, 255),
+                4 => (255, 255, 102),
+                _ => (255, 179, 179),
+            }
+        }
+
+        structure.write_list(
+            w,
+            depth,
+            &mut |writer, primitive, depth| self.write_primitive(writer, primitive, depth),
+            &mut |writer, paren, depth| {
+                let (r, g, b) = paren_color(depth);
+                write!(writer, "{}", paren.truecolor(r, g, b))
+            },
+        )
     }
 
     fn write_primitive<W: std::io::Write>(
