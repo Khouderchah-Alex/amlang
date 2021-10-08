@@ -144,3 +144,23 @@ fn def_lambda() {
     let results = common::results(&mut lang_agent, "(def a (lambda (e) (+ e 2))) (a 2)");
     assert_eq!(results[1], Number::Integer(4).into());
 }
+
+#[test]
+fn reify_apply() {
+    let mut lang_agent = common::setup().unwrap();
+
+    let results = common::results(
+        &mut lang_agent,
+        "(car
+           (eval  ;; Reify.
+             (eval '(+ 1 2))))  ;; Create Procedure::Application.",
+    );
+    assert_eq!(
+        results[0],
+        Node::new(
+            lang_agent.state().context().lang_env(),
+            lang_agent.state().context().apply
+        )
+        .into()
+    );
+}

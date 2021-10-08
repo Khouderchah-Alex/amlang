@@ -386,8 +386,8 @@ impl AmlangAgent {
             }
             _ if context.apply == special_node => {
                 let (proc_node, args_node) = apply_wrapper(&arg_nodes, &self.state())?;
-                let proc_sexp = self.exec(proc_node)?;
-                let args_sexp = self.exec(args_node)?;
+                let proc_sexp = self.state_mut().designate(proc_node.into())?;
+                let args_sexp = self.state_mut().designate(args_node.into())?;
                 debug!("applying (apply {} '{})", proc_sexp, args_sexp);
 
                 let proc = if let Ok(node) = Node::try_from(&proc_sexp) {
@@ -425,7 +425,7 @@ impl AmlangAgent {
                     );
                 }
                 let is_eval = context.eval == special_node;
-                let arg = self.exec(arg_nodes[0])?;
+                let arg = self.state_mut().designate(arg_nodes[0].into())?;
                 if is_eval {
                     debug!("applying (eval {})", arg);
                     self.eval(HeapSexp::new(arg))
