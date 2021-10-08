@@ -127,7 +127,7 @@ impl AmlangAgent {
     }
 
     fn exec(&mut self, meaning_node: Node) -> Ret {
-        let meaning = self.state_mut().designate(Primitive::Node(meaning_node))?;
+        let meaning = self.state_mut().designate(meaning_node.into())?;
         match meaning {
             Sexp::Primitive(Primitive::Procedure(proc)) => {
                 match proc {
@@ -185,7 +185,7 @@ impl AmlangAgent {
     }
 
     fn apply(&mut self, proc_node: Node, arg_nodes: Vec<Node>) -> Ret {
-        match self.state_mut().designate(Primitive::Node(proc_node))? {
+        match self.state_mut().designate(proc_node.into())? {
             Sexp::Primitive(Primitive::Node(node)) => {
                 if node.env() == self.state().context().lang_env() {
                     self.apply_special(node.local(), arg_nodes)
@@ -291,13 +291,13 @@ impl AmlangAgent {
             }
             _ if context.def == special_node => {
                 let (name, val) = def_wrapper(&arg_nodes, &self.state())?;
-                self.state_mut().designate(Primitive::Node(name))?;
+                self.state_mut().designate(name.into())?;
                 if name.env() != self.state().pos().env() {
                     panic!("Cross-env triples are not yet supported");
                 }
 
                 let val_node = if let Some(s) = val {
-                    let original = self.state_mut().designate(Primitive::Node(s))?;
+                    let original = self.state_mut().designate(s.into())?;
                     let meaning = self.eval(original.into())?;
                     let meaning_node = self.history_insert(meaning);
                     let val = self.exec(meaning_node)?;
@@ -364,7 +364,7 @@ impl AmlangAgent {
                     );
                 }
 
-                let des = self.state_mut().designate(Primitive::Node(arg_nodes[0]))?;
+                let des = self.state_mut().designate(arg_nodes[0].into())?;
                 let path = match <&AmString>::try_from(&des) {
                     Ok(path) => path,
                     _ => {
@@ -583,7 +583,7 @@ impl Eval for AmlangAgent {
                     }
                     _ => {
                         let def_node = Node::new(context.lang_env(), context.def);
-                        let should_eval = match self.state_mut().designate(Primitive::Node(node))? {
+                        let should_eval = match self.state_mut().designate(node.into())? {
                             // Don't evaluate args of reflective Abstractions.
                             Sexp::Primitive(Primitive::Procedure(Procedure::Abstraction(
                                 _,

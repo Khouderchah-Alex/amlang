@@ -579,7 +579,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
             let designation = self.state().context().designation();
             if predicate.local() == designation && object.local() != designation {
                 let name = if let Ok(sym) =
-                    <Symbol>::try_from(self.state_mut().designate(Primitive::Node(object)))
+                    <Symbol>::try_from(self.state_mut().designate(object.into()))
                 {
                     sym
                 } else {
@@ -587,7 +587,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
                         "{} {} {:?}",
                         subject,
                         object,
-                        self.state_mut().designate(Primitive::Node(object)).unwrap()
+                        self.state_mut().designate(object.into()).unwrap()
                     );
                     return Err(ExpectedSymbol);
                 };

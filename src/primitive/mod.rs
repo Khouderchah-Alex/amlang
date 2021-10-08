@@ -49,6 +49,8 @@ pub enum Primitive {
     Procedure(Procedure),
     // Presumably only present in meta env Nodes, but this comes down
     // to how base Agents are implemented.
+    //
+    // TODO(flex) Use newtype.
     Env(Box<EnvObject>),
 }
 
@@ -117,3 +119,29 @@ impl PartialEq for Primitive {
         }
     }
 }
+
+
+// Impl From<T> over Primitive subtypes (except Env).
+macro_rules! primitive_from {
+    ($from:ident, $($tail:tt)*) => {
+        impl From<$from> for Primitive {
+            fn from(elem: $from) -> Self {
+                Primitive::$from(elem)
+            }
+        }
+        primitive_from!($($tail)*);
+    };
+    () => {};
+}
+
+primitive_from!(
+    Number,
+    Symbol,
+    AmString,
+    BuiltIn,
+    Node,
+    Path,
+    SymbolTable,
+    LocalNodeTable,
+    Procedure,
+);
