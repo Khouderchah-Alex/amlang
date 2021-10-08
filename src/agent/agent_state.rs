@@ -421,16 +421,18 @@ impl AgentState {
 impl AgentState {
     pub fn print_list(&mut self, structure: &Sexp) {
         let mut writer = BufWriter::new(stdout());
-        if let Err(err) = self.write_list_internal(&mut writer, structure, 0) {
+        if let Err(err) = self.write_list_internal(&mut writer, structure, 0, true) {
             println!("print_list error: {:?}", err);
         }
     }
 
+    // TODO(func) Make show_redirects & paren_color configurable & introspectable.
     fn write_list_internal<W: std::io::Write>(
         &mut self,
         w: &mut W,
         structure: &Sexp,
         depth: usize,
+        show_redirects: bool,
     ) -> std::io::Result<()> {
         fn paren_color(depth: usize) -> (u8, u8, u8) {
             match depth % 6 {
@@ -446,7 +448,9 @@ impl AgentState {
         structure.write_list(
             w,
             depth,
-            &mut |writer, primitive, depth| self.write_primitive(writer, primitive, depth),
+            &mut |writer, primitive, depth| {
+                self.write_primitive(writer, primitive, depth, show_redirects)
+            },
             &mut |writer, paren, depth| {
                 let (r, g, b) = paren_color(depth);
                 write!(writer, "{}", paren.truecolor(r, g, b))
@@ -459,6 +463,7 @@ impl AgentState {
         w: &mut W,
         primitive: &Primitive,
         depth: usize,
+        show_redirects: bool,
     ) -> std::io::Result<()> {
         const MAX_DEPTH: usize = 16;
 
@@ -474,7 +479,7 @@ impl AgentState {
                     .node_as_triple(node.local())
                 {
                     let s = triple.reify(self);
-                    self.write_list_internal(w, &s, depth + 1)
+                    self.write_list_internal(w, &s, depth + 1, show_redirects)
                 } else {
                     let s = if let Some(structure) = self
                         .access_env(node.env())
@@ -482,7 +487,9 @@ impl AgentState {
                         .node_structure(node.local())
                         .as_option()
                     {
-                        write!(w, "{}->", node)?;
+                        if show_redirects {
+                            write!(w, "{}->", node)?;
+                        }
                         structure.clone()
                     } else {
                         return write!(w, "{}", node);
@@ -493,13 +500,13 @@ impl AgentState {
                     if s == node.into() || depth > MAX_DEPTH {
                         write!(w, "{}", node)
                     } else {
-                        self.write_list_internal(w, &s, depth + 1)
+                        self.write_list_internal(w, &s, depth + 1, show_redirects)
                     }
                 }
             }
             Primitive::Procedure(procedure) => {
                 let s = procedure.reify(self);
-                self.write_list_internal(w, &s, depth + 1)
+                self.write_list_internal(w, &s, depth + 1, false)
             }
             _ => write!(w, "{}", primitive),
         }
