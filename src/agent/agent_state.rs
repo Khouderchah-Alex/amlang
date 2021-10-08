@@ -479,7 +479,7 @@ impl AgentState {
                     .node_as_triple(node.local())
                 {
                     let s = triple.reify(self);
-                    self.write_list_internal(w, &s, depth + 1, show_redirects)
+                    self.write_list_internal(w, &s, depth, show_redirects)
                 } else {
                     let s = if let Some(structure) = self
                         .access_env(node.env())
@@ -500,13 +500,13 @@ impl AgentState {
                     if s == node.into() || depth > MAX_DEPTH {
                         write!(w, "{}", node)
                     } else {
-                        self.write_list_internal(w, &s, depth + 1, show_redirects)
+                        self.write_list_internal(w, &s, depth, show_redirects)
                     }
                 }
             }
             Primitive::Procedure(procedure) => {
                 let s = procedure.reify(self);
-                self.write_list_internal(w, &s, depth + 1, false)
+                self.write_list_internal(w, &s, depth, false)
             }
             _ => write!(w, "{}", primitive),
         }
