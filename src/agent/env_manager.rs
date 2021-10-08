@@ -437,13 +437,12 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
 
     fn deserialize_nodes(&mut self, structure: HeapSexp) -> Result<(), DeserializeError> {
         let builtins = generate_builtin_map();
-        let (command, remainder) =
-            break_by_types!(*structure, Symbol; remainder).map_err(|e| LangErr(e))?;
+        let (command, remainder) = break_by_types!(*structure, Symbol; remainder)?;
         if command.as_str() != "nodes" {
             return Err(UnexpectedCommand(command.into()));
         }
 
-        let iter = SexpIntoIter::try_from(remainder).map_err(|e| LangErr(e))?;
+        let iter = SexpIntoIter::try_from(remainder)?;
         for entry in iter.skip(2) {
             match *entry {
                 Sexp::Primitive(primitive) => {
@@ -454,8 +453,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
                     }
                 }
                 Sexp::Cons(cons) => {
-                    let (_name, command) =
-                        break_by_types!(cons.into(), Symbol, Sexp).map_err(|e| LangErr(e))?;
+                    let (_name, command) = break_by_types!(cons.into(), Symbol, Sexp)?;
                     let structure = self.eval_structure(command, &builtins)?;
                     self.state_mut().env().insert_structure(structure);
                 }
@@ -494,8 +492,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
             return Ok(s.clone().into());
         }
 
-        let (command, cdr) =
-            break_by_types!(structure, Symbol; remainder).map_err(|e| LangErr(e))?;
+        let (command, cdr) = break_by_types!(structure, Symbol; remainder)?;
 
         if let Ok(node) = self.parse_symbol(&command) {
             let context = self.state().context();
@@ -514,18 +511,15 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
                         }
                         _ => panic!(),
                     },
-                )
-                .map_err(|e| LangErr(e))?
+                )?
                 .into());
             }
         }
 
         match command.as_str() {
-            "quote" => Ok(quote_wrapper(cdr, self.state()).map_err(|e| LangErr(e))?),
+            "quote" => Ok(quote_wrapper(cdr, self.state())?),
             "__builtin" => {
-                if let Ok(sym) =
-                    <Symbol>::try_from(quote_wrapper(cdr, self.state()).map_err(|e| LangErr(e))?)
-                {
+                if let Ok(sym) = <Symbol>::try_from(quote_wrapper(cdr, self.state())?) {
                     if let Some(builtin) = builtins.get(sym.as_str()) {
                         Ok(builtin.clone().into())
                     } else {
@@ -539,7 +533,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
             // turned into structured nodes.
             "__env" => Ok(Sexp::default()),
             "__path" => {
-                let (path,) = break_by_types!(*cdr.unwrap(), AmString).map_err(|e| LangErr(e))?;
+                let (path,) = break_by_types!(*cdr.unwrap(), AmString)?;
                 Ok(Path::new(path.as_str().into()).into())
             }
             _ => panic!("{}", command),
@@ -547,8 +541,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
     }
 
     fn deserialize_triples(&mut self, structure: HeapSexp) -> Result<(), DeserializeError> {
-        let (command, remainder) =
-            break_by_types!(*structure, Symbol; remainder).map_err(|e| LangErr(e))?;
+        let (command, remainder) = break_by_types!(*structure, Symbol; remainder)?;
         if command.as_str() != "triples" {
             return Err(UnexpectedCommand(command.into()));
         }
@@ -563,8 +556,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         };
 
         for entry in iter {
-            let (s, p, o) =
-                break_by_types!(*entry, Symbol, Symbol, Symbol).map_err(|e| LangErr(e))?;
+            let (s, p, o) = break_by_types!(*entry, Symbol, Symbol, Symbol)?;
 
             let subject = self.parse_symbol(&s)?;
             let predicate = self.parse_symbol(&p)?;
@@ -621,5 +613,12 @@ impl<Policy: EnvPolicy> Agent for EnvManager<Policy> {
 impl<Policy: EnvPolicy> Eval for EnvManager<Policy> {
     fn eval(&mut self, _structure: HeapSexp) -> Ret {
         Ok(Sexp::default())
+    }
+}
+
+
+impl From<lang_err::LangErr> for DeserializeError {
+    fn from(err: lang_err::LangErr) -> Self {
+        LangErr(err)
     }
 }
