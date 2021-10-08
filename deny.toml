@@ -1,0 +1,28 @@
+[advisories]
+vulnerability = "deny"
+unmaintained = "deny"
+notice = "deny"
+unsound = "deny"
+
+[licenses]
+# Until we license amlang, just warn this.
+unlicensed = "warn"
+copyleft = "deny"
+allow-osi-fsf-free = "neither"
+confidence-threshold = 0.9
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "MPL-2.0",
+    "BSL-1.0",
+]
+default = "deny"
+
+[bans]
+multiple-versions = "deny"
+wildcards = "warn"
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-git = []
