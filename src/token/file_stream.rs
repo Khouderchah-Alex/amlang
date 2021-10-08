@@ -35,7 +35,7 @@ impl FileStream {
         for line in reader.lines() {
             match line {
                 Ok(l) => {
-                    if let Err(err) = tokenizer.tokenize_line(&l, &symbol_policy) {
+                    if let Err(err) = tokenizer.tokenize(&l, &symbol_policy) {
                         return Err(FileStreamError::TokenizeError(err));
                     }
                 }

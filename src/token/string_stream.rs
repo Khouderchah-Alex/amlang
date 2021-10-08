@@ -16,7 +16,7 @@ impl StringStream {
         SymbolPolicy: Fn(&str) -> Result<SymbolInfo, SymbolError>,
     {
         let mut tokenizer = Tokenizer::new();
-        if let Err(err) = tokenizer.tokenize_line(&line, &symbol_policy) {
+        if let Err(err) = tokenizer.tokenize(&line, &symbol_policy) {
             return Err(err);
         }
 

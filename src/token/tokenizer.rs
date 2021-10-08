@@ -66,7 +66,21 @@ impl Tokenizer {
         std::cmp::max(self.depth, q as usize)
     }
 
-    pub fn tokenize_line<S: AsRef<str>, SymbolInfo, SymbolPolicy>(
+    pub fn tokenize<S: AsRef<str>, SymbolInfo, SymbolPolicy>(
+        &mut self,
+        input: S,
+        symbol_policy: &SymbolPolicy,
+    ) -> Result<(), TokenizeError>
+    where
+        SymbolPolicy: Fn(&str) -> Result<SymbolInfo, SymbolError>,
+    {
+        for line in input.as_ref().split('\n') {
+            self.tokenize_line(line, symbol_policy)?;
+        }
+        Ok(())
+    }
+
+    fn tokenize_line<S: AsRef<str>, SymbolInfo, SymbolPolicy>(
         &mut self,
         line: S,
         symbol_policy: &SymbolPolicy,
