@@ -254,6 +254,8 @@ impl fmt::Display for Sexp {
     }
 }
 
+
+// TryFrom<Sexp-like> impls.
 impl TryFrom<Sexp> for Primitive {
     type Error = ();
 
@@ -379,6 +381,8 @@ impl TryFrom<Option<HeapSexp>> for SexpIntoIter {
     }
 }
 
+
+// From<T> impls.
 impl FromStr for Sexp {
     type Err = FromStrError;
 
@@ -416,7 +420,6 @@ impl<'a, T: Into<Sexp> + Clone> From<&'a Vec<T>> for Sexp {
     }
 }
 
-
 impl From<Sexp> for Option<HeapSexp> {
     fn from(sexp: Sexp) -> Self {
         if sexp.is_none() {
@@ -448,59 +451,30 @@ impl From<Cons> for Sexp {
     }
 }
 
-impl From<Number> for Sexp {
-    fn from(number: Number) -> Self {
-        Sexp::Primitive(Primitive::Number(number))
-    }
+// Impl From<T> over Primitive subtypes.
+macro_rules! sexp_from {
+    ($from:ident, $($tail:tt)*) => {
+        impl From<$from> for Sexp {
+            fn from(elem: $from) -> Self {
+                Sexp::Primitive(Primitive::$from(elem))
+            }
+        }
+        sexp_from!($($tail)*);
+    };
+    () => {};
 }
 
-impl From<Symbol> for Sexp {
-    fn from(symbol: Symbol) -> Self {
-        Sexp::Primitive(Primitive::Symbol(symbol))
-    }
-}
-
-impl From<AmString> for Sexp {
-    fn from(string: AmString) -> Self {
-        Sexp::Primitive(Primitive::AmString(string))
-    }
-}
-
-impl From<Path> for Sexp {
-    fn from(path: Path) -> Self {
-        Sexp::Primitive(Primitive::Path(path))
-    }
-}
-
-impl From<SymbolTable> for Sexp {
-    fn from(table: SymbolTable) -> Self {
-        Sexp::Primitive(Primitive::SymbolTable(table))
-    }
-}
-
-impl From<LocalNodeTable> for Sexp {
-    fn from(table: LocalNodeTable) -> Self {
-        Sexp::Primitive(Primitive::LocalNodeTable(table))
-    }
-}
-
-impl From<BuiltIn> for Sexp {
-    fn from(builtin: BuiltIn) -> Self {
-        Sexp::Primitive(Primitive::BuiltIn(builtin))
-    }
-}
-
-impl From<Procedure> for Sexp {
-    fn from(procedure: Procedure) -> Self {
-        Sexp::Primitive(Primitive::Procedure(procedure))
-    }
-}
-
-impl From<Node> for Sexp {
-    fn from(node: Node) -> Self {
-        Sexp::Primitive(Primitive::Node(node))
-    }
-}
+sexp_from!(
+    Number,
+    Symbol,
+    AmString,
+    BuiltIn,
+    Node,
+    Path,
+    SymbolTable,
+    LocalNodeTable,
+    Procedure,
+);
 
 impl<T: 'static + Environment> From<Box<T>> for Sexp {
     fn from(env: Box<T>) -> Self {
