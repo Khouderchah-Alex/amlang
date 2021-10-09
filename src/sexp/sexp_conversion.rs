@@ -1,5 +1,5 @@
 /// Breaks a Sexp into Result<tuple of component types, LangErr>, assuming all
-/// component types implement TryFrom<Sexp>.
+/// component types implement TryFrom<$type> for Sexp.
 ///
 /// Optional remainder accepts an arbitrary identifier and append an
 /// Option<HeapSexp> to the end of the result tuple.
@@ -24,16 +24,19 @@ macro_rules! break_by_types {
                             $(
                                 match iter.next() {
                                     Some(sexp) =>  {
-                                        if let Ok(_) = <&$type>::try_from(&*sexp) {
-                                            i += 1;
-                                            <$type>::try_from(*sexp).unwrap()
-                                        } else {
-                                            return err_nost!(InvalidArgument{
-                                                given: *sexp.clone(),
-                                                expected: std::borrow::Cow::Owned(
-                                                    "type ".to_string() + stringify!($type)
-                                                ),
-                                            });
+                                        match <$type>::try_from(*sexp) {
+                                            Ok(val) => {
+                                                i += 1;
+                                                val
+                                            },
+                                            Err(original) => {
+                                                return err_nost!(InvalidArgument{
+                                                    given: original.into(),
+                                                    expected: std::borrow::Cow::Owned(
+                                                        "type ".to_string() + stringify!($type)
+                                                    ),
+                                                });
+                                            }
                                         }
                                     }
                                     None =>  {
