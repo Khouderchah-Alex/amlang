@@ -45,37 +45,37 @@ impl_try_from!(Sexp -> Node, Node;
 );
 
 impl<'a> TryFrom<&'a Sexp> for Node {
-    type Error = ();
+    type Error = &'a Sexp;
 
     fn try_from(value: &'a Sexp) -> Result<Self, Self::Error> {
         if let Sexp::Primitive(Primitive::Node(node)) = value {
             Ok(*node)
         } else {
-            Err(())
+            Err(value)
         }
     }
 }
 
 impl<'a> TryFrom<Option<&'a Sexp>> for Node {
-    type Error = ();
+    type Error = Option<&'a Sexp>;
 
     fn try_from(value: Option<&'a Sexp>) -> Result<Self, Self::Error> {
         if let Some(Sexp::Primitive(Primitive::Node(node))) = value {
             Ok(*node)
         } else {
-            Err(())
+            Err(value)
         }
     }
 }
 
 impl<'a, E> TryFrom<&'a Result<Sexp, E>> for Node {
-    type Error = ();
+    type Error = &'a Result<Sexp, E>;
 
     fn try_from(value: &'a Result<Sexp, E>) -> Result<Self, Self::Error> {
         if let Ok(Sexp::Primitive(Primitive::Node(node))) = value {
             Ok(*node)
         } else {
-            Err(())
+            Err(value)
         }
     }
 }
