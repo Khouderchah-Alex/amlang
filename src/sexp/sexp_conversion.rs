@@ -1,8 +1,10 @@
-/// Breaks a Sexp into Result<tuple of component types, LangErr>, assuming all
-/// component types implement TryFrom<$type> for Sexp.
+/// Breaks a HeapSexp into Result<tuple of component types, LangErr>,
+/// assuming all component types implement TryFrom<$type> for Sexp.
 ///
 /// Optional remainder accepts an arbitrary identifier and append an
 /// Option<HeapSexp> to the end of the result tuple.
+///
+/// Note that clients using a Sexp must manually call HeapSexp::new(_).
 macro_rules! break_by_types {
     (@ignore $_ignored:ident) => {};
     ($sexp:expr, $($type:ident),+ $(;$remainder:tt)?) => {
@@ -57,7 +59,7 @@ macro_rules! break_by_types {
 
                 $(
                     break_by_types!(@ignore $remainder);
-                    iter = Sexp::default().into_iter();
+                    iter = crate::sexp::SexpIntoIter::default();
                 )*
                 if let Some(_) = iter.next() {
                     return err_nost!(WrongArgumentCount{

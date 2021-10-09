@@ -56,7 +56,7 @@ impl Model for Procedure {
     where
         F: FnMut(&mut AgentState, &Primitive) -> Result<Node, LangErr>,
     {
-        let (command, cdr) = break_by_types!(*structure, Primitive; remainder)?;
+        let (command, cdr) = break_by_types!(structure, Primitive; remainder)?;
         let node = process_primitive(state, &command)?;
         let context = state.context();
         if node.local() == context.apply {
@@ -70,7 +70,7 @@ impl Model for Procedure {
                 );
             }
 
-            let (func, args) = break_by_types!(*cdr.unwrap(), Primitive, HeapSexp)?;
+            let (func, args) = break_by_types!(cdr.unwrap(), Primitive, HeapSexp)?;
             let fnode = process_primitive(state, &func)?;
             let mut arg_nodes = Vec::with_capacity(args.iter().count());
             for (arg, from_cons) in args {
@@ -96,7 +96,7 @@ impl Model for Procedure {
             }
 
             let reflect = node.local() == context.fexpr;
-            let (params, body) = break_by_types!(*cdr.unwrap(), HeapSexp, Primitive)?;
+            let (params, body) = break_by_types!(cdr.unwrap(), HeapSexp, Primitive)?;
             let mut param_nodes = Vec::with_capacity(params.iter().count());
             for (param, from_cons) in params {
                 if !from_cons {
@@ -141,7 +141,7 @@ impl Model for Procedure {
                 );
             }
 
-            let (pred, a, b) = break_by_types!(*cdr.unwrap(), Primitive, Primitive, Primitive)?;
+            let (pred, a, b) = break_by_types!(cdr.unwrap(), Primitive, Primitive, Primitive)?;
             Ok(Procedure::Branch(
                 process_primitive(state, &pred)?,
                 process_primitive(state, &a)?,

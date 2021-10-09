@@ -34,6 +34,7 @@ pub struct SexpIter<'a> {
     current: Option<&'a Sexp>,
 }
 
+#[derive(Default)]
 pub struct SexpIntoIter {
     current: Option<HeapSexp>,
 }
@@ -229,19 +230,6 @@ impl Iterator for SexpIntoIter {
     }
 }
 
-// TODO(perf) Reduce the need of this by passing around HeapSexps.
-impl IntoIterator for Sexp {
-    // (Sexp, from_cons). See impl Iterator blocks above for more info.
-    type Item = (HeapSexp, bool);
-    type IntoIter = SexpIntoIter;
-
-    fn into_iter(self) -> Self::IntoIter {
-        SexpIntoIter {
-            current: Some(Box::new(self)),
-        }
-    }
-}
-
 impl IntoIterator for HeapSexp {
     // (Sexp, from_cons). See impl Iterator blocks above for more info.
     type Item = (HeapSexp, bool);
@@ -400,14 +388,22 @@ impl FromStr for Sexp {
     type Err = FromStrError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
+        HeapSexp::from_str(s).map(|e| *e)
+    }
+}
+
+impl FromStr for HeapSexp {
+    type Err = FromStrError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         let stream = match StringStream::new(s, policy_base) {
             Ok(stream) => stream,
             Err(err) => return Err(FromStrError::TokenizeError(err)),
         };
 
         return match parse_sexp(&mut stream.peekable(), 0) {
-            Ok(Some(sexp)) => Ok(*sexp),
-            Ok(None) => Ok(Sexp::Cons(Cons::default())),
+            Ok(Some(sexp)) => Ok(sexp),
+            Ok(None) => Ok(HeapSexp::new(Sexp::default())),
             Err(err) => Err(FromStrError::ParseError(err)),
         };
     }

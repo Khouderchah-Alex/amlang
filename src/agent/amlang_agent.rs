@@ -71,7 +71,7 @@ impl AmlangAgent {
     fn make_lambda(
         &mut self,
         params: Vec<Symbol>,
-        body: Sexp,
+        body: HeapSexp,
         reflect: bool,
     ) -> Result<Procedure, LangErr> {
         let mut surface = Vec::new();
@@ -395,7 +395,7 @@ impl AmlangAgent {
                         .globalize(self.state())
                 };
                 let mut args = Vec::new();
-                for (arg, from_cons) in args_sexp.into_iter() {
+                for (arg, from_cons) in Box::new(args_sexp).into_iter() {
                     if !from_cons {
                         return err!(self.state(), InvalidSexp(*arg));
                     }
@@ -405,7 +405,7 @@ impl AmlangAgent {
                         args.push(
                             self.state_mut()
                                 .env()
-                                .insert_structure(arg.into())
+                                .insert_structure(*arg)
                                 .globalize(self.state()),
                         );
                     }

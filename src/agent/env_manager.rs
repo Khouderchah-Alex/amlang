@@ -437,7 +437,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
 
     fn deserialize_nodes(&mut self, structure: HeapSexp) -> Result<(), DeserializeError> {
         let builtins = generate_builtin_map();
-        let (command, remainder) = break_by_types!(*structure, Symbol; remainder)?;
+        let (command, remainder) = break_by_types!(structure, Symbol; remainder)?;
         if command.as_str() != "nodes" {
             return Err(UnexpectedCommand(command.into()));
         }
@@ -455,8 +455,8 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
                         return Err(ExpectedSymbol);
                     }
                 }
-                Sexp::Cons(cons) => {
-                    let (_name, command) = break_by_types!(Sexp::Cons(cons), Symbol, Sexp)?;
+                Sexp::Cons(_) => {
+                    let (_name, command) = break_by_types!(entry, Symbol, HeapSexp)?;
                     let structure = self.eval_structure(command, &builtins)?;
                     self.state_mut().env().insert_structure(structure);
                 }
@@ -486,12 +486,12 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
 
     fn eval_structure(
         &mut self,
-        structure: Sexp,
+        structure: HeapSexp,
         builtins: &HashMap<&'static str, BuiltIn>,
     ) -> Result<Sexp, DeserializeError> {
-        if let Ok(sym) = <&Symbol>::try_from(&structure) {
+        if let Ok(sym) = <&Symbol>::try_from(&*structure) {
             return Ok(self.parse_symbol(sym)?.into());
-        } else if let Ok(s) = <&AmString>::try_from(&structure) {
+        } else if let Ok(s) = <&AmString>::try_from(&*structure) {
             return Ok(s.clone().into());
         }
 
@@ -536,7 +536,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
             // turned into structured nodes.
             "__env" => Ok(Sexp::default()),
             "__path" => {
-                let (path,) = break_by_types!(*cdr.unwrap(), AmString)?;
+                let (path,) = break_by_types!(cdr.unwrap(), AmString)?;
                 Ok(Path::new(path.as_str().into()).into())
             }
             _ => panic!("{}", command),
@@ -544,7 +544,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
     }
 
     fn deserialize_triples(&mut self, structure: HeapSexp) -> Result<(), DeserializeError> {
-        let (command, remainder) = break_by_types!(*structure, Symbol; remainder)?;
+        let (command, remainder) = break_by_types!(structure, Symbol; remainder)?;
         if command.as_str() != "triples" {
             return Err(UnexpectedCommand(command.into()));
         }
@@ -562,7 +562,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
             if !from_cons {
                 return err!(self.state(), InvalidSexp(*entry))?;
             }
-            let (s, p, o) = break_by_types!(*entry, Symbol, Symbol, Symbol)?;
+            let (s, p, o) = break_by_types!(entry, Symbol, Symbol, Symbol)?;
 
             let subject = self.parse_symbol(&s)?;
             let predicate = self.parse_symbol(&p)?;
