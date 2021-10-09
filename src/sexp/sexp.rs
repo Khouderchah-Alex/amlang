@@ -16,6 +16,11 @@ use crate::token::string_stream::StringStream;
 use crate::token::TokenizeError;
 
 
+/// S-exp on the heap.
+///
+/// HeapSexp should be preferred over Sexp a priori, as it allows for passing of
+/// full Sexp ownership--particularly relevant when extending a Sexp--and for
+/// consistency (since Cons stores Option<HeapSexps>).
 pub type HeapSexp = Box<Sexp>;
 
 #[derive(Clone, PartialEq)]
