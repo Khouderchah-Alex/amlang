@@ -5,7 +5,7 @@ use super::{Node, Primitive};
 use crate::agent::agent_state::AgentState;
 use crate::lang_err::{ExpectedCount, LangErr};
 use crate::model::Model;
-use crate::sexp::{cons, Cons, HeapSexp, Sexp};
+use crate::sexp::{cons, HeapSexp, Sexp};
 
 
 #[derive(Clone, Debug, PartialEq)]
@@ -70,10 +70,13 @@ impl Model for Procedure {
                 );
             }
 
-            let (func, args) = break_by_types!(*cdr.unwrap(), Primitive, Cons)?;
+            let (func, args) = break_by_types!(*cdr.unwrap(), Primitive, HeapSexp)?;
             let fnode = process_primitive(state, &func)?;
             let mut arg_nodes = Vec::with_capacity(args.iter().count());
-            for arg in args {
+            for (arg, from_cons) in args {
+                if !from_cons {
+                    return err!(state, InvalidSexp(*arg));
+                }
                 if let Ok(p) = <&Primitive>::try_from(&*arg) {
                     arg_nodes.push(process_primitive(state, &p)?);
                 } else {
@@ -93,9 +96,12 @@ impl Model for Procedure {
             }
 
             let reflect = node.local() == context.fexpr;
-            let (params, body) = break_by_types!(*cdr.unwrap(), Cons, Primitive)?;
+            let (params, body) = break_by_types!(*cdr.unwrap(), HeapSexp, Primitive)?;
             let mut param_nodes = Vec::with_capacity(params.iter().count());
-            for param in params {
+            for (param, from_cons) in params {
+                if !from_cons {
+                    return err!(state, InvalidSexp(*param));
+                }
                 if let Ok(p) = <&Primitive>::try_from(&*param) {
                     param_nodes.push(process_primitive(state, &p)?);
                 } else {
@@ -107,23 +113,19 @@ impl Model for Procedure {
         } else if node.local() == context.progn {
             let mut seq = vec![];
             if cdr.is_some() {
-                match *cdr.unwrap() {
-                    Sexp::Cons(list) => {
-                        for sexp in list.into_iter() {
-                            match *sexp {
-                                Sexp::Primitive(p) => seq.push(process_primitive(state, &p)?),
-                                Sexp::Cons(c) => return err!(state, InvalidSexp(c.into())),
-                            }
-                        }
-                    }
-                    s @ _ => {
+                for (sexp, from_cons) in cdr.unwrap().into_iter() {
+                    if !from_cons {
                         return err!(
                             state,
                             InvalidArgument {
-                                given: s,
+                                given: *sexp,
                                 expected: Cow::Borrowed("list of Procedure nodes")
                             }
                         );
+                    }
+                    match *sexp {
+                        Sexp::Primitive(p) => seq.push(process_primitive(state, &p)?),
+                        Sexp::Cons(c) => return err!(state, InvalidSexp(c.into())),
                     }
                 }
             }

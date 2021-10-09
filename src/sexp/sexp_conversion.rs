@@ -7,73 +7,68 @@ macro_rules! break_by_types {
     (@ignore $_ignored:ident) => {};
     ($sexp:expr, $($type:ident),+ $(;$remainder:tt)?) => {
         {
-            match $sexp {
-                Sexp::Primitive(primitive) => {
-                    err_nost!(InvalidSexp(primitive.clone().into()))
-                }
-                Sexp::Cons(cons) => {
-                    let mut iter = cons.into_iter();
-                    let tuple = || {
-                        let mut expected: usize = 0;
-                        $(
-                            break_by_types!(@ignore $type);
-                            expected += 1;
-                        )+
-                        let mut i: usize = 0;
-                        let ret = Ok((
-                            $(
-                                match iter.next() {
-                                    Some(sexp) =>  {
-                                        match <$type>::try_from(*sexp) {
-                                            Ok(val) => {
-                                                i += 1;
-                                                val
-                                            },
-                                            Err(original) => {
-                                                return err_nost!(InvalidArgument{
-                                                    given: original.into(),
-                                                    expected: std::borrow::Cow::Owned(
-                                                        "type ".to_string() + stringify!($type)
-                                                    ),
-                                                });
-                                            }
-                                        }
-                                    }
-                                    None =>  {
-                                        return err_nost!(WrongArgumentCount{
-                                            given: i,
-                                            expected: crate::lang_err::ExpectedCount::Exactly(
-                                                expected
+            let mut iter = $sexp.into_iter();
+            let tuple = || {
+                let mut expected: usize = 0;
+                $(
+                    break_by_types!(@ignore $type);
+                    expected += 1;
+                )+
+                let mut i: usize = 0;
+                let ret = Ok((
+                    $(
+                        match iter.next() {
+                            Some((sexp, from_cons)) =>  {
+                                if !from_cons {
+                                    return err_nost!(InvalidSexp(sexp.into()));
+                                }
+                                match <$type>::try_from(*sexp) {
+                                    Ok(val) => {
+                                        i += 1;
+                                        val
+                                    },
+                                    Err(original) => {
+                                        return err_nost!(InvalidArgument{
+                                            given: original.into(),
+                                            expected: std::borrow::Cow::Owned(
+                                                "type ".to_string() + stringify!($type)
                                             ),
                                         });
                                     }
-                                },
-                            )+
-                            $(
-                                {
-                                    break_by_types!(@ignore $remainder);
-                                    iter.consume()
                                 }
-                            )*
-                        ));
-
-                        $(
+                            }
+                            None =>  {
+                                return err_nost!(WrongArgumentCount{
+                                    given: i,
+                                    expected: crate::lang_err::ExpectedCount::Exactly(
+                                        expected
+                                    ),
+                                });
+                            }
+                        },
+                    )+
+                    $(
+                        {
                             break_by_types!(@ignore $remainder);
-                            iter = Cons::default().into_iter();
-                        )*
-                        if let Some(_) = iter.next() {
-                            return err_nost!(WrongArgumentCount{
-                                given: i + 1 + iter.count(),
-                                expected: crate::lang_err::ExpectedCount::Exactly(i),
-                            });
+                            iter.consume()
                         }
-                        ret
-                    };
+                    )*
+                ));
 
-                    tuple()
+                $(
+                    break_by_types!(@ignore $remainder);
+                    iter = Sexp::default().into_iter();
+                )*
+                if let Some(_) = iter.next() {
+                    return err_nost!(WrongArgumentCount{
+                        given: i + 1 + iter.count(),
+                        expected: crate::lang_err::ExpectedCount::Exactly(i),
+                    });
                 }
-            }
+                ret
+            };
 
+            tuple()
         }
     };
 }

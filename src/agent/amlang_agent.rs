@@ -12,7 +12,7 @@ use crate::lang_err::{ExpectedCount, LangErr};
 use crate::model::{Eval, Model, Ret};
 use crate::parser::{parse_sexp, ParseError};
 use crate::primitive::prelude::*;
-use crate::sexp::{Cons, HeapSexp, Sexp, SexpIntoIter};
+use crate::sexp::{Cons, HeapSexp, Sexp};
 use crate::token::TokenInfo;
 
 
@@ -93,15 +93,11 @@ impl AmlangAgent {
 
         self.eval_state.push(frame);
         let res = (|| {
-            let cons = match body {
-                Sexp::Primitive(primitive) => {
-                    return err!(self.state(), InvalidSexp(primitive.clone().into()));
-                }
-                Sexp::Cons(cons) => cons,
-            };
-
             let mut body_nodes = vec![];
-            for elem in cons.into_iter() {
+            for (elem, from_cons) in body.into_iter() {
+                if !from_cons {
+                    return err!(self.state(), InvalidSexp(*elem));
+                }
                 let eval = self.eval(elem)?;
                 let node = self
                     .state_mut()
@@ -399,7 +395,10 @@ impl AmlangAgent {
                         .globalize(self.state())
                 };
                 let mut args = Vec::new();
-                for arg in SexpIntoIter::try_from(args_sexp)? {
+                for (arg, from_cons) in args_sexp.into_iter() {
+                    if !from_cons {
+                        return err!(self.state(), InvalidSexp(*arg));
+                    }
                     if let Ok(node) = Node::try_from(&*arg) {
                         args.push(node);
                     } else {
@@ -469,29 +468,28 @@ impl AmlangAgent {
             return Ok(vec![]);
         }
 
-        return match *structures.unwrap() {
-            Sexp::Primitive(primitive) => err!(self.state(), InvalidSexp(primitive.clone().into())),
-
-            Sexp::Cons(cons) => {
-                // TODO(perf) Return Cow.
-                let mut args = Vec::<Node>::with_capacity(cons.iter().count());
-                for structure in cons.into_iter() {
-                    if !should_eval {
-                        args.push(
-                            self.state_mut()
-                                .env()
-                                .insert_structure(*structure)
-                                .globalize(self.state()),
-                        );
-                        continue;
-                    }
-
-                    let val = self.eval(structure)?;
-                    args.push(self.eval_to_node(val)?);
-                }
-                Ok(args)
+        // TODO(perf) Return Cow.
+        let s = structures.unwrap();
+        let mut args = Vec::<Node>::with_capacity(s.iter().count());
+        for (structure, from_cons) in s.into_iter() {
+            if !from_cons {
+                return err!(self.state(), InvalidSexp(*structure));
             }
-        };
+
+            if !should_eval {
+                args.push(
+                    self.state_mut()
+                        .env()
+                        .insert_structure(*structure)
+                        .globalize(self.state()),
+                );
+                continue;
+            }
+
+            let val = self.eval(structure)?;
+            args.push(self.eval_to_node(val)?);
+        }
+        Ok(args)
     }
 
     fn history_insert(&mut self, structure: Sexp) -> Node {

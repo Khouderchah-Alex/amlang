@@ -5,7 +5,7 @@ use crate::agent::agent_state::AgentState;
 use crate::lang_err::{ExpectedCount, LangErr};
 use crate::model::Ret;
 use crate::primitive::{Node, Primitive, Symbol};
-use crate::sexp::{Cons, HeapSexp, Sexp};
+use crate::sexp::{HeapSexp, Sexp};
 
 
 pub fn quote_wrapper(args: Option<HeapSexp>, state: &AgentState) -> Ret {
@@ -37,10 +37,13 @@ pub fn make_lambda_wrapper(
         );
     }
 
-    let (param_sexp, body) = break_by_types!(*args.unwrap(), Cons; remainder)?;
+    let (param_sexp, body) = break_by_types!(*args.unwrap(), Sexp; remainder)?;
     // Pull params into a list of symbols.
     let mut params = Vec::<Symbol>::with_capacity(param_sexp.iter().count());
-    for param in param_sexp {
+    for (param, from_cons) in param_sexp {
+        if !from_cons {
+            return err!(state, InvalidSexp(*param));
+        }
         let name = match *param {
             Sexp::Primitive(Primitive::Symbol(symbol)) => symbol,
             _ => {

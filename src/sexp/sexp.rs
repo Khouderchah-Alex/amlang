@@ -31,11 +31,11 @@ pub struct Cons {
 }
 
 pub struct SexpIter<'a> {
-    current: Option<&'a Cons>,
+    current: Option<&'a Sexp>,
 }
 
 pub struct SexpIntoIter {
-    current: Option<Cons>,
+    current: Option<HeapSexp>,
 }
 
 // Consider using convenience macros in sexp_conversion rather than directly
@@ -57,6 +57,12 @@ impl Sexp {
             c.car == None && c.cdr == None
         } else {
             false
+        }
+    }
+
+    pub fn iter(&self) -> SexpIter {
+        SexpIter {
+            current: Some(&self),
         }
     }
 
@@ -84,18 +90,19 @@ impl Sexp {
         const MAX_DISPLAY_LENGTH: usize = 64;
         const MAX_DISPLAY_DEPTH: usize = 32;
 
-        if let Sexp::Primitive(primitive) = self {
-            return write_primitive(w, primitive, depth);
-        };
-
-        if depth >= MAX_DISPLAY_DEPTH {
-            return write!(w, "(..)");
-        }
-
         let mut pos: usize = 0;
         let mut outer_quote = false;
-        for val in self.cons().iter() {
+        for (val, from_cons) in self.iter() {
             if pos == 0 {
+                if !from_cons {
+                    if let Sexp::Primitive(primitive) = self {
+                        return write_primitive(w, primitive, depth);
+                    };
+                }
+
+                if depth >= MAX_DISPLAY_DEPTH {
+                    return write!(w, "(..)");
+                }
                 if let Ok(symbol) = <&Symbol>::try_from(val) {
                     if symbol.as_str() == "quote" {
                         outer_quote = true;
@@ -135,12 +142,6 @@ impl Cons {
         Cons { car, cdr }
     }
 
-    pub fn iter(&self) -> SexpIter {
-        SexpIter {
-            current: Some(&self),
-        }
-    }
-
     pub fn car(&self) -> Option<&Sexp> {
         match &self.car {
             Some(val) => Some(val.as_ref()),
@@ -166,31 +167,37 @@ impl Cons {
 
 impl SexpIntoIter {
     pub fn consume(self) -> Option<HeapSexp> {
-        self.current.map(|c| HeapSexp::new(Sexp::Cons(c)))
+        self.current
     }
 }
 
 
 impl<'a> Iterator for SexpIter<'a> {
-    type Item = &'a Sexp;
+    // (Sexp, from_cons).
+    //
+    // If from_cons is false, it means the HeapSexp is a top-level Primitive
+    // rather than the car of a Cons. If from_cons is false, this is necessarily
+    // the last element (since there is no Cons to get a cdr from).
+    type Item = (&'a Sexp, bool);
 
     fn next(&mut self) -> Option<Self::Item> {
-        if let Some(cons) = self.current {
-            if let Some(Sexp::Cons(next)) = cons.cdr() {
-                self.current = Some(next);
-            } else {
-                self.current = None;
+        if let Some(sexp) = self.current {
+            match sexp {
+                Sexp::Cons(cons) => {
+                    self.current = cons.cdr();
+                    cons.car().map(|s| (s, true))
+                }
+                _ => Some((sexp, false)),
             }
-
-            return cons.car();
+        } else {
+            None
         }
-
-        None
     }
 }
 
-impl<'a> IntoIterator for &'a Cons {
-    type Item = &'a Sexp;
+impl<'a> IntoIterator for &'a Sexp {
+    // (Sexp, from_cons). See impl Iterator blocks above for more info.
+    type Item = (&'a Sexp, bool);
     type IntoIter = SexpIter<'a>;
 
     fn into_iter(self) -> Self::IntoIter {
@@ -199,26 +206,45 @@ impl<'a> IntoIterator for &'a Cons {
 }
 
 impl Iterator for SexpIntoIter {
-    type Item = HeapSexp;
+    // (Sexp, from_cons).
+    //
+    // If from_cons is false, it means the HeapSexp is a top-level Primitive
+    // rather than the car of a Cons. If from_cons is false, this is necessarily
+    // the last element (since there is no Cons to get a cdr from).
+    type Item = (HeapSexp, bool);
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.current.is_none() {
-            return None;
-        }
-
-        let (car, cdr) = self.current.take().unwrap().consume();
-        if let Some(next) = cdr {
-            if let Sexp::Cons(c) = *next {
-                self.current = Some(c);
+        if let Some(sexp) = self.current.take() {
+            match *sexp {
+                Sexp::Cons(cons) => {
+                    let (car, cdr) = cons.consume();
+                    self.current = cdr;
+                    car.map(|s| (s, true))
+                }
+                _ => Some((sexp, false)),
             }
+        } else {
+            None
         }
-
-        car
     }
 }
 
-impl IntoIterator for Cons {
-    type Item = HeapSexp;
+// TODO(perf) Reduce the need of this by passing around HeapSexps.
+impl IntoIterator for Sexp {
+    // (Sexp, from_cons). See impl Iterator blocks above for more info.
+    type Item = (HeapSexp, bool);
+    type IntoIter = SexpIntoIter;
+
+    fn into_iter(self) -> Self::IntoIter {
+        SexpIntoIter {
+            current: Some(Box::new(self)),
+        }
+    }
+}
+
+impl IntoIterator for HeapSexp {
+    // (Sexp, from_cons). See impl Iterator blocks above for more info.
+    type Item = (HeapSexp, bool);
     type IntoIter = SexpIntoIter;
 
     fn into_iter(self) -> Self::IntoIter {
@@ -354,26 +380,12 @@ impl<'a, E> TryFrom<&'a Result<Sexp, E>> for &'a Cons {
     }
 }
 
-impl TryFrom<Sexp> for SexpIntoIter {
-    type Error = LangErr;
-
-    fn try_from(value: Sexp) -> Result<Self, Self::Error> {
-        match value {
-            Sexp::Primitive(primitive) => err_nost!(InvalidSexp(primitive.clone().into())),
-            Sexp::Cons(cons) => Ok(cons.into_iter()),
-        }
-    }
-}
-
 impl TryFrom<Option<HeapSexp>> for SexpIntoIter {
     type Error = LangErr;
 
     fn try_from(value: Option<HeapSexp>) -> Result<Self, Self::Error> {
         match value {
-            Some(sexp) => match *sexp {
-                Sexp::Primitive(primitive) => err_nost!(InvalidSexp(primitive.clone().into())),
-                Sexp::Cons(cons) => Ok(cons.into_iter()),
-            },
+            Some(sexp) => Ok(sexp.into_iter()),
             None => err_nost!(WrongArgumentCount {
                 given: 0,
                 expected: ExpectedCount::AtLeast(1),

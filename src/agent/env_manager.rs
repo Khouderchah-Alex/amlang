@@ -443,7 +443,10 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         }
 
         let iter = SexpIntoIter::try_from(remainder)?;
-        for entry in iter.skip(2) {
+        for (entry, from_cons) in iter.skip(2) {
+            if !from_cons {
+                return err!(self.state(), InvalidSexp(*entry))?;
+            }
             match *entry {
                 Sexp::Primitive(primitive) => {
                     if let Primitive::Symbol(_sym) = primitive {
@@ -453,7 +456,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
                     }
                 }
                 Sexp::Cons(cons) => {
-                    let (_name, command) = break_by_types!(cons.into(), Symbol, Sexp)?;
+                    let (_name, command) = break_by_types!(Sexp::Cons(cons), Symbol, Sexp)?;
                     let structure = self.eval_structure(command, &builtins)?;
                     self.state_mut().env().insert_structure(structure);
                 }
@@ -555,7 +558,10 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
             Err(err) => return Err(DeserializeError::LangErr(err)),
         };
 
-        for entry in iter {
+        for (entry, from_cons) in iter {
+            if !from_cons {
+                return err!(self.state(), InvalidSexp(*entry))?;
+            }
             let (s, p, o) = break_by_types!(*entry, Symbol, Symbol, Symbol)?;
 
             let subject = self.parse_symbol(&s)?;
