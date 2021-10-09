@@ -72,13 +72,6 @@ impl Sexp {
         }
     }
 
-    pub fn cons(&self) -> &Cons {
-        if let Sexp::Cons(c) = self {
-            return c;
-        }
-        panic!("Expected {:?} to be Cons", self);
-    }
-
     pub fn write_list<W, F, P>(
         &self,
         w: &mut W,
