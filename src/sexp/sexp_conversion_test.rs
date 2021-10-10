@@ -8,7 +8,7 @@ use crate::sexp::{Cons, HeapSexp, Sexp};
 #[test]
 fn symbol_sexp() {
     let original = "(test ing)".parse::<HeapSexp>().unwrap();
-    let (a, b) = break_by_types!(original, Symbol, Symbol).unwrap();
+    let (a, b) = break_hsexp!(original => (Symbol, Symbol)).unwrap();
     assert_eq!(a.as_str(), "test");
     assert_eq!(b.as_str(), "ing");
 }
@@ -16,7 +16,7 @@ fn symbol_sexp() {
 #[test]
 fn lambda_sexp() {
     let original = "(lambda (a b) ing)".parse::<HeapSexp>().unwrap();
-    let (command, _, body) = break_by_types!(original, Symbol, Cons, Symbol).unwrap();
+    let (command, _, body) = break_hsexp!(original => (Symbol, Cons, Symbol)).unwrap();
     assert_eq!(command.as_str(), "lambda");
     assert_eq!(body.as_str(), "ing");
 }
@@ -24,13 +24,13 @@ fn lambda_sexp() {
 #[test]
 fn list_sexp() {
     let original = "(a b c)".parse::<HeapSexp>().unwrap();
-    let (a, r) = break_by_types!(original, Symbol; remainder).unwrap();
+    let (a, r) = break_hsexp!(original => (Symbol; remainder)).unwrap();
     assert_eq!(a.as_str(), "a");
 
-    let (b, r2) = break_by_types!(r.unwrap(), Symbol; remainder).unwrap();
+    let (b, r2) = break_hsexp!(r.unwrap() => (Symbol; remainder)).unwrap();
     assert_eq!(b.as_str(), "b");
 
-    let (c, r3) = break_by_types!(r2.unwrap(), Symbol; remainder).unwrap();
+    let (c, r3) = break_hsexp!(r2.unwrap() => (Symbol; remainder)).unwrap();
     assert_eq!(c.as_str(), "c");
 
     assert_eq!(r3, None);
@@ -42,7 +42,7 @@ fn wrong_type() {
     if let Err(LangErr {
         kind: InvalidArgument { .. },
         ..
-    }) = break_by_types!(original, Node, Sexp, Symbol)
+    }) = break_hsexp!(original => (Node, Sexp, Symbol))
     {
     } else {
         panic!();
@@ -55,7 +55,7 @@ fn extra_arguments() {
     if let Err(LangErr {
         kind: WrongArgumentCount { given: 4, .. },
         ..
-    }) = break_by_types!(original, Symbol, Symbol)
+    }) = break_hsexp!(original => (Symbol, Symbol))
     {
     } else {
         panic!();
@@ -68,7 +68,7 @@ fn missing_arguments() {
     if let Err(LangErr {
         kind: WrongArgumentCount { given: 1, .. },
         ..
-    }) = break_by_types!(original, Symbol, Symbol, Symbol)
+    }) = break_hsexp!(original => (Symbol, Symbol, Symbol))
     {
     } else {
         panic!();
@@ -80,8 +80,8 @@ fn missing_arguments() {
 fn simple_list() {
     let original = "(1 2)".parse::<HeapSexp>().unwrap();
     let l = list!(Number::Integer(1), Number::Integer(2),);
-    let (a, b) = break_by_types!(original, Number, Number).unwrap();
-    let (aa, bb) = break_by_types!(l, Number, Number).unwrap();
+    let (a, b) = break_hsexp!(original => (Number, Number)).unwrap();
+    let (aa, bb) = break_hsexp!(l => (Number, Number)).unwrap();
     assert_eq!(a, aa);
     assert_eq!(b, bb);
 }
@@ -91,7 +91,7 @@ fn simple_list_vars() {
     let a = Number::Integer(1);
     let b = Number::Integer(2);
     let l = list!(a, b,);
-    let (aa, bb) = break_by_types!(l, Number, Number).unwrap();
+    let (aa, bb) = break_hsexp!(l => (Number, Number)).unwrap();
     assert_eq!(a, aa);
     assert_eq!(b, bb);
 }
@@ -102,8 +102,8 @@ fn nested_list_vars() {
     let b = Number::Integer(2);
     let c = Number::Integer(3);
     let l = list!(a, (b, c,),);
-    let (aa, sub) = break_by_types!(l, Number, HeapSexp).unwrap();
-    let (bb, cc) = break_by_types!(sub, Number, Number).unwrap();
+    let (aa, sub) = break_hsexp!(l => (Number, HeapSexp)).unwrap();
+    let (bb, cc) = break_hsexp!(sub => (Number, Number)).unwrap();
     assert_eq!(a, aa);
     assert_eq!(b, bb);
     assert_eq!(c, cc);

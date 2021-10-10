@@ -4,16 +4,31 @@
 /// Optional remainder accepts an arbitrary identifier and append an
 /// Option<HeapSexp> to the end of the result tuple.
 ///
+/// If available, state can be passed to make errors stateful.
 /// Note that clients using a Sexp must manually call HeapSexp::new(_).
-macro_rules! break_by_types {
+///
+/// Example:
+///  let (a, b, tail) = break_hsexp!(original => (Symbol, HeapSexp; remainder), self.state())?;
+macro_rules! break_hsexp {
     (@ignore $_ignored:ident) => {};
-    ($sexp:expr, $($type:ident),+ $(;$remainder:tt)?) => {
+    ($sexp:expr => ($($type:ident),+ $(;$remainder:tt)?) $(,$state:expr)?) => {
         {
+            // Generate stateful or stateless error depending on existence of $state.
+            let err = |kind| {
+                $(
+                    return Err(crate::lang_err::LangErr::with_state(
+                        $state.clone(),
+                        kind
+                    ));
+                )*
+                #[allow(unreachable_code)]
+                Err(crate::lang_err::LangErr::empty_state(kind))
+            };
             let mut iter = $sexp.into_iter();
             let tuple = || {
                 let mut expected: usize = 0;
                 $(
-                    break_by_types!(@ignore $type);
+                    break_hsexp!(@ignore $type);
                     expected += 1;
                 )+
                 let mut i: usize = 0;
@@ -22,7 +37,7 @@ macro_rules! break_by_types {
                         match iter.next() {
                             Some((sexp, from_cons)) =>  {
                                 if !from_cons {
-                                    return err_nost!(InvalidSexp(sexp.into()));
+                                    return err(crate::lang_err::ErrKind::InvalidSexp(sexp.into()));
                                 }
                                 match <$type>::try_from(*sexp) {
                                     Ok(val) => {
@@ -30,7 +45,7 @@ macro_rules! break_by_types {
                                         val
                                     },
                                     Err(original) => {
-                                        return err_nost!(InvalidArgument{
+                                        return err(crate::lang_err::ErrKind::InvalidArgument{
                                             given: original.into(),
                                             expected: std::borrow::Cow::Owned(
                                                 "type ".to_string() + stringify!($type)
@@ -40,7 +55,7 @@ macro_rules! break_by_types {
                                 }
                             }
                             None =>  {
-                                return err_nost!(WrongArgumentCount{
+                                return err(crate::lang_err::ErrKind::WrongArgumentCount{
                                     given: i,
                                     expected: crate::lang_err::ExpectedCount::Exactly(
                                         expected
@@ -51,18 +66,18 @@ macro_rules! break_by_types {
                     )+
                     $(
                         {
-                            break_by_types!(@ignore $remainder);
+                            break_hsexp!(@ignore $remainder);
                             iter.consume()
                         }
                     )*
                 ));
 
                 $(
-                    break_by_types!(@ignore $remainder);
+                    break_hsexp!(@ignore $remainder);
                     iter = crate::sexp::SexpIntoIter::default();
                 )*
                 if let Some(_) = iter.next() {
-                    return err_nost!(WrongArgumentCount{
+                    return err(crate::lang_err::ErrKind::WrongArgumentCount{
                         given: i + 1 + iter.count(),
                         expected: crate::lang_err::ExpectedCount::Exactly(i),
                     });

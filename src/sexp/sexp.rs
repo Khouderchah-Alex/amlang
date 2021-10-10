@@ -427,7 +427,7 @@ impl<'a, T: Into<Sexp> + Clone> From<&'a Vec<T>> for Sexp {
     }
 }
 
-// Used by break_by_types when taking a Sexp.
+// Used by break_hsexp when taking a Sexp.
 impl From<std::convert::Infallible> for Sexp {
     fn from(_: std::convert::Infallible) -> Self {
         Self::default()
