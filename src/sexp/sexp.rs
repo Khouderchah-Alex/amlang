@@ -351,6 +351,12 @@ impl From<Cons> for Sexp {
     }
 }
 
+impl From<Cons> for HeapSexp {
+    fn from(cons: Cons) -> Self {
+        HeapSexp::new(Sexp::Cons(cons))
+    }
+}
+
 // Impl From<T> over Primitive subtypes.
 macro_rules! sexp_from {
     ($from:ident, $($tail:tt)*) => {

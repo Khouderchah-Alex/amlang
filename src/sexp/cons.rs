@@ -9,13 +9,6 @@ pub struct Cons {
     cdr: Option<HeapSexp>,
 }
 
-// Consider using convenience macros in sexp_conversion rather than directly
-// using this.
-pub fn cons(car: Option<HeapSexp>, cdr: Option<HeapSexp>) -> Option<HeapSexp> {
-    Some(HeapSexp::new(Sexp::Cons(Cons::new(car, cdr))))
-}
-
-
 impl Cons {
     pub fn new(car: Option<HeapSexp>, cdr: Option<HeapSexp>) -> Cons {
         Cons { car, cdr }

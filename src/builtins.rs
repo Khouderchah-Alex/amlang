@@ -6,7 +6,7 @@ use crate::lang_err::ExpectedCount;
 use crate::model::Ret;
 use crate::primitive::builtin::Args;
 use crate::primitive::{BuiltIn, Node, Number, Primitive};
-use crate::sexp::{self, Sexp};
+use crate::sexp::{Cons, Sexp};
 
 
 macro_rules! builtins {
@@ -212,7 +212,7 @@ pub fn cons(mut args: Args, state: &mut AgentState) -> Ret {
 
     let cdr = args.pop().unwrap().into();
     let car = args.pop().unwrap().into();
-    Ok(*sexp::cons(car, cdr).unwrap())
+    Ok(Cons::new(car, cdr).into())
 }
 
 pub fn println(mut args: Args, state: &mut AgentState) -> Ret {

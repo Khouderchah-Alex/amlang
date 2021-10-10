@@ -5,7 +5,7 @@ use super::{Node, Primitive};
 use crate::agent::agent_state::AgentState;
 use crate::lang_err::{ExpectedCount, LangErr};
 use crate::model::Model;
-use crate::sexp::{cons, HeapSexp, Sexp};
+use crate::sexp::{Cons, HeapSexp, Sexp};
 
 
 #[derive(Clone, Debug, PartialEq)]
@@ -35,11 +35,11 @@ impl Model for Procedure {
             }
             Procedure::Sequence(seq) => {
                 let progn_node = Node::new(context.lang_env(), context.progn);
-                cons(
+                Cons::new(
                     Some(HeapSexp::new(progn_node.into())),
                     Some(HeapSexp::new(seq.into())),
                 )
-                .unwrap()
+                .into()
             }
             Procedure::Branch(pred, a, b) => {
                 let branch_node = Node::new(context.lang_env(), context.branch);

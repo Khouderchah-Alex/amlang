@@ -93,10 +93,14 @@ macro_rules! break_hsexp {
 // Should not be used directly. Use list! below.
 macro_rules! list_inner {
     () => { None };
+    (@cons $car:expr, $cdr:expr) => {
+        Some(<crate::sexp::HeapSexp>::from(
+            crate::sexp::Cons::new($car, $cdr)))
+    };
     (($elem:expr, $($sub_tail:tt)*), $($tail:tt)*) => {
         {
-            crate::sexp::cons(
-                crate::sexp::cons(
+            list_inner!(@cons
+                  list_inner!(@cons
                     Some(crate::sexp::HeapSexp::new($elem.into())),
                     list_inner!($($sub_tail)*)),
                 list_inner!($($tail)*))
@@ -104,7 +108,7 @@ macro_rules! list_inner {
     };
     ($elem:expr, $($tail:tt)*) => {
         {
-            crate::sexp::cons(
+            list_inner!(@cons
                 Some(crate::sexp::HeapSexp::new($elem.into())),
                 list_inner!($($tail)*))
         }
