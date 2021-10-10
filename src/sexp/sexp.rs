@@ -146,7 +146,10 @@ impl<'a> Iterator for SexpIter<'a> {
                     self.current = cons.cdr();
                     cons.car().map(|s| (s, true))
                 }
-                _ => Some((sexp, false)),
+                _ => {
+                    self.current = None;
+                    Some((sexp, false))
+                }
             }
         } else {
             None
@@ -180,7 +183,10 @@ impl Iterator for SexpIntoIter {
                     self.current = cdr;
                     car.map(|s| (s, true))
                 }
-                _ => Some((sexp, false)),
+                _ => {
+                    self.current = None;
+                    Some((sexp, false))
+                }
             }
         } else {
             None
