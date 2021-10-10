@@ -1,4 +1,4 @@
-use log::info;
+use log::warn;
 
 use std::fmt;
 
@@ -28,7 +28,7 @@ impl<Frame> Continuation<Frame> {
         match self.depth() {
             0 => panic!(),
             1 => {
-                info!("Ignoring pop of sole continuation frame");
+                warn!("Ignoring pop of sole continuation frame");
                 None
             }
             _ => self.0.pop(),

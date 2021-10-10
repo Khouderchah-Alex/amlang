@@ -644,7 +644,11 @@ impl AmlangAgent {
             std::mem::swap(self.state_mut(), &mut stored_state);
             println!("");
             println!("  --TRACE--");
+            let end = state.exec_state().depth() - 1;
             for (i, frame) in state.exec_state().iter().enumerate() {
+                if i == end {
+                    break;
+                }
                 self.state_mut().exec_state_mut().pop();
                 print!("   {})  ", i);
                 self.state_mut().print_list(&frame.context().into());
