@@ -551,7 +551,7 @@ impl Eval for AmlangAgent {
                 let context = self.state().context();
                 match node {
                     _ if Node::new(context.lang_env(), context.quote) == node => {
-                        return quote_wrapper(cdr, self.state());
+                        return Ok(*quote_wrapper(cdr, self.state())?);
                     }
                     _ if Node::new(context.lang_env(), context.lambda) == node
                         || Node::new(context.lang_env(), context.fexpr) == node =>

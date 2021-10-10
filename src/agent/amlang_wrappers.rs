@@ -3,12 +3,11 @@ use std::convert::TryFrom;
 
 use crate::agent::agent_state::AgentState;
 use crate::lang_err::{ExpectedCount, LangErr};
-use crate::model::Ret;
 use crate::primitive::{Node, Primitive, Symbol};
 use crate::sexp::{HeapSexp, Sexp};
 
 
-pub fn quote_wrapper(args: Option<HeapSexp>, state: &AgentState) -> Ret {
+pub fn quote_wrapper(args: Option<HeapSexp>, state: &AgentState) -> Result<HeapSexp, LangErr> {
     if args.is_none() {
         return err!(
             state,
@@ -19,7 +18,7 @@ pub fn quote_wrapper(args: Option<HeapSexp>, state: &AgentState) -> Ret {
         );
     }
 
-    let (val,) = break_hsexp!(args.unwrap() => (Sexp), state)?;
+    let (val,) = break_hsexp!(args.unwrap() => (HeapSexp), state)?;
     Ok(val)
 }
 

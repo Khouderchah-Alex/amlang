@@ -520,9 +520,9 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         }
 
         match command.as_str() {
-            "quote" => Ok(quote_wrapper(cdr, self.state())?),
+            "quote" => Ok(*quote_wrapper(cdr, self.state())?),
             "__builtin" => {
-                if let Ok(sym) = <Symbol>::try_from(quote_wrapper(cdr, self.state())?) {
+                if let Ok(sym) = <Symbol>::try_from(*quote_wrapper(cdr, self.state())?) {
                     if let Some(builtin) = builtins.get(sym.as_str()) {
                         Ok(builtin.clone().into())
                     } else {
