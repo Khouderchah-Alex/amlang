@@ -19,6 +19,8 @@ pub enum ParseErrorReason {
     TrailingQuote,
     UnmatchedOpen,
     UnmatchedClose,
+    IsolatedPeriod,
+    NotPenultimatePeriod,
 }
 
 #[derive(Debug)]
@@ -59,6 +61,34 @@ pub fn parse_sexp<I: Iterator<Item = TokenInfo>>(
             let mut list = ConsList::new();
             loop {
                 if let Some(TokenInfo {
+                    token: Token::Period,
+                    ..
+                }) = tokens.peek()
+                {
+                    tokens.next();
+                    let cdr = if let Some(val) = parse_sexp(tokens, depth + 1)? {
+                        val
+                    } else {
+                        return Err(ParseError {
+                            reason: UnmatchedOpen,
+                            token,
+                        });
+                    };
+                    if let Some(TokenInfo {
+                        token: Token::RightParen,
+                        ..
+                    }) = tokens.next()
+                    {
+                    } else {
+                        return Err(ParseError {
+                            reason: NotPenultimatePeriod,
+                            token,
+                        });
+                    }
+                    return Ok(Some(list.release_with_tail(cdr)));
+                }
+
+                if let Some(TokenInfo {
                     token: Token::RightParen,
                     ..
                 }) = tokens.peek()
@@ -94,6 +124,12 @@ pub fn parse_sexp<I: Iterator<Item = TokenInfo>>(
                     token,
                 });
             }
+        }
+        Token::Period => {
+            return Err(ParseError {
+                reason: IsolatedPeriod,
+                token,
+            });
         }
         Token::RightParen => {
             return Err(ParseError {

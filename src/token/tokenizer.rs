@@ -230,6 +230,15 @@ impl Tokenizer {
     where
         SymbolPolicy: Fn(&str) -> Result<SymbolInfo, SymbolError>,
     {
+        if ptoken == "." {
+            self.tokens.push_back(TokenInfo {
+                token: Token::Period,
+                line: self.line_count,
+                col: start,
+            });
+            return Ok(());
+        }
+
         // Try to parse as number before imposing Symbol constraints.
         let token = if let Ok(num) = ptoken.parse::<Num>() {
             Token::Primitive(Number(num))

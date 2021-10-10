@@ -20,6 +20,17 @@ impl ConsList {
         self.head
     }
 
+    pub fn release_with_tail(mut self, tail: HeapSexp) -> HeapSexp {
+        if self.end.is_null() {
+            self.head = tail;
+        } else {
+            unsafe {
+                (*self.end).set_cdr(Some(tail));
+            }
+        }
+        self.head
+    }
+
     pub fn append(&mut self, val: HeapSexp) {
         let mut tail = Box::new(Sexp::Cons(Cons::new(Some(val), None)));
         let new_end;

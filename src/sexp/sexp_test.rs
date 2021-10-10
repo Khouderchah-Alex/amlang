@@ -1,7 +1,7 @@
 use super::*;
 
 use crate::primitive::symbol_policies::policy_base;
-use crate::primitive::ToSymbol;
+use crate::primitive::{Number, ToSymbol};
 
 
 #[test]
@@ -13,4 +13,26 @@ fn vec_into_sexp() {
     ];
     assert_eq!(<Sexp>::from(&v), expected);
     assert_eq!(<Sexp>::from(v), expected);
+}
+
+#[test]
+fn non_cons() {
+    let s = "(1 2 3 . 4)".parse().unwrap();
+    let mut iter = HeapSexp::new(s).into_iter();
+    assert_eq!(
+        iter.next().unwrap(),
+        (HeapSexp::new(Number::Integer(1).into()), true)
+    );
+    assert_eq!(
+        iter.next().unwrap(),
+        (HeapSexp::new(Number::Integer(2).into()), true)
+    );
+    assert_eq!(
+        iter.next().unwrap(),
+        (HeapSexp::new(Number::Integer(3).into()), true)
+    );
+    assert_eq!(
+        iter.next().unwrap(),
+        (HeapSexp::new(Number::Integer(4).into()), false)
+    );
 }

@@ -7,6 +7,7 @@ pub enum Token {
     LeftParen,
     RightParen,
     Quote,
+    Period,
     Primitive(Primitive),
     Comment(String),
 }
