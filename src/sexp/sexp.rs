@@ -107,7 +107,11 @@ impl Sexp {
             }
 
             if pos > 0 && !outer_quote {
-                write!(w, " ")?;
+                if from_cons {
+                    write!(w, " ")?;
+                } else {
+                    write!(w, " . ")?;
+                }
             }
             val.write_list(w, depth + 1, write_primitive, write_paren)?;
 
