@@ -25,22 +25,12 @@ impl FileStream {
     where
         SymbolPolicy: Fn(&str) -> Result<SymbolInfo, SymbolError>,
     {
-        let file = match File::open(path) {
-            Ok(file) => file,
-            Err(err) => return Err(FileStreamError::IoError(err)),
-        };
+        let file = File::open(path)?;
         let reader = BufReader::new(file);
 
         let mut tokenizer = Tokenizer::new();
         for line in reader.lines() {
-            match line {
-                Ok(l) => {
-                    if let Err(err) = tokenizer.tokenize(&l, &symbol_policy) {
-                        return Err(FileStreamError::TokenizeError(err));
-                    }
-                }
-                Err(err) => return Err(FileStreamError::IoError(err)),
-            }
+            tokenizer.tokenize(line?, &symbol_policy)?;
         }
 
         Ok(FileStream { tokenizer })
@@ -53,5 +43,18 @@ impl Iterator for FileStream {
 
     fn next(&mut self) -> Option<TokenInfo> {
         self.tokenizer.next()
+    }
+}
+
+
+impl From<std::io::Error> for FileStreamError {
+    fn from(err: std::io::Error) -> Self {
+        Self::IoError(err)
+    }
+}
+
+impl From<TokenizeError> for FileStreamError {
+    fn from(err: TokenizeError) -> Self {
+        Self::TokenizeError(err)
     }
 }
