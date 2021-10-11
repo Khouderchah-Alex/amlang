@@ -8,6 +8,7 @@ use std::cell::RefCell;
 use std::convert::TryFrom;
 
 use crate::agent::agent_state::AgentState;
+use crate::primitive::table::Table;
 use crate::primitive::{Symbol, SymbolTable};
 
 

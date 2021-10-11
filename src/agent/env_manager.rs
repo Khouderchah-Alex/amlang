@@ -18,6 +18,7 @@ use crate::model::{Eval, Model, Ret};
 use crate::parser::{self, parse_sexp};
 use crate::primitive::prelude::*;
 use crate::primitive::symbol_policies::{policy_admin, AdminSymbolInfo};
+use crate::primitive::table::Table;
 use crate::sexp::{Cons, HeapSexp, Sexp, SexpIntoIter};
 use crate::token::file_stream::{self, FileStream, FileStreamError};
 

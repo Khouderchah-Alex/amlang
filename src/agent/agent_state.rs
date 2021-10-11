@@ -14,7 +14,7 @@ use crate::lang_err::LangErr;
 use crate::model::Model;
 use crate::primitive::prelude::*;
 use crate::primitive::symbol_policies::policy_admin;
-use crate::primitive::table::Table;
+use crate::primitive::table::{AmlangTable, Table};
 use crate::sexp::Sexp;
 
 
@@ -33,7 +33,7 @@ pub const AMLANG_DESIGNATION: &str = "__designatedBy";
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ExecFrame {
     context: Node,
-    map: Table<Node, Node>,
+    map: AmlangTable<Node, Node>,
 }
 
 #[derive(Clone, Debug)]

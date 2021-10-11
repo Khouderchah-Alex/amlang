@@ -12,6 +12,7 @@ use crate::lang_err::{ExpectedCount, LangErr};
 use crate::model::{Eval, Model, Ret};
 use crate::parser::{parse_sexp, ParseError};
 use crate::primitive::prelude::*;
+use crate::primitive::table::Table;
 use crate::sexp::{Cons, HeapSexp, Sexp};
 use crate::token::TokenInfo;
 

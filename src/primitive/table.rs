@@ -10,53 +10,61 @@ use crate::environment::LocalNode;
 use crate::sexp::Sexp;
 
 
-pub type SymbolTable = Table<Symbol, Node>;
-pub type LocalNodeTable = Table<LocalNode, LocalNode>;
+pub type SymbolTable = AmlangTable<Symbol, Node>;
+pub type LocalNodeTable = AmlangTable<LocalNode, LocalNode>;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct Table<K, V> {
+pub struct AmlangTable<K, V> {
     map: BTreeMap<K, V>,
 }
 
-impl<K: Ord, V: Copy> Table<K, V> {
-    pub fn new(map: BTreeMap<K, V>) -> Self {
-        Self { map }
-    }
+// Using a trait rather than normal impl because LocalNode is a bit of an
+// exception (not convertible to a Sexp through Into). Mostly boils down to:
+//   https://github.com/rust-lang/rust/issues/20400
+pub trait Table<K: Ord, V: Copy> {
+    fn as_map(&self) -> &BTreeMap<K, V>;
+    fn as_map_mut(&mut self) -> &mut BTreeMap<K, V>;
 
-    pub fn lookup<Q>(&self, k: &Q) -> Option<V>
+    fn lookup<Q>(&self, k: &Q) -> Option<V>
     where
         K: Borrow<Q>,
         Q: Ord + Eq + ?Sized,
     {
-        if let Some(v) = self.map.get(k) {
+        if let Some(v) = self.as_map().get(k) {
             Some(*v)
         } else {
             None
         }
     }
 
-    pub fn contains_key<Q>(&self, k: &Q) -> bool
+    fn contains_key<Q>(&self, k: &Q) -> bool
     where
         K: Borrow<Q>,
         Q: Ord + Eq + ?Sized,
     {
-        self.map.contains_key(k)
+        self.as_map().contains_key(k)
     }
 
-    pub fn insert(&mut self, k: K, v: V) -> Option<V> {
-        self.map.insert(k, v)
+    fn insert(&mut self, k: K, v: V) -> Option<V> {
+        self.as_map_mut().insert(k, v)
     }
 
-    pub fn entry(&mut self, k: K) -> Entry<K, V> {
-        self.map.entry(k)
-    }
-
-    pub fn as_map(&self) -> &BTreeMap<K, V> {
-        &self.map
+    fn entry(&mut self, k: K) -> Entry<K, V> {
+        self.as_map_mut().entry(k)
     }
 }
 
-impl<K: Ord, V> Default for Table<K, V> {
+
+impl<K: Ord, V: Copy> Table<K, V> for AmlangTable<K, V> {
+    fn as_map(&self) -> &BTreeMap<K, V> {
+        &self.map
+    }
+    fn as_map_mut(&mut self) -> &mut BTreeMap<K, V> {
+        &mut self.map
+    }
+}
+
+impl<K: Ord, V> Default for AmlangTable<K, V> {
     fn default() -> Self {
         Self {
             map: Default::default(),
