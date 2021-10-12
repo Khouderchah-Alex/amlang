@@ -197,16 +197,16 @@ impl AgentState {
                     .unwrap()
                     .node_as_triple(node.local())
                 {
-                    Ok(*triple.reify(self))
+                    Ok(triple.reify(self))
                 } else {
                     // Atoms are self-designating.
                     Ok(node.into())
                 }
             }
             // Reify Models.
-            Primitive::Procedure(proc) => Ok(*proc.reify(self)),
-            Primitive::SymbolTable(table) => Ok(*table.reify(self)),
-            Primitive::LocalNodeTable(table) => Ok(*table.reify(self)),
+            Primitive::Procedure(proc) => Ok(proc.reify(self)),
+            Primitive::SymbolTable(table) => Ok(table.reify(self)),
+            Primitive::LocalNodeTable(table) => Ok(table.reify(self)),
             // Base case for self-designating.
             _ => Ok(designator.clone().into()),
         }
@@ -267,7 +267,7 @@ impl AgentState {
             .iter()
             .next()
         {
-            return err!(self, DuplicateTriple(*triple.reify(self)));
+            return err!(self, DuplicateTriple(triple.reify(self)));
         }
 
         let triple = self.env().insert_triple(subject, predicate, object);

@@ -94,8 +94,8 @@ macro_rules! break_hsexp {
 macro_rules! list_inner {
     () => { None };
     (@cons $car:expr, $cdr:expr) => {
-        Some(<crate::sexp::HeapSexp>::from(
-            crate::sexp::Cons::new($car, $cdr)))
+        <crate::sexp::Sexp>::from(
+            crate::sexp::Cons::new($car.into(), $cdr.into()))
     };
     (($elem:expr, $($sub_tail:tt)*), $($tail:tt)*) => {
         {
@@ -115,13 +115,16 @@ macro_rules! list_inner {
     };
 }
 
-/// Returns the specified sexp as a HeapSexp.
+/// Returns the elements as a Sexp list.
 ///
 /// Provided Primitive elements must implement Into<Sexp>.
 /// Trailing commas currently must be used.
+///
+/// Example:
+///   list!(a, b, (c, (d)), e)
 macro_rules! list {
     ($($tail:tt)*) => {
-        list_inner!($($tail)*).unwrap()
+        list_inner!($($tail)*)
     }
 }
 

@@ -78,7 +78,7 @@ impl<K: Ord, V> Default for AmlangTable<K, V> {
 
 // TODO (flex) Would rather impl Model once. Maybe use macro.
 impl Model for AmlangTable<Symbol, Node> {
-    fn reify(&self, state: &mut AgentState) -> HeapSexp {
+    fn reify(&self, state: &mut AgentState) -> Sexp {
         let mut alist = None;
         for (k, v) in self.as_map() {
             alist = Some(
@@ -158,7 +158,7 @@ impl Model for AmlangTable<Symbol, Node> {
 }
 
 impl Model for AmlangTable<LocalNode, LocalNode> {
-    fn reify(&self, state: &mut AgentState) -> HeapSexp {
+    fn reify(&self, state: &mut AgentState) -> Sexp {
         let mut alist = None;
         for (k, v) in self.as_map() {
             alist = Some(

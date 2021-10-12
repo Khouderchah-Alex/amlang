@@ -8,7 +8,7 @@ use crate::agent::agent_state::AgentState;
 use crate::lang_err::LangErr;
 use crate::model::Model;
 use crate::primitive::Node;
-use crate::sexp::HeapSexp;
+use crate::sexp::{HeapSexp, Sexp};
 
 
 pub type LocalId = u64;
@@ -47,7 +47,7 @@ impl LocalTriple {
 
 
 impl Model for LocalTriple {
-    fn reify(&self, state: &mut AgentState) -> HeapSexp {
+    fn reify(&self, state: &mut AgentState) -> Sexp {
         let e = state.pos().env();
         let env = state.env();
         let s = Node::new(e, env.triple_subject(*self));

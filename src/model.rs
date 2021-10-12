@@ -13,7 +13,7 @@ pub trait Eval {
 
 pub trait Model {
     /// Model -> Structure according to (possibly implicit) metamodel.
-    fn reify(&self, state: &mut AgentState) -> HeapSexp;
+    fn reify(&self, state: &mut AgentState) -> Sexp;
 
     /// Structure -> Model according to (possibly implicit) metamodel.
     ///

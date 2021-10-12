@@ -18,7 +18,7 @@ pub enum Procedure {
 
 
 impl Model for Procedure {
-    fn reify(&self, state: &mut AgentState) -> HeapSexp {
+    fn reify(&self, state: &mut AgentState) -> Sexp {
         let context = state.context();
         match self {
             Procedure::Application(func, args) => {

@@ -81,7 +81,7 @@ fn simple_list() {
     let original = "(1 2)".parse::<HeapSexp>().unwrap();
     let l = list!(Number::Integer(1), Number::Integer(2),);
     let (a, b) = break_hsexp!(original => (Number, Number)).unwrap();
-    let (aa, bb) = break_hsexp!(l => (Number, Number)).unwrap();
+    let (aa, bb) = break_hsexp!(HeapSexp::new(l) => (Number, Number)).unwrap();
     assert_eq!(a, aa);
     assert_eq!(b, bb);
 }
@@ -91,7 +91,7 @@ fn simple_list_vars() {
     let a = Number::Integer(1);
     let b = Number::Integer(2);
     let l = list!(a, b,);
-    let (aa, bb) = break_hsexp!(l => (Number, Number)).unwrap();
+    let (aa, bb) = break_hsexp!(HeapSexp::new(l) => (Number, Number)).unwrap();
     assert_eq!(a, aa);
     assert_eq!(b, bb);
 }
@@ -102,7 +102,7 @@ fn nested_list_vars() {
     let b = Number::Integer(2);
     let c = Number::Integer(3);
     let l = list!(a, (b, c,),);
-    let (aa, sub) = break_hsexp!(l => (Number, HeapSexp)).unwrap();
+    let (aa, sub) = break_hsexp!(HeapSexp::new(l) => (Number, HeapSexp)).unwrap();
     let (bb, cc) = break_hsexp!(sub => (Number, Number)).unwrap();
     assert_eq!(a, aa);
     assert_eq!(b, bb);
