@@ -203,8 +203,10 @@ impl AgentState {
                     Ok(node.into())
                 }
             }
-            // Procedure -> Structure
+            // Reify Models.
             Primitive::Procedure(proc) => Ok(*proc.reify(self)),
+            Primitive::SymbolTable(table) => Ok(*table.reify(self)),
+            Primitive::LocalNodeTable(table) => Ok(*table.reify(self)),
             // Base case for self-designating.
             _ => Ok(designator.clone().into()),
         }
@@ -506,6 +508,14 @@ impl AgentState {
             }
             Primitive::Procedure(procedure) => {
                 let s = procedure.reify(self);
+                self.write_list_internal(w, &s, depth, false)
+            }
+            Primitive::SymbolTable(table) => {
+                let s = table.reify(self);
+                self.write_list_internal(w, &s, depth, false)
+            }
+            Primitive::LocalNodeTable(table) => {
+                let s = table.reify(self);
                 self.write_list_internal(w, &s, depth, false)
             }
             _ => write!(w, "{}", primitive),

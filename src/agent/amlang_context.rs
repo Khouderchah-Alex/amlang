@@ -39,6 +39,8 @@ pub struct AmlangContext {
     pub t: LocalNode,
     pub f: LocalNode,
     pub eq: LocalNode,
+    pub symbol_table: LocalNode,
+    pub local_node_table: LocalNode,
 }
 
 
@@ -76,6 +78,8 @@ impl AmlangContext {
             t: designation.clone(),
             f: designation.clone(),
             eq: designation.clone(),
+            symbol_table: designation.clone(),
+            local_node_table: designation.clone(),
         }
     }
 

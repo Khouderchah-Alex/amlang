@@ -59,6 +59,16 @@ impl Model for Procedure {
         let (command, cdr) = break_hsexp!(structure => (Primitive; remainder), state)?;
         let node = process_primitive(state, &command)?;
         let context = state.context();
+        if !Self::valid_discriminator(node, state) {
+            return err!(
+                state,
+                InvalidArgument {
+                    given: command.into(),
+                    expected: Cow::Borrowed("Procedure variant")
+                }
+            );
+        }
+
         if node.local() == context.apply {
             if cdr.is_none() {
                 return err!(
@@ -150,14 +160,22 @@ impl Model for Procedure {
             )
             .into())
         } else {
-            err!(
-                state,
-                InvalidArgument {
-                    given: command.into(),
-                    expected: Cow::Borrowed("Procedure variant")
-                }
-            )
+            panic!()
         }
+    }
+
+    fn valid_discriminator(node: Node, state: &AgentState) -> bool {
+        let context = state.context();
+        if node.env() != context.lang_env() {
+            return false;
+        }
+
+        let local = node.local();
+        return local == context.apply
+            || local == context.lambda
+            || local == context.fexpr
+            || local == context.progn
+            || local == context.branch;
     }
 }
 

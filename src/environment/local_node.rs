@@ -63,6 +63,10 @@ impl Model for LocalTriple {
     ) -> Result<Self, LangErr> {
         unimplemented!();
     }
+
+    fn valid_discriminator(_node: Node, _state: &AgentState) -> bool {
+        return false;
+    }
 }
 
 impl fmt::Display for LocalNode {

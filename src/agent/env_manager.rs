@@ -84,11 +84,24 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         let mut policy = Policy::default();
         let meta = EnvManager::create_env(&mut policy, LocalNode::default());
 
-        let context = AmlangContext::new(
+        let mut context = AmlangContext::new(
             meta,
             LocalNode::new(0), // self
             LocalNode::new(1), // designation
         );
+        // Make context usable for reflecting Models during bootstrapping.
+        // TODO(flex) Find more flexible approch to bootstrapping Model
+        // nodes, like {,de}serializing this as a bootstrap kernel.
+        context.lang_env = LocalNode::new(8);
+        // Procedure nodes.
+        context.lambda = LocalNode::new(13);
+        context.apply = LocalNode::new(33);
+        context.branch = LocalNode::new(41);
+        context.fexpr = LocalNode::new(45);
+        context.progn = LocalNode::new(49);
+        // Table nodes.
+        context.symbol_table = LocalNode::new(57);
+        context.local_node_table = LocalNode::new(59);
 
         // Bootstrap meta env.
         let meta_state = AgentState::new(
@@ -107,26 +120,9 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         );
         info!("Meta env bootstrapping complete.");
 
-        // Make context usable for bootstrapping lang.
-        {
-            let lang_env = manager.state().find_env("lang.env").unwrap();
-            manager.initialize_env_node(lang_env);
-            let context = manager.state_mut().context_mut();
-            context.lang_env = lang_env;
-
-            // TODO(flex) Find more flexible approch to bootstrapping Procedure
-            // nodes. It's worth noting that these are only needed for
-            // deserializing Procedures in the lang env (since otherwise the
-            // context is already fully bootstrapped).
-            context.lambda = LocalNode::new(13);
-            context.apply = LocalNode::new(33);
-            context.branch = LocalNode::new(41);
-            context.fexpr = LocalNode::new(45);
-            context.progn = LocalNode::new(49);
-        }
-
         // Bootstrap lang env.
         let lang_env = manager.state().context().lang_env();
+        manager.initialize_env_node(lang_env);
         let serialize_path = manager.state().context().serialize_path;
         manager.state_mut().jump_env(lang_env);
         let lang_path = {
@@ -164,6 +160,8 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
                            t: "true",
                            f: "false",
                            eq: "eq",
+                           symbol_table: "table_sym_node",
+                           local_node_table: "table_lnode",
         );
         info!("Lang env bootstrapping complete.");
 

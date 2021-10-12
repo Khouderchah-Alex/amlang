@@ -1,5 +1,6 @@
 // Public exports.
 pub use agent::Agent;
+pub use agent_state::AgentState;
 
 // Public mods.
 pub mod agent;

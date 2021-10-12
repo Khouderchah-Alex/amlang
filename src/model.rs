@@ -28,4 +28,6 @@ pub trait Model {
     where
         Self: Sized,
         F: FnMut(&mut AgentState, &Primitive) -> Result<Node, LangErr>;
+
+    fn valid_discriminator(node: Node, state: &AgentState) -> bool;
 }

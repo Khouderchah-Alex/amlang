@@ -375,6 +375,11 @@ macro_rules! sexp_from {
                 Sexp::Primitive(Primitive::$from(elem))
             }
         }
+        impl From<$from> for HeapSexp {
+            fn from(elem: $from) -> Self {
+                Self::new(Sexp::Primitive(Primitive::$from(elem)))
+            }
+        }
         sexp_from!($($tail)*);
     };
     () => {};
