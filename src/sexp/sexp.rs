@@ -313,22 +313,14 @@ impl FromStr for Sexp {
     type Err = FromStrError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        HeapSexp::from_str(s).map(|e| *e)
-    }
-}
-
-impl FromStr for HeapSexp {
-    type Err = FromStrError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
         let stream = match StringStream::new(s, policy_base) {
             Ok(stream) => stream,
             Err(err) => return Err(FromStrError::TokenizeError(err)),
         };
 
         return match parse_sexp(&mut stream.peekable(), 0) {
-            Ok(Some(sexp)) => Ok(sexp),
-            Ok(None) => Ok(HeapSexp::new(Sexp::default())),
+            Ok(Some(sexp)) => Ok(*sexp),
+            Ok(None) => Ok(Sexp::default()),
             Err(err) => Err(FromStrError::ParseError(err)),
         };
     }
@@ -354,7 +346,7 @@ impl<'a, T: Into<Sexp> + Clone> From<&'a Vec<T>> for Sexp {
     }
 }
 
-// Used by break_hsexp when taking a Sexp.
+// Used by break_sexp when taking a Sexp.
 impl From<std::convert::Infallible> for Sexp {
     fn from(_: std::convert::Infallible) -> Self {
         Self::default()

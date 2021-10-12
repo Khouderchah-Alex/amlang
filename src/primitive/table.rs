@@ -102,7 +102,7 @@ impl Model for AmlangTable<Symbol, Node> {
         Self: Sized,
         F: FnMut(&mut AgentState, &Primitive) -> Result<Node, LangErr>,
     {
-        let (command, cdr) = break_hsexp!(structure => (Primitive; remainder), state)?;
+        let (command, cdr) = break_sexp!(structure => (Primitive; remainder), state)?;
         let node = process_primitive(state, &command)?;
         if !Self::valid_discriminator(node, state) {
             return err!(
@@ -116,7 +116,7 @@ impl Model for AmlangTable<Symbol, Node> {
 
         let mut table = Self::default();
         for assoc in cdr {
-            let (cons,) = break_hsexp!(assoc => (Cons), state)?;
+            let (cons,) = break_sexp!(assoc => (Cons), state)?;
             match cons.consume() {
                 (Some(k), Some(v)) => {
                     if let Ok(kk) = <&Symbol>::try_from(&*k) {
@@ -188,7 +188,7 @@ impl Model for AmlangTable<LocalNode, LocalNode> {
         Self: Sized,
         F: FnMut(&mut AgentState, &Primitive) -> Result<Node, LangErr>,
     {
-        let (command, cdr) = break_hsexp!(structure => (Primitive; remainder), state)?;
+        let (command, cdr) = break_sexp!(structure => (Primitive; remainder), state)?;
         let node = process_primitive(state, &command)?;
         if !Self::valid_discriminator(node, state) {
             return err!(
@@ -202,7 +202,7 @@ impl Model for AmlangTable<LocalNode, LocalNode> {
 
         let mut table = Self::default();
         for assoc in cdr {
-            let (cons,) = break_hsexp!(assoc => (Cons), state)?;
+            let (cons,) = break_sexp!(assoc => (Cons), state)?;
             match cons.consume() {
                 (Some(k), Some(v)) => match (*k, *v) {
                     (Sexp::Primitive(kp), Sexp::Primitive(vp)) => {

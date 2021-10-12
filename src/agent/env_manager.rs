@@ -445,7 +445,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
 
     fn deserialize_nodes(&mut self, structure: HeapSexp) -> Result<(), DeserializeError> {
         let builtins = generate_builtin_map();
-        let (command, remainder) = break_hsexp!(structure => (Symbol; remainder), self.state())?;
+        let (command, remainder) = break_sexp!(structure => (Symbol; remainder), self.state())?;
         if command.as_str() != "nodes" {
             return Err(UnexpectedCommand(command.into()));
         }
@@ -464,7 +464,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
                     }
                 }
                 Sexp::Cons(_) => {
-                    let (_name, command) = break_hsexp!(entry => (Symbol, HeapSexp), self.state())?;
+                    let (_name, command) = break_sexp!(entry => (Symbol, HeapSexp), self.state())?;
                     let structure = self.eval_structure(command, &builtins)?;
                     self.state_mut().env().insert_structure(structure);
                 }
@@ -503,7 +503,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
             return Ok(s.clone().into());
         }
 
-        let (command, cdr) = break_hsexp!(structure => (Symbol; remainder), self.state())?;
+        let (command, cdr) = break_sexp!(structure => (Symbol; remainder), self.state())?;
 
         // Note(subtle): during the initial deserialization of the meta & lang
         // envs, Model context nodes are only valid because they're specially
@@ -546,7 +546,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
             // turned into structured nodes.
             "__env" => Ok(Sexp::default()),
             "__path" => {
-                let (path,) = break_hsexp!(cdr.unwrap() => (AmString), self.state())?;
+                let (path,) = break_sexp!(cdr.unwrap() => (AmString), self.state())?;
                 Ok(Path::new(path.as_str().into()).into())
             }
             _ => panic!("{}", command),
@@ -554,7 +554,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
     }
 
     fn deserialize_triples(&mut self, structure: HeapSexp) -> Result<(), DeserializeError> {
-        let (command, remainder) = break_hsexp!(structure => (Symbol; remainder), self.state())?;
+        let (command, remainder) = break_sexp!(structure => (Symbol; remainder), self.state())?;
         if command.as_str() != "triples" {
             return Err(UnexpectedCommand(command.into()));
         }
@@ -572,7 +572,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
             if !from_cons {
                 return err!(self.state(), InvalidSexp(*entry))?;
             }
-            let (s, p, o) = break_hsexp!(entry => (Symbol, Symbol, Symbol), self.state())?;
+            let (s, p, o) = break_sexp!(entry => (Symbol, Symbol, Symbol), self.state())?;
 
             let subject = self.parse_symbol(&s)?;
             let predicate = self.parse_symbol(&p)?;

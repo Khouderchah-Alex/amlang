@@ -56,7 +56,7 @@ impl Model for Procedure {
     where
         F: FnMut(&mut AgentState, &Primitive) -> Result<Node, LangErr>,
     {
-        let (command, cdr) = break_hsexp!(structure => (Primitive; remainder), state)?;
+        let (command, cdr) = break_sexp!(structure => (Primitive; remainder), state)?;
         let node = process_primitive(state, &command)?;
         let context = state.context();
         if !Self::valid_discriminator(node, state) {
@@ -80,7 +80,7 @@ impl Model for Procedure {
                 );
             }
 
-            let (func, args) = break_hsexp!(cdr.unwrap() => (Primitive, HeapSexp), state)?;
+            let (func, args) = break_sexp!(cdr.unwrap() => (Primitive, HeapSexp), state)?;
             let fnode = process_primitive(state, &func)?;
             let mut arg_nodes = Vec::with_capacity(args.iter().count());
             for (arg, from_cons) in args {
@@ -106,7 +106,7 @@ impl Model for Procedure {
             }
 
             let reflect = node.local() == context.fexpr;
-            let (params, body) = break_hsexp!(cdr.unwrap() => (HeapSexp, Primitive), state)?;
+            let (params, body) = break_sexp!(cdr.unwrap() => (HeapSexp, Primitive), state)?;
             let mut param_nodes = Vec::with_capacity(params.iter().count());
             for (param, from_cons) in params {
                 if !from_cons {
@@ -152,7 +152,7 @@ impl Model for Procedure {
             }
 
             let (pred, a, b) =
-                break_hsexp!(cdr.unwrap() => (Primitive, Primitive, Primitive), state)?;
+                break_sexp!(cdr.unwrap() => (Primitive, Primitive, Primitive), state)?;
             Ok(Procedure::Branch(
                 process_primitive(state, &pred)?,
                 process_primitive(state, &a)?,

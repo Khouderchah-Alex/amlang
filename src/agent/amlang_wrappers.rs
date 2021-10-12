@@ -18,7 +18,7 @@ pub fn quote_wrapper(args: Option<HeapSexp>, state: &AgentState) -> Result<HeapS
         );
     }
 
-    let (val,) = break_hsexp!(args.unwrap() => (HeapSexp), state)?;
+    let (val,) = break_sexp!(args.unwrap() => (HeapSexp), state)?;
     Ok(val)
 }
 
@@ -36,7 +36,7 @@ pub fn make_lambda_wrapper(
         );
     }
 
-    let (param_sexp, body) = break_hsexp!(args.unwrap() => (HeapSexp; remainder), state)?;
+    let (param_sexp, body) = break_sexp!(args.unwrap() => (HeapSexp; remainder), state)?;
     // Pull params into a list of symbols.
     let mut params = Vec::<Symbol>::with_capacity(param_sexp.iter().count());
     for (param, from_cons) in param_sexp {

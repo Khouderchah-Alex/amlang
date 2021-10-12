@@ -1,15 +1,14 @@
-/// Breaks a HeapSexp into Result<tuple of component types, LangErr>,
+/// Breaks a Sexp/HeapSexp into Result<tuple of component types, LangErr>,
 /// assuming all component types implement TryFrom<$type> for Sexp.
 ///
 /// Optional remainder accepts an arbitrary identifier and append an
 /// Option<HeapSexp> to the end of the result tuple.
 ///
 /// If available, state can be passed to make errors stateful.
-/// Note that clients using a Sexp must manually call HeapSexp::new(_).
 ///
 /// Example:
-///  let (a, b, tail) = break_hsexp!(original => (Symbol, HeapSexp; remainder), self.state())?;
-macro_rules! break_hsexp {
+///  let (a, b, tail) = break_sexp!(original => (Symbol, HeapSexp; remainder), self.state())?;
+macro_rules! break_sexp {
     (@ignore $_ignored:ident) => {};
     ($sexp:expr => ($($type:ident),+ $(;$remainder:tt)?) $(,$state:expr)?) => {
         {
@@ -28,7 +27,7 @@ macro_rules! break_hsexp {
             let tuple = || {
                 let mut expected: usize = 0;
                 $(
-                    break_hsexp!(@ignore $type);
+                    break_sexp!(@ignore $type);
                     expected += 1;
                 )+
                 let mut i: usize = 0;
@@ -66,14 +65,14 @@ macro_rules! break_hsexp {
                     )+
                     $(
                         {
-                            break_hsexp!(@ignore $remainder);
+                            break_sexp!(@ignore $remainder);
                             iter.consume()
                         }
                     )*
                 ));
 
                 $(
-                    break_hsexp!(@ignore $remainder);
+                    break_sexp!(@ignore $remainder);
                     iter = crate::sexp::SexpIntoIter::default();
                 )*
                 if let Some(_) = iter.next() {
