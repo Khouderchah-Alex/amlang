@@ -276,15 +276,16 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         let mut w = BufWriter::new(file);
 
         write!(&mut w, "(nodes")?;
-        for node in self.state_mut().env().all_nodes() {
+        for (i, node) in self.state_mut().env().all_nodes().into_iter().enumerate() {
             write!(&mut w, "\n    ")?;
 
             let s = self.state_mut().env().node_structure(node).owned();
             let (write_structure, add_quote) = match &s {
+                // Serialize self_des as ^1 since it can be reconstructed.
+                _ if i == 1 => (false, false),
                 Some(sexp) => match sexp {
-                    // TODO(func) Serialize both of these. Perhaps impl Model?
-                    Sexp::Primitive(Primitive::SymbolTable(_)) => (false, false),
-                    Sexp::Primitive(Primitive::LocalNodeTable(_)) => (false, false),
+                    Sexp::Primitive(Primitive::SymbolTable(_)) => (true, false),
+                    Sexp::Primitive(Primitive::LocalNodeTable(_)) => (true, false),
                     // Don't quote structures with special deserialize ops.
                     Sexp::Primitive(Primitive::BuiltIn(_)) => (true, false),
                     Sexp::Primitive(Primitive::Procedure(_)) => (true, false),
@@ -411,6 +412,14 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
                 let proc_sexp = proc.reify(self.state_mut());
                 self.serialize_list_internal(w, &proc_sexp, depth + 1)
             }
+            Primitive::SymbolTable(table) => {
+                let sexp = table.reify(self.state_mut());
+                self.serialize_list_internal(w, &sexp, depth + 1)
+            }
+            Primitive::LocalNodeTable(table) => {
+                let sexp = table.reify(self.state_mut());
+                self.serialize_list_internal(w, &sexp, depth + 1)
+            }
             Primitive::Node(node) => {
                 if let Some(triple) = self
                     .state_mut()
@@ -496,25 +505,27 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
 
         let (command, cdr) = break_hsexp!(structure => (Symbol; remainder), self.state())?;
 
+        // Note(subtle): during the initial deserialization of the meta & lang
+        // envs, Model context nodes are only valid because they're specially
+        // set before actual context bootstrapping occurs.
         if let Ok(node) = self.parse_symbol(&command) {
-            let context = self.state().context();
+            let process_primitive = |state: &mut AgentState, p: &Primitive| match p {
+                Primitive::Node(n) => Ok(*n),
+                Primitive::Symbol(s) => Ok(EnvManager::<Policy>::parse_symbol_inner(state, &s)?),
+                _ => panic!(),
+            };
 
-            // Note(subtle): during the initial deserialization of the lang env,
-            // Procedure context nodes are only valid because they're specially set
-            // before actual context bootstrapping occurs.
-            if node.env() == context.lang_env() {
-                return Ok(Procedure::reflect(
-                    Sexp::Cons(Cons::new(Some(HeapSexp::new(command.into())), cdr)).into(),
-                    self.state_mut(),
-                    |state, p| match p {
-                        Primitive::Node(n) => Ok(*n),
-                        Primitive::Symbol(s) => {
-                            Ok(EnvManager::<Policy>::parse_symbol_inner(state, &s)?)
-                        }
-                        _ => panic!(),
-                    },
-                )?
-                .into());
+            if Procedure::valid_discriminator(node, self.state()) {
+                let sexp = Cons::new(Some(command.into()), cdr).into();
+                return Ok(Procedure::reflect(sexp, self.state_mut(), process_primitive)?.into());
+            } else if LocalNodeTable::valid_discriminator(node, self.state()) {
+                let sexp = Cons::new(Some(command.into()), cdr).into();
+                return Ok(
+                    LocalNodeTable::reflect(sexp, self.state_mut(), process_primitive)?.into(),
+                );
+            } else if SymbolTable::valid_discriminator(node, self.state()) {
+                let sexp = Cons::new(Some(command.into()), cdr).into();
+                return Ok(SymbolTable::reflect(sexp, self.state_mut(), process_primitive)?.into());
             }
         }
 
