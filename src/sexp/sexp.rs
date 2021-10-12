@@ -34,9 +34,10 @@ pub struct SexpIter<'a> {
     current: Option<&'a Sexp>,
 }
 
-#[derive(Default)]
-pub struct SexpIntoIter {
-    current: Option<HeapSexp>,
+pub enum SexpIntoIter {
+    None,
+    Stack(Sexp),
+    Heap(HeapSexp),
 }
 
 #[derive(Debug)]
@@ -131,12 +132,16 @@ impl Sexp {
 
 impl SexpIntoIter {
     pub fn consume(self) -> Option<HeapSexp> {
-        self.current
+        match self {
+            Self::None => None,
+            Self::Stack(sexp) => sexp.into(),
+            Self::Heap(hsexp) => Some(hsexp),
+        }
     }
 }
 
 impl<'a> Iterator for SexpIter<'a> {
-    // (Sexp, from_cons).
+    // (&Sexp, from_cons).
     //
     // If from_cons is false, it means the HeapSexp is a top-level Primitive
     // rather than the car of a Cons. If from_cons is false, this is necessarily
@@ -162,7 +167,7 @@ impl<'a> Iterator for SexpIter<'a> {
 }
 
 impl<'a> IntoIterator for &'a Sexp {
-    // (Sexp, from_cons). See impl Iterator blocks above for more info.
+    // (&Sexp, from_cons). See impl Iterator blocks above for more info.
     type Item = (&'a Sexp, bool);
     type IntoIter = SexpIter<'a>;
 
@@ -171,8 +176,14 @@ impl<'a> IntoIterator for &'a Sexp {
     }
 }
 
+impl Default for SexpIntoIter {
+    fn default() -> Self {
+        Self::None
+    }
+}
+
 impl Iterator for SexpIntoIter {
-    // (Sexp, from_cons).
+    // (HeapSexp, from_cons).
     //
     // If from_cons is false, it means the HeapSexp is a top-level Primitive
     // rather than the car of a Cons. If from_cons is false, this is necessarily
@@ -180,33 +191,53 @@ impl Iterator for SexpIntoIter {
     type Item = (HeapSexp, bool);
 
     fn next(&mut self) -> Option<Self::Item> {
-        if let Some(sexp) = self.current.take() {
-            match *sexp {
+        // Self set to None unless some special-case keeps the iteration going.
+        let mut old = Self::None;
+        std::mem::swap(self, &mut old);
+        match old {
+            Self::None => None,
+            Self::Stack(sexp) => match sexp {
                 Sexp::Cons(cons) => {
                     let (car, cdr) = cons.consume();
-                    self.current = cdr;
+                    if let Some(hsexp) = cdr {
+                        *self = Self::Heap(hsexp);
+                    }
                     car.map(|s| (s, true))
                 }
-                _ => {
-                    self.current = None;
-                    Some((sexp, false))
+                // We only need to do this if we call into_iter on a Primitive.
+                _ => Some((HeapSexp::new(sexp), false)),
+            },
+            Self::Heap(hsexp) => match *hsexp {
+                Sexp::Cons(cons) => {
+                    let (car, cdr) = cons.consume();
+                    if let Some(hsexp) = cdr {
+                        *self = Self::Heap(hsexp);
+                    }
+                    car.map(|s| (s, true))
                 }
-            }
-        } else {
-            None
+                _ => Some((hsexp, false)),
+            },
         }
     }
 }
 
-impl IntoIterator for HeapSexp {
-    // (Sexp, from_cons). See impl Iterator blocks above for more info.
+impl IntoIterator for Sexp {
+    // (HeapSexp, from_cons). See impl Iterator blocks above for more info.
     type Item = (HeapSexp, bool);
     type IntoIter = SexpIntoIter;
 
     fn into_iter(self) -> Self::IntoIter {
-        SexpIntoIter {
-            current: Some(self),
-        }
+        Self::IntoIter::Stack(self)
+    }
+}
+
+impl IntoIterator for HeapSexp {
+    // (HeapSexp, from_cons). See impl Iterator blocks above for more info.
+    type Item = (HeapSexp, bool);
+    type IntoIter = SexpIntoIter;
+
+    fn into_iter(self) -> Self::IntoIter {
+        Self::IntoIter::Heap(self)
     }
 }
 
