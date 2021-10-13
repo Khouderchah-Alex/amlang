@@ -120,8 +120,8 @@ impl Model for AmlangTable<Symbol, Node> {
             match cons.consume() {
                 (Some(k), Some(v)) => {
                     if let Ok(kk) = <&Symbol>::try_from(&*k) {
-                        if let Ok(vv) = Node::try_from(&*v) {
-                            table.insert(kk.clone(), vv);
+                        if let Ok(vp) = <&Primitive>::try_from(&*v) {
+                            table.insert(kk.clone(), process_primitive(state, &vp)?);
                             continue;
                         }
                     }
