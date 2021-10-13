@@ -1,5 +1,3 @@
-use std::convert::TryFrom;
-
 use crate::lang_err::{ErrKind::*, LangErr};
 use crate::primitive::{Node, Number, Symbol};
 use crate::sexp::{Cons, HeapSexp, Sexp};

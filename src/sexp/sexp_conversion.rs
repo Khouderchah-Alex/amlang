@@ -38,7 +38,8 @@ macro_rules! break_sexp {
                                 if !proper {
                                     return err(crate::lang_err::ErrKind::InvalidSexp(sexp.into()));
                                 }
-                                match <$type>::try_from(*sexp) {
+                                match <$type as
+                                       std::convert::TryFrom<crate::sexp::Sexp>>::try_from(*sexp) {
                                     Ok(val) => {
                                         i += 1;
                                         val
