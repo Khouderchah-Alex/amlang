@@ -32,6 +32,9 @@ impl Cons {
         (self.car, self.cdr)
     }
 
+    pub fn set_car(&mut self, new: Option<HeapSexp>) {
+        self.car = new;
+    }
     pub fn set_cdr(&mut self, new: Option<HeapSexp>) {
         self.cdr = new;
     }

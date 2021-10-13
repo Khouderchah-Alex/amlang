@@ -332,7 +332,7 @@ impl<T: Into<Sexp>> From<Vec<T>> for Sexp {
         for value in vec {
             list.append(Box::new(value.into()));
         }
-        *list.release()
+        list.release()
     }
 }
 
@@ -342,7 +342,7 @@ impl<'a, T: Into<Sexp> + Clone> From<&'a Vec<T>> for Sexp {
         for value in vec {
             list.append(Box::new(value.clone().into()));
         }
-        *list.release()
+        list.release()
     }
 }
 

@@ -85,7 +85,7 @@ pub fn parse_sexp<I: Iterator<Item = TokenInfo>>(
                             token,
                         });
                     }
-                    return Ok(Some(list.release_with_tail(cdr)));
+                    return Ok(Some(HeapSexp::new(list.release_with_tail(*cdr))));
                 }
 
                 if let Some(TokenInfo {
@@ -94,7 +94,7 @@ pub fn parse_sexp<I: Iterator<Item = TokenInfo>>(
                 }) = tokens.peek()
                 {
                     tokens.next();
-                    return Ok(Some(list.release()));
+                    return Ok(Some(HeapSexp::new(list.release())));
                 }
 
                 let sexp = parse_sexp(tokens, depth + 1)?;
@@ -117,7 +117,7 @@ pub fn parse_sexp<I: Iterator<Item = TokenInfo>>(
                     "quote".to_symbol_or_panic(policy_base).into(),
                 ));
                 list.append(val);
-                return Ok(Some(list.release()));
+                return Ok(Some(HeapSexp::new(list.release())));
             } else {
                 return Err(ParseError {
                     reason: TrailingQuote,

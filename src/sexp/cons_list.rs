@@ -1,52 +1,62 @@
-//! Module for constructing lists as S-exps.
+//! Module for constructing lists as S-exps without building in reverse or
+//! tolerating O(n) insertion => O(n^2) total construction.
+//!
+//! Not concurrency-safe; meant to be used serially.
+
+use std::convert::TryFrom;
 
 use crate::sexp::{Cons, HeapSexp, Sexp};
 
 #[derive(Debug)]
 pub struct ConsList {
-    head: HeapSexp,
+    head: Cons,
     end: *mut Cons,
+    len: usize,
 }
 
 impl ConsList {
     pub fn new() -> ConsList {
         ConsList {
-            head: Box::new(Sexp::Cons(Cons::default())),
+            head: Cons::default(),
             end: std::ptr::null_mut(),
+            len: 0,
         }
     }
 
-    pub fn release(self) -> HeapSexp {
-        self.head
+    pub fn release(self) -> Sexp {
+        self.head.into()
     }
 
-    pub fn release_with_tail(mut self, tail: HeapSexp) -> HeapSexp {
-        if self.end.is_null() {
-            self.head = tail;
-        } else {
-            unsafe {
-                (*self.end).set_cdr(Some(tail));
+    pub fn release_with_tail(mut self, tail: Sexp) -> Sexp {
+        match self.len {
+            0 => tail,
+            1 => {
+                // If self is moving, then end is not a usable address of
+                // self.head.
+                self.head.set_cdr(tail.into());
+                self.head.into()
+            }
+            _ => {
+                unsafe {
+                    (*self.end).set_cdr(Some(tail.into()));
+                }
+                self.head.into()
             }
         }
-        self.head
     }
 
     pub fn append(&mut self, val: HeapSexp) {
-        let mut tail = Box::new(Sexp::Cons(Cons::new(Some(val), None)));
-        let new_end;
-        if let Sexp::Cons(c) = tail.as_mut() {
-            new_end = c as *mut Cons;
+        let l = if self.end.is_null() {
+            self.head.set_car(Some(val));
+            &self.head
         } else {
-            panic!();
-        }
-
-        unsafe {
-            if self.end.is_null() {
-                self.head = tail;
-            } else {
-                (*self.end).set_cdr(Some(tail));
+            let tail = Cons::new(Some(val), None);
+            unsafe {
+                (*self.end).set_cdr(Some(tail.into()));
+                <&Cons>::try_from((*self.end).cdr()).unwrap()
             }
-            self.end = new_end;
-        }
+        };
+        self.end = l as *const Cons as *mut Cons;
+        self.len += 1;
     }
 }
