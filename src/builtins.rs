@@ -6,34 +6,98 @@ use crate::lang_err::ExpectedCount;
 use crate::model::Ret;
 use crate::primitive::builtin::Args;
 use crate::primitive::{BuiltIn, Node, Number, Primitive};
-use crate::sexp::{Cons, Sexp};
+use crate::sexp::{Cons, HeapSexp, Sexp};
 
-
-macro_rules! builtins {
-    [$($x:expr),*] => {
-        {
-            let mut m = HashMap::new();
-            $(
-                m.insert(
-                    stringify!($x),
-                    BuiltIn::new(stringify!($x), $x),
-                );
-            )*
-            m
-        }
-    };
-    [$($n:tt : $x:expr),+ ,] => {
-        builtins![$($n : $x),*]
-    };
-}
 
 // Used for bootstrapping and auxiliary purposes, not as an environment.
 pub fn generate_builtin_map() -> HashMap<&'static str, BuiltIn> {
-    builtins![add, sub, mul, div, car, cdr, cons, println, eq]
+    macro_rules! builtins {
+        [$($x:expr),*] => {
+            {
+                let mut m = HashMap::new();
+                $(
+                    m.insert(
+                        stringify!($x),
+                        BuiltIn::new(stringify!($x), $x),
+                    );
+                )*
+                    m
+            }
+        };
+        [$($n:tt : $x:expr),+ ,] => {
+            builtins![$($n : $x),*]
+        };
+    }
+
+    builtins![car, cdr, cons, println, eq, add, sub, mul, div]
 }
 
 
-pub fn add(args: Args, state: &mut AgentState) -> Ret {
+/// Autogen function taking args: Vec<Sexp> from one taking specific subtypes.
+macro_rules! wrap_builtin {
+    ($raw:ident($ta:ident) => $wrapped:ident) => {
+        fn $wrapped(args: Args, state: &mut AgentState) -> Ret {
+            let (a,) = break_sexp!(args.into_iter().map(|e| (e, true)) => ($ta), state)?;
+            $raw(a, state)
+        }
+    };
+    ($raw:ident($ta:ident, $tb:ident) => $wrapped:ident) => {
+        fn $wrapped(args: Args, state: &mut AgentState) -> Ret {
+            let (a, b) = break_sexp!(args.into_iter().map(|e| (e, true)) => ($ta, $tb), state)?;
+            $raw(a, b, state)
+        }
+    };
+    ($raw:ident($($type:ident),+) => $wrapped:ident) => {
+        fn $wrapped(args: Args, state: &mut AgentState) -> Ret {
+            let tuple = break_sexp!(args.into_iter().map(|e| (e, true)) => ($($type),+), state)?;
+            $raw(tuple, state)
+        }
+    };
+}
+
+wrap_builtin!(car_(Cons) => car);
+wrap_builtin!(cdr_(Cons) => cdr);
+wrap_builtin!(cons_(HeapSexp, HeapSexp) => cons);
+wrap_builtin!(println_(Sexp) => println);
+wrap_builtin!(eq_(Sexp, Sexp) => eq);
+
+fn car_(cons: Cons, _state: &mut AgentState) -> Ret {
+    if let Some(val) = cons.consume().0 {
+        Ok(*val)
+    } else {
+        Ok(Sexp::default())
+    }
+}
+
+fn cdr_(cons: Cons, _state: &mut AgentState) -> Ret {
+    if let Some(val) = cons.consume().1 {
+        Ok(*val)
+    } else {
+        Ok(Sexp::default())
+    }
+}
+
+fn cons_(car: HeapSexp, cdr: HeapSexp, _state: &mut AgentState) -> Ret {
+    Ok(Cons::new(Some(car), Some(cdr)).into())
+}
+
+fn println_(arg: Sexp, state: &mut AgentState) -> Ret {
+    state.print_list(&arg);
+    println!("");
+    Ok(Sexp::default())
+}
+
+fn eq_(a: Sexp, b: Sexp, state: &mut AgentState) -> Ret {
+    let local = if a == b {
+        state.context().t
+    } else {
+        state.context().f
+    };
+    Ok(Node::new(state.context().lang_env(), local).into())
+}
+
+
+fn add(args: Args, state: &mut AgentState) -> Ret {
     let mut curr = Number::default();
     for arg in args {
         if let Sexp::Primitive(Primitive::Number(num)) = arg {
@@ -52,7 +116,7 @@ pub fn add(args: Args, state: &mut AgentState) -> Ret {
     Ok(curr.into())
 }
 
-pub fn sub(args: Args, state: &mut AgentState) -> Ret {
+fn sub(args: Args, state: &mut AgentState) -> Ret {
     if args.len() < 1 {
         return err!(
             state,
@@ -87,7 +151,7 @@ pub fn sub(args: Args, state: &mut AgentState) -> Ret {
     Ok(curr.into())
 }
 
-pub fn mul(args: Args, state: &mut AgentState) -> Ret {
+fn mul(args: Args, state: &mut AgentState) -> Ret {
     let mut curr = Number::Integer(1);
     for arg in args {
         if let Sexp::Primitive(Primitive::Number(num)) = arg {
@@ -106,7 +170,7 @@ pub fn mul(args: Args, state: &mut AgentState) -> Ret {
     Ok(curr.into())
 }
 
-pub fn div(args: Args, state: &mut AgentState) -> Ret {
+fn div(args: Args, state: &mut AgentState) -> Ret {
     if args.len() < 1 {
         return err!(
             state,
@@ -139,113 +203,4 @@ pub fn div(args: Args, state: &mut AgentState) -> Ret {
     }
 
     Ok(curr.into())
-}
-
-pub fn car(mut args: Args, state: &mut AgentState) -> Ret {
-    if args.len() != 1 {
-        return err!(
-            state,
-            WrongArgumentCount {
-                given: args.len(),
-                expected: ExpectedCount::Exactly(1),
-            }
-        );
-    }
-
-    let first = args.pop().unwrap();
-    if let Sexp::Cons(cons) = first {
-        if let Some(val) = cons.consume().0 {
-            Ok(*val)
-        } else {
-            Ok(Sexp::default())
-        }
-    } else {
-        err!(
-            state,
-            InvalidArgument {
-                given: first,
-                expected: Cow::Borrowed("Cons"),
-            }
-        )
-    }
-}
-
-pub fn cdr(mut args: Args, state: &mut AgentState) -> Ret {
-    if args.len() != 1 {
-        return err!(
-            state,
-            WrongArgumentCount {
-                given: args.len(),
-                expected: ExpectedCount::Exactly(1),
-            }
-        );
-    }
-
-    let first = args.pop().unwrap();
-    if let Sexp::Cons(cons) = first {
-        if let Some(val) = cons.consume().1 {
-            Ok(*val)
-        } else {
-            Ok(Sexp::default())
-        }
-    } else {
-        err!(
-            state,
-            InvalidArgument {
-                given: first,
-                expected: Cow::Borrowed("Cons"),
-            }
-        )
-    }
-}
-
-pub fn cons(mut args: Args, state: &mut AgentState) -> Ret {
-    if args.len() != 2 {
-        return err!(
-            state,
-            WrongArgumentCount {
-                given: args.len(),
-                expected: ExpectedCount::Exactly(2),
-            }
-        );
-    }
-
-    let cdr = args.pop().unwrap().into();
-    let car = args.pop().unwrap().into();
-    Ok(Cons::new(car, cdr).into())
-}
-
-pub fn println(mut args: Args, state: &mut AgentState) -> Ret {
-    if args.len() != 1 {
-        return err!(
-            state,
-            WrongArgumentCount {
-                given: args.len(),
-                expected: ExpectedCount::Exactly(1),
-            }
-        );
-    }
-
-    state.print_list(&args.pop().unwrap());
-    println!("");
-    Ok(Sexp::default())
-}
-
-pub fn eq(args: Args, state: &mut AgentState) -> Ret {
-    if args.len() != 2 {
-        return err!(
-            state,
-            WrongArgumentCount {
-                given: args.len(),
-                expected: ExpectedCount::Exactly(2),
-            }
-        );
-    }
-
-    let local = if args[0] == args[1] {
-        state.context().t
-    } else {
-        state.context().f
-    };
-    Ok(Node::new(state.context().lang_env(), local).into())
 }
