@@ -39,8 +39,8 @@ pub fn make_lambda_wrapper(
     let (param_sexp, body) = break_sexp!(args.unwrap() => (HeapSexp; remainder), state)?;
     // Pull params into a list of symbols.
     let mut params = Vec::<Symbol>::with_capacity(param_sexp.iter().count());
-    for (param, from_cons) in param_sexp {
-        if !from_cons {
+    for (param, proper) in param_sexp {
+        if !proper {
             return err!(state, InvalidSexp(*param));
         }
         let name = match *param {

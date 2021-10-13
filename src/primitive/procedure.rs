@@ -83,8 +83,8 @@ impl Model for Procedure {
             let (func, args) = break_sexp!(cdr.unwrap() => (Primitive, HeapSexp), state)?;
             let fnode = process_primitive(state, &func)?;
             let mut arg_nodes = Vec::with_capacity(args.iter().count());
-            for (arg, from_cons) in args {
-                if !from_cons {
+            for (arg, proper) in args {
+                if !proper {
                     return err!(state, InvalidSexp(*arg));
                 }
                 if let Ok(p) = <&Primitive>::try_from(&*arg) {
@@ -108,8 +108,8 @@ impl Model for Procedure {
             let reflect = node.local() == context.fexpr;
             let (params, body) = break_sexp!(cdr.unwrap() => (HeapSexp, Primitive), state)?;
             let mut param_nodes = Vec::with_capacity(params.iter().count());
-            for (param, from_cons) in params {
-                if !from_cons {
+            for (param, proper) in params {
+                if !proper {
                     return err!(state, InvalidSexp(*param));
                 }
                 if let Ok(p) = <&Primitive>::try_from(&*param) {
@@ -123,8 +123,8 @@ impl Model for Procedure {
         } else if node.local() == context.progn {
             let mut seq = vec![];
             if cdr.is_some() {
-                for (sexp, from_cons) in cdr.unwrap().into_iter() {
-                    if !from_cons {
+                for (sexp, proper) in cdr.unwrap().into_iter() {
+                    if !proper {
                         return err!(
                             state,
                             InvalidArgument {

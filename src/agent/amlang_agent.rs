@@ -95,8 +95,8 @@ impl AmlangAgent {
         self.eval_state.push(frame);
         let res = (|| {
             let mut body_nodes = vec![];
-            for (elem, from_cons) in body.into_iter() {
-                if !from_cons {
+            for (elem, proper) in body.into_iter() {
+                if !proper {
                     return err!(self.state(), InvalidSexp(*elem));
                 }
                 let eval = self.eval(elem)?;
@@ -396,8 +396,8 @@ impl AmlangAgent {
                         .globalize(self.state())
                 };
                 let mut args = Vec::new();
-                for (arg, from_cons) in Box::new(args_sexp).into_iter() {
-                    if !from_cons {
+                for (arg, proper) in Box::new(args_sexp).into_iter() {
+                    if !proper {
                         return err!(self.state(), InvalidSexp(*arg));
                     }
                     if let Ok(node) = Node::try_from(&*arg) {
@@ -472,8 +472,8 @@ impl AmlangAgent {
         // TODO(perf) Return Cow.
         let s = structures.unwrap();
         let mut args = Vec::<Node>::with_capacity(s.iter().count());
-        for (structure, from_cons) in s.into_iter() {
-            if !from_cons {
+        for (structure, proper) in s.into_iter() {
+            if !proper {
                 return err!(self.state(), InvalidSexp(*structure));
             }
 

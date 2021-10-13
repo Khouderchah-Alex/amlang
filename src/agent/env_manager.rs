@@ -451,8 +451,8 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         }
 
         let iter = SexpIntoIter::try_from(remainder)?;
-        for (entry, from_cons) in iter.skip(2) {
-            if !from_cons {
+        for (entry, proper) in iter.skip(2) {
+            if !proper {
                 return err!(self.state(), InvalidSexp(*entry))?;
             }
             match *entry {
@@ -568,8 +568,8 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
             Err(err) => return Err(DeserializeError::LangErr(err)),
         };
 
-        for (entry, from_cons) in iter {
-            if !from_cons {
+        for (entry, proper) in iter {
+            if !proper {
                 return err!(self.state(), InvalidSexp(*entry))?;
             }
             let (s, p, o) = break_sexp!(entry => (Symbol, Symbol, Symbol), self.state())?;

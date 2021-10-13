@@ -34,8 +34,8 @@ macro_rules! break_sexp {
                 let ret = Ok((
                     $(
                         match iter.next() {
-                            Some((sexp, from_cons)) =>  {
-                                if !from_cons {
+                            Some((sexp, proper)) =>  {
+                                if !proper {
                                     return err(crate::lang_err::ErrKind::InvalidSexp(sexp.into()));
                                 }
                                 match <$type>::try_from(*sexp) {

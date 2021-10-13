@@ -80,9 +80,9 @@ impl Sexp {
 
         let mut pos: usize = 0;
         let mut outer_quote = false;
-        for (val, from_cons) in self.iter() {
+        for (val, proper) in self.iter() {
             if pos == 0 {
-                if !from_cons {
+                if !proper {
                     if let Sexp::Primitive(primitive) = self {
                         return write_primitive(w, primitive, depth);
                     };
@@ -108,7 +108,7 @@ impl Sexp {
             }
 
             if pos > 0 && !outer_quote {
-                if from_cons {
+                if proper {
                     write!(w, " ")?;
                 } else {
                     write!(w, " . ")?;
@@ -141,10 +141,10 @@ impl SexpIntoIter {
 }
 
 impl<'a> Iterator for SexpIter<'a> {
-    // (&Sexp, from_cons).
+    // (&Sexp, proper).
     //
-    // If from_cons is false, it means the HeapSexp is a top-level Primitive
-    // rather than the car of a Cons. If from_cons is false, this is necessarily
+    // If proper is false, it means the HeapSexp is a top-level Primitive
+    // rather than the car of a Cons. If proper is false, this is necessarily
     // the last element (since there is no Cons to get a cdr from).
     type Item = (&'a Sexp, bool);
 
@@ -167,7 +167,7 @@ impl<'a> Iterator for SexpIter<'a> {
 }
 
 impl<'a> IntoIterator for &'a Sexp {
-    // (&Sexp, from_cons). See impl Iterator blocks above for more info.
+    // (&Sexp, proper). See impl Iterator blocks above for more info.
     type Item = (&'a Sexp, bool);
     type IntoIter = SexpIter<'a>;
 
@@ -183,10 +183,10 @@ impl Default for SexpIntoIter {
 }
 
 impl Iterator for SexpIntoIter {
-    // (HeapSexp, from_cons).
+    // (HeapSexp, proper).
     //
-    // If from_cons is false, it means the HeapSexp is a top-level Primitive
-    // rather than the car of a Cons. If from_cons is false, this is necessarily
+    // If proper is false, it means the HeapSexp is a top-level Primitive
+    // rather than the car of a Cons. If proper is false, this is necessarily
     // the last element (since there is no Cons to get a cdr from).
     type Item = (HeapSexp, bool);
 
@@ -222,7 +222,7 @@ impl Iterator for SexpIntoIter {
 }
 
 impl IntoIterator for Sexp {
-    // (HeapSexp, from_cons). See impl Iterator blocks above for more info.
+    // (HeapSexp, proper). See impl Iterator blocks above for more info.
     type Item = (HeapSexp, bool);
     type IntoIter = SexpIntoIter;
 
@@ -232,7 +232,7 @@ impl IntoIterator for Sexp {
 }
 
 impl IntoIterator for HeapSexp {
-    // (HeapSexp, from_cons). See impl Iterator blocks above for more info.
+    // (HeapSexp, proper). See impl Iterator blocks above for more info.
     type Item = (HeapSexp, bool);
     type IntoIter = SexpIntoIter;
 
