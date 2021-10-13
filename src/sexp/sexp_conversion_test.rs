@@ -1,5 +1,5 @@
 use crate::lang_err::{ErrKind::*, LangErr};
-use crate::primitive::{Node, Number, Symbol};
+use crate::primitive::{AmString, Node, Number, Symbol};
 use crate::sexp::{Cons, HeapSexp, Sexp};
 
 
@@ -80,6 +80,16 @@ fn simple_list() {
     let l = list!(Number::Integer(1), Number::Integer(2),);
     let (a, b) = break_sexp!(original => (Number, Number)).unwrap();
     let (aa, bb) = break_sexp!(l => (Number, Number)).unwrap();
+    assert_eq!(a, aa);
+    assert_eq!(b, bb);
+}
+
+#[test]
+fn multi_type_list() {
+    let original: Sexp = "(1 \"test\")".parse().unwrap();
+    let l = list!(Number::Integer(1), AmString::new("test"),);
+    let (a, b) = break_sexp!(original => (Number, AmString)).unwrap();
+    let (aa, bb) = break_sexp!(l => (Number, AmString)).unwrap();
     assert_eq!(a, aa);
     assert_eq!(b, bb);
 }
