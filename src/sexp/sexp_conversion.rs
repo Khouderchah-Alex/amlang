@@ -8,6 +8,7 @@
 ///
 /// Example:
 ///  let (a, b, tail) = break_sexp!(original => (Symbol, HeapSexp; remainder), self.state())?;
+// TODO(func) Have remainder return iter so that other Iterators can be used.
 macro_rules! break_sexp {
     (@ignore $_ignored:ident) => {};
     ($sexp:expr => ($($type:ident),+ $(;$remainder:tt)?) $(,$state:expr)?) => {
@@ -38,8 +39,8 @@ macro_rules! break_sexp {
                                 if !proper {
                                     return err(crate::lang_err::ErrKind::InvalidSexp(sexp.into()));
                                 }
-                                match <$type as
-                                       std::convert::TryFrom<crate::sexp::Sexp>>::try_from(*sexp) {
+                                match <$type as std::convert::TryFrom<crate::sexp::Sexp>
+                                       >::try_from(sexp.into()) {
                                     Ok(val) => {
                                         i += 1;
                                         val

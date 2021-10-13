@@ -35,6 +35,20 @@ fn list_sexp() {
 }
 
 #[test]
+fn vec_break_no_remainder() {
+    let original: Vec<Sexp> = vec![
+        Number::Integer(1).into(),
+        Number::Integer(2).into(),
+        Number::Integer(3).into(),
+    ];
+    let (a, b, c) =
+        break_sexp!(original.into_iter().map(|e| (e, true)) => (Number, Number, Number)).unwrap();
+    assert_eq!(a, Number::Integer(1));
+    assert_eq!(b, Number::Integer(2));
+    assert_eq!(c, Number::Integer(3));
+}
+
+#[test]
 fn wrong_type() {
     let original: Sexp = "(lambda (a b) ing)".parse().unwrap();
     if let Err(LangErr {
