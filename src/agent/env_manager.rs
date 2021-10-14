@@ -490,10 +490,10 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         structure: HeapSexp,
         builtins: &HashMap<&'static str, BuiltIn>,
     ) -> Result<Sexp, DeserializeError> {
-        if let Ok(sym) = <&Symbol>::try_from(&*structure) {
-            return Ok(self.parse_node(sym)?.into());
-        } else if let Ok(s) = <&AmString>::try_from(&*structure) {
-            return Ok(s.clone().into());
+        match *structure {
+            Sexp::Primitive(Primitive::Symbol(sym)) => return Ok(self.parse_node(&sym)?.into()),
+            Sexp::Primitive(Primitive::AmString(s)) => return Ok(s.into()),
+            _ => {}
         }
 
         let (command, cdr) = break_sexp!(structure => (Symbol; remainder), self.state())?;
