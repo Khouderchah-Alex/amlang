@@ -8,33 +8,8 @@ use crate::primitive::Symbol;
 use crate::sexp::Sexp;
 
 
-/// Creates a stateful LangErr.
-///
-/// Called as:  err!(state, error).
-/// Stateful errors should always be used when possible.
-macro_rules! err {
-    ($state:expr, $($kind:tt)+) => {
-        Err(crate::lang_err::LangErr::with_state(
-            $state.clone(),
-            crate::lang_err::ErrKind::$($kind)+,
-        ))
-    };
-}
-/// Creates a stateless LangErr.
-///
-/// Called as:  err_nost!(error).
-/// Stateful errors are always preferred when possible.
-macro_rules! err_nost {
-    ($($kind:tt)+) => {
-        Err(crate::lang_err::LangErr::empty_state(
-            crate::lang_err::ErrKind::$($kind)+,
-        ))
-    };
-}
-
-
 #[derive(Debug)]
-pub struct LangErr {
+pub struct Error {
     state: Option<AgentState>,
     pub kind: ErrKind,
 }
@@ -66,8 +41,8 @@ pub enum ExpectedCount {
     AtMost(usize),
 }
 
-impl LangErr {
-    // Prefer using err! for convenience.
+impl Error {
+    // Prefer using err_nost! for convenience.
     pub fn empty_state(kind: ErrKind) -> Self {
         Self { state: None, kind }
     }
@@ -86,7 +61,7 @@ impl LangErr {
 }
 
 
-impl fmt::Display for LangErr {
+impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "[Lang Error] ")?;
         match &self.kind {

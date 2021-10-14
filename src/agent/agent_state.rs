@@ -10,7 +10,6 @@ use super::amlang_context::AmlangContext;
 use super::continuation::Continuation;
 use crate::environment::environment::{EnvObject, TripleSet};
 use crate::environment::LocalNode;
-use crate::lang_err::LangErr;
 use crate::model::Model;
 use crate::primitive::prelude::*;
 use crate::primitive::symbol_policies::policy_admin;
@@ -159,7 +158,7 @@ impl AgentState {
         None
     }
 
-    pub fn resolve(&mut self, name: &Symbol) -> Result<Node, LangErr> {
+    pub fn resolve(&mut self, name: &Symbol) -> Result<Node, Error> {
         let designation = self.context().designation();
         // Always get self_* nodes from current env.
         match name.as_str() {
@@ -179,7 +178,7 @@ impl AgentState {
         err!(self, UnboundSymbol(name.clone()))
     }
 
-    pub fn designate(&mut self, designator: Primitive) -> Result<Sexp, LangErr> {
+    pub fn designate(&mut self, designator: Primitive) -> Result<Sexp, Error> {
         match designator {
             // Symbol -> Node
             Primitive::Symbol(symbol) => Ok(self.resolve(&symbol)?.into()),
@@ -212,7 +211,7 @@ impl AgentState {
         }
     }
 
-    pub fn name_node(&mut self, name: LocalNode, node: LocalNode) -> Result<Node, LangErr> {
+    pub fn name_node(&mut self, name: LocalNode, node: LocalNode) -> Result<Node, Error> {
         let name_sexp = self.env().node_structure(name);
         let symbol = if let Ok(symbol) = <Symbol>::try_from(name_sexp.owned()) {
             symbol
@@ -260,7 +259,7 @@ impl AgentState {
         subject: LocalNode,
         predicate: LocalNode,
         object: LocalNode,
-    ) -> Result<Sexp, LangErr> {
+    ) -> Result<Sexp, Error> {
         if let Some(triple) = self
             .env()
             .match_triple(subject, predicate, object)
@@ -279,7 +278,7 @@ impl AgentState {
         subject: LocalNode,
         predicate: LocalNode,
         object: LocalNode,
-    ) -> Result<Sexp, LangErr> {
+    ) -> Result<Sexp, Error> {
         let res = if subject == self.context.placeholder {
             if predicate == self.context.placeholder {
                 if object == self.context.placeholder {
@@ -320,7 +319,7 @@ impl AgentState {
         Ok(res.into())
     }
 
-    pub fn import(&mut self, original: Node) -> Result<Node, LangErr> {
+    pub fn import(&mut self, original: Node) -> Result<Node, Error> {
         if original.env() == self.pos().env() {
             return err!(
                 self,

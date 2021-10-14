@@ -1,12 +1,12 @@
 use std::borrow::Cow;
 
 use crate::agent::agent_state::AgentState;
-use crate::lang_err::{ExpectedCount, LangErr};
+use crate::primitive::error::{ExpectedCount, Error};
 use crate::primitive::{Node, Primitive, Symbol};
 use crate::sexp::{HeapSexp, Sexp, SexpIntoIter};
 
 
-pub fn quote_wrapper(args: Option<HeapSexp>, state: &AgentState) -> Result<HeapSexp, LangErr> {
+pub fn quote_wrapper(args: Option<HeapSexp>, state: &AgentState) -> Result<HeapSexp, Error> {
     let iter = args.map_or(SexpIntoIter::default(), |e| e.into_iter());
     let (val,) = break_sexp!(iter => (HeapSexp), state)?;
     Ok(val)
@@ -15,7 +15,7 @@ pub fn quote_wrapper(args: Option<HeapSexp>, state: &AgentState) -> Result<HeapS
 pub fn make_lambda_wrapper(
     args: Option<HeapSexp>,
     state: &AgentState,
-) -> Result<(Vec<Symbol>, HeapSexp), LangErr> {
+) -> Result<(Vec<Symbol>, HeapSexp), Error> {
     if args.is_none() {
         return err!(
             state,
@@ -69,7 +69,7 @@ pub fn make_lambda_wrapper(
     };
 }
 
-pub fn tell_wrapper(args: &Vec<Node>, state: &AgentState) -> Result<(Node, Node, Node), LangErr> {
+pub fn tell_wrapper(args: &Vec<Node>, state: &AgentState) -> Result<(Node, Node, Node), Error> {
     if args.len() != 3 {
         return err!(
             state,
@@ -86,7 +86,7 @@ pub fn tell_wrapper(args: &Vec<Node>, state: &AgentState) -> Result<(Node, Node,
     Ok((subject, predicate, object))
 }
 
-pub fn def_wrapper(args: &Vec<Node>, state: &AgentState) -> Result<(Node, Option<Node>), LangErr> {
+pub fn def_wrapper(args: &Vec<Node>, state: &AgentState) -> Result<(Node, Option<Node>), Error> {
     if args.len() < 1 {
         return err!(
             state,
@@ -110,7 +110,7 @@ pub fn def_wrapper(args: &Vec<Node>, state: &AgentState) -> Result<(Node, Option
     Ok((name, structure))
 }
 
-pub fn apply_wrapper(args: &Vec<Node>, state: &AgentState) -> Result<(Node, Node), LangErr> {
+pub fn apply_wrapper(args: &Vec<Node>, state: &AgentState) -> Result<(Node, Node), Error> {
     if args.len() != 2 {
         return err!(
             state,

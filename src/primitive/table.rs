@@ -5,10 +5,9 @@ use std::collections::btree_map::Entry;
 use std::collections::BTreeMap;
 use std::convert::TryFrom;
 
-use super::{Node, Primitive, Symbol};
+use super::{Error, Node, Primitive, Symbol};
 use crate::agent::AgentState;
 use crate::environment::LocalNode;
-use crate::lang_err::LangErr;
 use crate::model::Model;
 use crate::sexp::{Cons, HeapSexp, Sexp};
 
@@ -97,10 +96,10 @@ impl Model for AmlangTable<Symbol, Node> {
         structure: HeapSexp,
         state: &mut AgentState,
         mut process_primitive: F,
-    ) -> Result<Self, LangErr>
+    ) -> Result<Self, Error>
     where
         Self: Sized,
-        F: FnMut(&mut AgentState, &Primitive) -> Result<Node, LangErr>,
+        F: FnMut(&mut AgentState, &Primitive) -> Result<Node, Error>,
     {
         let (command, cdr) = break_sexp!(structure => (Primitive; remainder), state)?;
         let node = process_primitive(state, &command)?;
@@ -183,10 +182,10 @@ impl Model for AmlangTable<LocalNode, LocalNode> {
         structure: HeapSexp,
         state: &mut AgentState,
         mut process_primitive: F,
-    ) -> Result<Self, LangErr>
+    ) -> Result<Self, Error>
     where
         Self: Sized,
-        F: FnMut(&mut AgentState, &Primitive) -> Result<Node, LangErr>,
+        F: FnMut(&mut AgentState, &Primitive) -> Result<Node, Error>,
     {
         let (command, cdr) = break_sexp!(structure => (Primitive; remainder), state)?;
         let node = process_primitive(state, &command)?;

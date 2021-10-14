@@ -2,7 +2,7 @@ use std::borrow::Cow;
 use std::collections::HashMap;
 
 use crate::agent::agent_state::AgentState;
-use crate::lang_err::ExpectedCount;
+use crate::primitive::error::ExpectedCount;
 use crate::model::Ret;
 use crate::primitive::builtin::Args;
 use crate::primitive::{BuiltIn, Node, Number, Primitive};

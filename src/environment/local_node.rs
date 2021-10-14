@@ -5,9 +5,8 @@
 use std::fmt;
 
 use crate::agent::agent_state::AgentState;
-use crate::lang_err::LangErr;
 use crate::model::Model;
-use crate::primitive::Node;
+use crate::primitive::{Error, Node};
 use crate::sexp::{HeapSexp, Sexp};
 
 
@@ -60,7 +59,7 @@ impl Model for LocalTriple {
         _structure: HeapSexp,
         _state: &mut AgentState,
         _process_primitive: F,
-    ) -> Result<Self, LangErr> {
+    ) -> Result<Self, Error> {
         unimplemented!();
     }
 

@@ -1,10 +1,9 @@
 use crate::agent::agent_state::AgentState;
-use crate::lang_err::LangErr;
-use crate::primitive::{Node, Primitive};
+use crate::primitive::{Error, Node, Primitive};
 use crate::sexp::{HeapSexp, Sexp};
 
 
-pub type Ret = Result<Sexp, LangErr>;
+pub type Ret = Result<Sexp, Error>;
 
 /// Meaning of Structures.
 pub trait Eval {
@@ -24,10 +23,10 @@ pub trait Model {
         structure: HeapSexp,
         state: &mut AgentState,
         process_primitive: F,
-    ) -> Result<Self, LangErr>
+    ) -> Result<Self, Error>
     where
         Self: Sized,
-        F: FnMut(&mut AgentState, &Primitive) -> Result<Node, LangErr>;
+        F: FnMut(&mut AgentState, &Primitive) -> Result<Node, Error>;
 
     fn valid_discriminator(node: Node, state: &AgentState) -> bool;
 }

@@ -13,9 +13,9 @@ use super::env_policy::EnvPolicy;
 use crate::builtins::generate_builtin_map;
 use crate::environment::environment::Environment;
 use crate::environment::LocalNode;
-use crate::lang_err;
 use crate::model::{Eval, Model, Ret};
 use crate::parser::{self, parse_sexp};
+use crate::primitive::error;
 use crate::primitive::prelude::*;
 use crate::primitive::symbol_policies::{policy_admin, AdminSymbolInfo};
 use crate::primitive::table::Table;
@@ -41,7 +41,7 @@ pub enum DeserializeError {
     UnexpectedCommand(Sexp),
     ExpectedSymbol,
     UnrecognizedBuiltIn(Symbol),
-    LangErr(lang_err::LangErr),
+    Error(error::Error),
 }
 
 /// Replace placeholder'd context nodes through AmlangDesignation lookups.
@@ -467,10 +467,10 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
     }
 
     fn parse_node(&mut self, sym: &Symbol) -> Result<Node, DeserializeError> {
-        EnvManager::<Policy>::parse_node_inner(self.state_mut(), sym).map_err(|e| LangErr(e))
+        EnvManager::<Policy>::parse_node_inner(self.state_mut(), sym).map_err(|e| Error(e))
     }
 
-    fn parse_node_inner(state: &mut AgentState, sym: &Symbol) -> Result<Node, lang_err::LangErr> {
+    fn parse_node_inner(state: &mut AgentState, sym: &Symbol) -> Result<Node, error::Error> {
         match policy_admin(sym.as_str()).unwrap() {
             AdminSymbolInfo::Identifier => err!(state, UnboundSymbol(sym.clone())),
             AdminSymbolInfo::LocalNode(node) => Ok(node.globalize(state)),
@@ -554,8 +554,8 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
 
         let iter = match SexpIntoIter::try_from(remainder) {
             Ok(iter) => iter,
-            Err(lang_err::LangErr {
-                kind: lang_err::ErrKind::WrongArgumentCount { .. },
+            Err(error::Error {
+                kind: error::ErrKind::WrongArgumentCount { .. },
                 ..
             }) => return Ok(()),
             Err(err) => return Err(err.into()),
@@ -626,9 +626,9 @@ impl<Policy: EnvPolicy> Eval for EnvManager<Policy> {
 }
 
 
-impl From<lang_err::LangErr> for DeserializeError {
-    fn from(err: lang_err::LangErr) -> Self {
-        LangErr(err)
+impl From<error::Error> for DeserializeError {
+    fn from(err: error::Error) -> Self {
+        Error(err)
     }
 }
 

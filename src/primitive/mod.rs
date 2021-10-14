@@ -7,6 +7,7 @@ use std::mem;
 mod try_from_helper;
 
 pub mod builtin;
+pub mod error;
 pub mod node;
 pub mod number;
 pub mod path;
@@ -22,6 +23,7 @@ pub mod prelude {
     pub use super::Primitive;
 
     pub use super::builtin::BuiltIn;
+    pub use super::error::Error;
     pub use super::node::Node;
     pub use super::number::Number;
     pub use super::path::Path;

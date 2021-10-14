@@ -1,4 +1,4 @@
-use crate::lang_err::{ErrKind::*, LangErr};
+use crate::primitive::error::{ErrKind::*, Error};
 use crate::primitive::{AmString, Node, Number, Symbol};
 use crate::sexp::{Cons, HeapSexp, Sexp};
 
@@ -51,7 +51,7 @@ fn vec_break_no_remainder() {
 #[test]
 fn wrong_type() {
     let original: Sexp = "(lambda (a b) ing)".parse().unwrap();
-    if let Err(LangErr {
+    if let Err(Error {
         kind: InvalidArgument { .. },
         ..
     }) = break_sexp!(original => (Node, Sexp, Symbol))
@@ -64,7 +64,7 @@ fn wrong_type() {
 #[test]
 fn extra_arguments() {
     let original: Sexp = "(test ing 1 2)".parse().unwrap();
-    if let Err(LangErr {
+    if let Err(Error {
         kind: WrongArgumentCount { given: 4, .. },
         ..
     }) = break_sexp!(original => (Symbol, Symbol))
@@ -77,7 +77,7 @@ fn extra_arguments() {
 #[test]
 fn missing_arguments() {
     let original: Sexp = "(test)".parse().unwrap();
-    if let Err(LangErr {
+    if let Err(Error {
         kind: WrongArgumentCount { given: 1, .. },
         ..
     }) = break_sexp!(original => (Symbol, Symbol, Symbol))

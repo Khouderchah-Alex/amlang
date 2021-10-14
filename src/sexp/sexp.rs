@@ -9,7 +9,7 @@ use super::cons::Cons;
 use super::cons_list::ConsList;
 use super::fmt_io_bridge::FmtIoBridge;
 use crate::environment::Environment;
-use crate::lang_err::{ExpectedCount, LangErr};
+use crate::primitive::error::{ExpectedCount, Error};
 use crate::parser::{parse_sexp, ParseError};
 use crate::primitive::prelude::*;
 use crate::primitive::symbol_policies::policy_base;
@@ -294,7 +294,7 @@ impl<'a> TryFrom<&'a Sexp> for &'a Primitive {
 }
 
 impl TryFrom<Option<HeapSexp>> for SexpIntoIter {
-    type Error = LangErr;
+    type Error = Error;
 
     fn try_from(value: Option<HeapSexp>) -> Result<Self, Self::Error> {
         match value {

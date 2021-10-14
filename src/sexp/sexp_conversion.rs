@@ -1,4 +1,4 @@
-/// Breaks a Sexp/HeapSexp into Result<tuple of component types, LangErr>,
+/// Breaks a Sexp/HeapSexp into Result<tuple of component types, Error>,
 /// assuming all component types implement TryFrom<$type> for Sexp.
 ///
 /// Optional remainder accepts an arbitrary identifier and append an
@@ -16,13 +16,13 @@ macro_rules! break_sexp {
             // Generate stateful or stateless error depending on existence of $state.
             let err = |kind| {
                 $(
-                    return Err(crate::lang_err::LangErr::with_state(
+                    return Err(crate::primitive::error::Error::with_state(
                         $state.clone(),
                         kind
                     ));
                 )*
                 #[allow(unreachable_code)]
-                Err(crate::lang_err::LangErr::empty_state(kind))
+                Err(crate::primitive::error::Error::empty_state(kind))
             };
             let mut iter = $sexp.into_iter();
             let tuple = || {
@@ -37,7 +37,7 @@ macro_rules! break_sexp {
                         match iter.next() {
                             Some((sexp, proper)) =>  {
                                 if !proper {
-                                    return err(crate::lang_err::ErrKind::InvalidSexp(sexp.into()));
+                                    return err(crate::primitive::error::ErrKind::InvalidSexp(sexp.into()));
                                 }
                                 match <$type as std::convert::TryFrom<crate::sexp::Sexp>
                                        >::try_from(sexp.into()) {
@@ -46,7 +46,7 @@ macro_rules! break_sexp {
                                         val
                                     },
                                     Err(original) => {
-                                        return err(crate::lang_err::ErrKind::InvalidArgument{
+                                        return err(crate::primitive::error::ErrKind::InvalidArgument{
                                             given: original.into(),
                                             expected: std::borrow::Cow::Owned(
                                                 "type ".to_string() + stringify!($type)
@@ -56,9 +56,9 @@ macro_rules! break_sexp {
                                 }
                             }
                             None =>  {
-                                return err(crate::lang_err::ErrKind::WrongArgumentCount{
+                                return err(crate::primitive::error::ErrKind::WrongArgumentCount{
                                     given: i,
-                                    expected: crate::lang_err::ExpectedCount::Exactly(
+                                    expected: crate::primitive::error::ExpectedCount::Exactly(
                                         expected
                                     ),
                                 });
@@ -78,9 +78,9 @@ macro_rules! break_sexp {
                     iter = crate::sexp::SexpIntoIter::default();
                 )*
                 if let Some(_) = iter.next() {
-                    return err(crate::lang_err::ErrKind::WrongArgumentCount{
+                    return err(crate::primitive::error::ErrKind::WrongArgumentCount{
                         given: i + 1 + iter.count(),
-                        expected: crate::lang_err::ExpectedCount::Exactly(i),
+                        expected: crate::primitive::error::ExpectedCount::Exactly(i),
                     });
                 }
                 ret

@@ -8,7 +8,7 @@ use super::agent_state::{AgentState, ExecFrame};
 use super::amlang_wrappers::*;
 use super::continuation::Continuation;
 use crate::environment::LocalNode;
-use crate::lang_err::{ExpectedCount, LangErr};
+use crate::primitive::error::{ExpectedCount, Error};
 use crate::model::{Eval, Model, Ret};
 use crate::parser::{parse_sexp, ParseError};
 use crate::primitive::prelude::*;
@@ -38,8 +38,8 @@ where
 #[derive(Debug)]
 pub enum RunError {
     ParseError(ParseError),
-    CompileError(LangErr),
-    ExecError(LangErr),
+    CompileError(Error),
+    ExecError(Error),
 }
 
 impl AmlangAgent {
@@ -74,7 +74,7 @@ impl AmlangAgent {
         params: Vec<Symbol>,
         body: HeapSexp,
         reflect: bool,
-    ) -> Result<Procedure, LangErr> {
+    ) -> Result<Procedure, Error> {
         let mut surface = Vec::new();
         let mut frame = SymbolTable::default();
         for symbol in params {
@@ -242,7 +242,7 @@ impl AmlangAgent {
         }
     }
 
-    fn exec_to_node(&mut self, node: Node) -> Result<Node, LangErr> {
+    fn exec_to_node(&mut self, node: Node) -> Result<Node, Error> {
         let structure = self.exec(node)?;
         if let Ok(new_node) = Node::try_from(&structure) {
             Ok(new_node)
@@ -448,7 +448,7 @@ impl AmlangAgent {
     // If we need Nodes in a particular context, we must abstract existing
     // Sexps into the env. However, if the sexp is already a Node, just use it
     // directly rather than create a stack of abstractions.
-    fn eval_to_node(&mut self, sexp: Sexp) -> Result<Node, LangErr> {
+    fn eval_to_node(&mut self, sexp: Sexp) -> Result<Node, Error> {
         if let Ok(node) = <Node>::try_from(&sexp) {
             Ok(node)
         } else {
@@ -464,7 +464,7 @@ impl AmlangAgent {
         &mut self,
         structures: Option<HeapSexp>,
         should_eval: bool,
-    ) -> Result<Vec<Node>, LangErr> {
+    ) -> Result<Vec<Node>, Error> {
         if structures.is_none() {
             return Ok(vec![]);
         }
@@ -639,7 +639,7 @@ where
 
 
 impl AmlangAgent {
-    pub fn trace_error(&mut self, err: &LangErr) {
+    pub fn trace_error(&mut self, err: &Error) {
         if let Some(state) = err.state() {
             let mut stored_state = state.clone();
             std::mem::swap(self.state_mut(), &mut stored_state);

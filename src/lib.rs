@@ -3,7 +3,7 @@ use std::io;
 use std::path::PathBuf;
 
 #[macro_use]
-pub mod lang_err;
+mod error_helpers;
 #[macro_use]
 pub mod sexp;
 

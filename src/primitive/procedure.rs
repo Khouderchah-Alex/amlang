@@ -3,7 +3,7 @@ use std::convert::TryFrom;
 
 use super::{Node, Primitive};
 use crate::agent::agent_state::AgentState;
-use crate::lang_err::{ExpectedCount, LangErr};
+use crate::primitive::error::{ExpectedCount, Error};
 use crate::model::Model;
 use crate::sexp::{Cons, HeapSexp, Sexp};
 
@@ -52,9 +52,9 @@ impl Model for Procedure {
         structure: HeapSexp,
         state: &mut AgentState,
         mut process_primitive: F,
-    ) -> Result<Self, LangErr>
+    ) -> Result<Self, Error>
     where
-        F: FnMut(&mut AgentState, &Primitive) -> Result<Node, LangErr>,
+        F: FnMut(&mut AgentState, &Primitive) -> Result<Node, Error>,
     {
         let (command, cdr) = break_sexp!(structure => (Primitive; remainder), state)?;
         let node = process_primitive(state, &command)?;
