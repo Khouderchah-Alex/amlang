@@ -3,21 +3,12 @@ use std::borrow::Cow;
 use crate::agent::agent_state::AgentState;
 use crate::lang_err::{ExpectedCount, LangErr};
 use crate::primitive::{Node, Primitive, Symbol};
-use crate::sexp::{HeapSexp, Sexp};
+use crate::sexp::{HeapSexp, Sexp, SexpIntoIter};
 
 
 pub fn quote_wrapper(args: Option<HeapSexp>, state: &AgentState) -> Result<HeapSexp, LangErr> {
-    if args.is_none() {
-        return err!(
-            state,
-            WrongArgumentCount {
-                given: 0,
-                expected: ExpectedCount::Exactly(1),
-            }
-        );
-    }
-
-    let (val,) = break_sexp!(args.unwrap() => (HeapSexp), state)?;
+    let iter = args.map_or(SexpIntoIter::default(), |e| e.into_iter());
+    let (val,) = break_sexp!(iter => (HeapSexp), state)?;
     Ok(val)
 }
 
