@@ -189,9 +189,9 @@ impl AgentState {
                     .access_env(node.env())
                     .unwrap()
                     .node_structure(node.local())
-                    .as_option()
+                    .owned()
                 {
-                    Ok(structure.clone())
+                    Ok(structure)
                 } else if let Some(triple) = self
                     .access_env(node.env())
                     .unwrap()
@@ -487,12 +487,12 @@ impl AgentState {
                         .access_env(node.env())
                         .unwrap()
                         .node_structure(node.local())
-                        .as_option()
+                        .owned()
                     {
                         if show_redirects {
                             write!(w, "{}->", node)?;
                         }
-                        structure.clone()
+                        structure
                     } else {
                         return write!(w, "{}", node);
                     };

@@ -135,9 +135,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
                 .clone();
             let lang_path_node = meta.triple_object(lang_path_triple);
 
-            <&Path>::try_from(meta.node_structure(lang_path_node).as_option())
-                .unwrap()
-                .clone()
+            Path::try_from(meta.node_structure(lang_path_node).owned()).unwrap()
         };
         manager.deserialize_curr_env(lang_path.as_std_path())?;
         bootstrap_context!(manager,
@@ -259,8 +257,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
             let path = {
                 let object_node = self.state().context().meta().triple_object(triple);
                 let entry = self.state().context().meta().node_structure(object_node);
-                let object = entry.structure();
-                <&Path>::try_from(object).unwrap().clone()
+                Path::try_from(entry.owned()).unwrap()
             };
 
             self.state_mut().jump_env(subject_node);
