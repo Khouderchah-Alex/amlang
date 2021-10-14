@@ -65,7 +65,7 @@ macro_rules! bootstrap_context {
                 if let Some(node) = table.lookup(s) {
                     Ok(node.local())
                 } else {
-                    err_nost!(UnboundSymbol(s.to_symbol_or_panic(policy_admin))).map_err(|e| LangErr(e))
+                    err_nost!(UnboundSymbol(s.to_symbol_or_panic(policy_admin)))?
                 }
             };
             (
@@ -466,11 +466,11 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         Ok(())
     }
 
-    fn parse_symbol(&mut self, sym: &Symbol) -> Result<Node, DeserializeError> {
-        EnvManager::<Policy>::parse_symbol_inner(self.state_mut(), sym).map_err(|e| LangErr(e))
+    fn parse_node(&mut self, sym: &Symbol) -> Result<Node, DeserializeError> {
+        EnvManager::<Policy>::parse_node_inner(self.state_mut(), sym).map_err(|e| LangErr(e))
     }
 
-    fn parse_symbol_inner(state: &mut AgentState, sym: &Symbol) -> Result<Node, lang_err::LangErr> {
+    fn parse_node_inner(state: &mut AgentState, sym: &Symbol) -> Result<Node, lang_err::LangErr> {
         match policy_admin(sym.as_str()).unwrap() {
             AdminSymbolInfo::Identifier => err!(state, UnboundSymbol(sym.clone())),
             AdminSymbolInfo::LocalNode(node) => Ok(node.globalize(state)),
@@ -491,7 +491,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         builtins: &HashMap<&'static str, BuiltIn>,
     ) -> Result<Sexp, DeserializeError> {
         if let Ok(sym) = <&Symbol>::try_from(&*structure) {
-            return Ok(self.parse_symbol(sym)?.into());
+            return Ok(self.parse_node(sym)?.into());
         } else if let Ok(s) = <&AmString>::try_from(&*structure) {
             return Ok(s.clone().into());
         }
@@ -501,10 +501,10 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         // Note(subtle): during the initial deserialization of the meta & lang
         // envs, Model context nodes are only valid because they're specially
         // set before actual context bootstrapping occurs.
-        if let Ok(node) = self.parse_symbol(&command) {
+        if let Ok(node) = self.parse_node(&command) {
             let process_primitive = |state: &mut AgentState, p: &Primitive| match p {
                 Primitive::Node(n) => Ok(*n),
-                Primitive::Symbol(s) => Ok(EnvManager::<Policy>::parse_symbol_inner(state, &s)?),
+                Primitive::Symbol(s) => Ok(EnvManager::<Policy>::parse_node_inner(state, &s)?),
                 _ => panic!(),
             };
 
@@ -558,7 +558,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
                 kind: lang_err::ErrKind::WrongArgumentCount { .. },
                 ..
             }) => return Ok(()),
-            Err(err) => return Err(DeserializeError::LangErr(err)),
+            Err(err) => return Err(err.into()),
         };
 
         for (entry, proper) in iter {
@@ -567,9 +567,9 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
             }
             let (s, p, o) = break_sexp!(entry => (Symbol, Symbol, Symbol), self.state())?;
 
-            let subject = self.parse_symbol(&s)?;
-            let predicate = self.parse_symbol(&p)?;
-            let object = self.parse_symbol(&o)?;
+            let subject = self.parse_node(&s)?;
+            let predicate = self.parse_node(&p)?;
+            let object = self.parse_node(&o)?;
 
             self.state_mut().env().insert_triple(
                 subject.local(),
