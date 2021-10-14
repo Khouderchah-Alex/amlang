@@ -164,3 +164,18 @@ fn reify_apply() {
         .into()
     );
 }
+
+#[test]
+fn improper_list() {
+    let mut lang_agent = common::setup().unwrap();
+
+    let results = common::results(&mut lang_agent, "(eq '(1 2 . 3) (cons 1 (cons 2 3)))");
+    assert_eq!(
+        results[0],
+        Node::new(
+            lang_agent.state().context().lang_env(),
+            lang_agent.state().context().t
+        )
+        .into()
+    );
+}
