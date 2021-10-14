@@ -280,10 +280,10 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
             let (write_structure, add_quote) = match &s {
                 // Serialize self_des as ^1 since it can be reconstructed.
                 _ if i == 1 => (false, false),
+                // Don't quote structures with special deserialize ops.
                 Some(sexp) => match sexp {
                     Sexp::Primitive(Primitive::SymbolTable(_)) => (true, false),
                     Sexp::Primitive(Primitive::LocalNodeTable(_)) => (true, false),
-                    // Don't quote structures with special deserialize ops.
                     Sexp::Primitive(Primitive::BuiltIn(_)) => (true, false),
                     Sexp::Primitive(Primitive::Procedure(_)) => (true, false),
                     Sexp::Primitive(Primitive::Node(_)) => (true, false),
@@ -345,21 +345,17 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         };
         let mut peekable = stream.peekable();
 
-        match parse_sexp(&mut peekable, 0) {
-            Ok(Some(parsed)) => self.deserialize_nodes(parsed)?,
-            Ok(None) => return Err(MissingNodeSection),
-            Err(err) => return Err(ParseError(err)),
+        match parse_sexp(&mut peekable, 0)? {
+            Some(parsed) => self.deserialize_nodes(parsed)?,
+            None => return Err(MissingNodeSection),
         };
-        match parse_sexp(&mut peekable, 0) {
-            Ok(Some(parsed)) => self.deserialize_triples(parsed)?,
-            Ok(None) => return Err(MissingTripleSection),
-            Err(err) => return Err(ParseError(err)),
+        match parse_sexp(&mut peekable, 0)? {
+            Some(parsed) => self.deserialize_triples(parsed)?,
+            None => return Err(MissingTripleSection),
         };
-        match parse_sexp(&mut peekable, 0) {
-            Ok(Some(_)) => return Err(ExtraneousSection),
-            Ok(None) => {}
-            Err(err) => return Err(ParseError(err)),
-        };
+        if let Some(_) = parse_sexp(&mut peekable, 0)? {
+            return Err(ExtraneousSection);
+        }
 
         info!(
             "Loaded env {} from \"{}\".",
@@ -633,5 +629,11 @@ impl<Policy: EnvPolicy> Eval for EnvManager<Policy> {
 impl From<lang_err::LangErr> for DeserializeError {
     fn from(err: lang_err::LangErr) -> Self {
         LangErr(err)
+    }
+}
+
+impl From<parser::ParseError> for DeserializeError {
+    fn from(err: parser::ParseError) -> Self {
+        ParseError(err)
     }
 }
