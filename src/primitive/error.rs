@@ -1,20 +1,22 @@
 use std::borrow::Cow;
+use std::convert::TryFrom;
 use std::fmt;
 
 use self::ErrKind::*;
 use self::ExpectedCount::*;
+use super::Primitive;
 use crate::agent::agent_state::AgentState;
 use crate::primitive::Symbol;
 use crate::sexp::Sexp;
 
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Error {
-    state: Option<AgentState>,
-    pub kind: ErrKind,
+    state: Option<Box<AgentState>>,
+    kind: Box<ErrKind>,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum ErrKind {
     InvalidArgument {
         given: Sexp,
@@ -34,7 +36,7 @@ pub enum ErrKind {
     DuplicateTriple(Sexp),
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum ExpectedCount {
     Exactly(usize),
     AtLeast(usize),
@@ -44,27 +46,41 @@ pub enum ExpectedCount {
 impl Error {
     // Prefer using err_nost! for convenience.
     pub fn empty_state(kind: ErrKind) -> Self {
-        Self { state: None, kind }
+        Self {
+            state: None,
+            kind: Box::new(kind),
+        }
     }
 
     // Prefer using err! for convenience.
     pub fn with_state(state: AgentState, kind: ErrKind) -> Self {
         Self {
-            state: Some(state),
-            kind,
+            state: Some(Box::new(state)),
+            kind: Box::new(kind),
         }
     }
 
-    pub fn state(&self) -> &Option<AgentState> {
-        &self.state
+    pub fn kind(&self) -> &ErrKind {
+        &*self.kind
+    }
+
+    pub fn state(&self) -> Option<&AgentState> {
+        self.state.as_ref().map(|e| &**e)
     }
 }
 
 
+impl PartialEq for Error {
+    /// Compare ErrKinds.
+    fn eq(&self, other: &Self) -> bool {
+        *self.kind == *other.kind
+    }
+}
+
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "[Lang Error] ")?;
-        match &self.kind {
+        match self.kind() {
             InvalidArgument { given, expected } => write!(
                 f,
                 "Invalid argument: given {}, expected {}",
@@ -95,3 +111,12 @@ impl fmt::Display for ExpectedCount {
         };
     }
 }
+
+
+impl_try_from!(Sexp              ->  Error,      Error;
+               ref Sexp          ->  ref Error,  Error;
+               Option<Sexp>      ->  Error,      Error;
+               Option<ref Sexp>  ->  ref Error,  Error;
+               Result<Sexp>      ->  Error,      Error;
+               Result<ref Sexp>  ->  ref Error,  Error;
+);

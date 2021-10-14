@@ -554,11 +554,12 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
 
         let iter = match SexpIntoIter::try_from(remainder) {
             Ok(iter) => iter,
-            Err(error::Error {
-                kind: error::ErrKind::WrongArgumentCount { .. },
-                ..
-            }) => return Ok(()),
-            Err(err) => return Err(err.into()),
+            Err(err) => {
+                if matches!(err.kind(), error::ErrKind::WrongArgumentCount { .. }) {
+                    return Ok(());
+                }
+                return Err(err.into());
+            }
         };
 
         for (entry, proper) in iter {

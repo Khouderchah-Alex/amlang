@@ -4,7 +4,7 @@ use std::convert::TryFrom;
 
 use amlang::agent::amlang_agent::RunError;
 use amlang::agent::Agent;
-use amlang::primitive::error::{ErrKind, Error};
+use amlang::primitive::error::ErrKind;
 use amlang::primitive::{Node, Number, Primitive};
 
 
@@ -91,13 +91,11 @@ fn lambda_duplicate_argname() {
     let mut lang_agent = common::setup().unwrap();
 
     let results = common::results_with_errors(&mut lang_agent, "(lambda (a a) (+ a a))");
-    assert!(matches!(
-        results[0],
-        Err(RunError::CompileError(Error {
-            kind: ErrKind::InvalidArgument { .. },
-            ..
-        }))
-    ));
+    if let Err(RunError::CompileError(err)) = &results[0] {
+        assert!(matches!(err.kind(), ErrKind::InvalidArgument { .. }));
+    } else {
+        panic!();
+    }
 }
 
 #[test]

@@ -9,8 +9,8 @@ use super::cons::Cons;
 use super::cons_list::ConsList;
 use super::fmt_io_bridge::FmtIoBridge;
 use crate::environment::Environment;
-use crate::primitive::error::{ExpectedCount, Error};
 use crate::parser::{parse_sexp, ParseError};
+use crate::primitive::error::{Error, ExpectedCount};
 use crate::primitive::prelude::*;
 use crate::primitive::symbol_policies::policy_base;
 use crate::token::string_stream::StringStream;
@@ -272,7 +272,7 @@ impl fmt::Display for Sexp {
 impl TryFrom<Sexp> for Primitive {
     type Error = Sexp;
 
-    fn try_from(value: Sexp) -> Result<Self, Self::Error> {
+    fn try_from(value: Sexp) -> Result<Self, <Self as TryFrom<Sexp>>::Error> {
         if let Sexp::Primitive(primitive) = value {
             Ok(primitive)
         } else {
@@ -418,6 +418,7 @@ sexp_from!(
     SymbolTable,
     LocalNodeTable,
     Procedure,
+    Error,
 );
 
 impl<T: 'static + Environment> From<Box<T>> for Sexp {
