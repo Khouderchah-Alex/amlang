@@ -1,4 +1,31 @@
-//! Module for representing S-exps.
+//! Representation of S-expressions, as either a Primitive or pair of HeapSexps.
+//!
+//! Unlike S-expressions in traditional Lisps, Sexp cannot directly represent
+//! cycles, and Cons cells have unique ownership over their car & cdr. Cycles
+//! can still be created through the use of Nodes (for example, a list can be
+//! made circular by inserting it into an Environment and replacing the final
+//! cdr with its corresponding Node).
+//!
+//! This has the benefit of giving clients control over lifetimes of entire
+//! Sexps without precluding representational capability. An interesting
+//! downstream result is that cycle detection can be performed by checking
+//! Nodes/looking at Environment traversals rather than memory accesses, and
+//! that Sexps not containing Nodes are inherently cycle-free.
+//!
+//!
+//! Ownership:
+//!   Heuristically, Sexp is preferred for passing ownership when "building up"
+//!   S-expressions or using them in some local context, while HeapSexp is
+//!   preferred when "breaking down" S-expressions.
+//!
+//!   In general, we simply want to defer moving a Sexp to the heap until we
+//!   need to (usually because we're passing ownership to a Cons). On the other
+//!   hand, if we're already consuming HeapSexps from Cons cells, we'd rather
+//!   leave them on the heap in case the ownership ultimately ends back in a
+//!   Cons cell. Realistically, the cost of copying a Sexp b/w stack and heap is
+//!   not a huge deal outside of hot spots; rather, this convention serves to
+//!   prevent scenarios in which a chain of function calls involves
+//!   unnecessarily copying Sexps b/w stack and heap many times.
 
 use std::convert::TryFrom;
 use std::fmt;
@@ -17,11 +44,6 @@ use crate::token::string_stream::StringStream;
 use crate::token::TokenizeError;
 
 
-/// S-exp on the heap.
-///
-/// HeapSexp should be preferred over Sexp a priori, as it allows for passing of
-/// full Sexp ownership--particularly relevant when extending a Sexp--and for
-/// consistency (since Cons stores Option<HeapSexps>).
 pub type HeapSexp = Box<Sexp>;
 
 #[derive(Clone, PartialEq)]
