@@ -7,7 +7,7 @@ use std::fmt;
 use crate::agent::agent_state::AgentState;
 use crate::model::Model;
 use crate::primitive::{Error, Node};
-use crate::sexp::{HeapSexp, Sexp};
+use crate::sexp::Sexp;
 
 
 pub type LocalId = u64;
@@ -56,7 +56,7 @@ impl Model for LocalTriple {
     }
 
     fn reflect<F>(
-        _structure: HeapSexp,
+        _structure: Sexp,
         _state: &mut AgentState,
         _process_primitive: F,
     ) -> Result<Self, Error> {

@@ -9,7 +9,7 @@ use super::{Error, Node, Primitive, Symbol};
 use crate::agent::AgentState;
 use crate::environment::LocalNode;
 use crate::model::Model;
-use crate::sexp::{Cons, HeapSexp, Sexp};
+use crate::sexp::{Cons, Sexp};
 
 
 pub type SymbolTable = AmlangTable<Symbol, Node>;
@@ -93,7 +93,7 @@ impl Model for AmlangTable<Symbol, Node> {
     }
 
     fn reflect<F>(
-        structure: HeapSexp,
+        structure: Sexp,
         state: &mut AgentState,
         mut process_primitive: F,
     ) -> Result<Self, Error>
@@ -179,7 +179,7 @@ impl Model for AmlangTable<LocalNode, LocalNode> {
     }
 
     fn reflect<F>(
-        structure: HeapSexp,
+        structure: Sexp,
         state: &mut AgentState,
         mut process_primitive: F,
     ) -> Result<Self, Error>

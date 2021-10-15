@@ -3,8 +3,8 @@ use std::convert::TryFrom;
 
 use super::{Node, Primitive};
 use crate::agent::agent_state::AgentState;
-use crate::primitive::error::{ExpectedCount, Error};
 use crate::model::Model;
+use crate::primitive::error::{Error, ExpectedCount};
 use crate::sexp::{Cons, HeapSexp, Sexp};
 
 
@@ -49,7 +49,7 @@ impl Model for Procedure {
     }
 
     fn reflect<F>(
-        structure: HeapSexp,
+        structure: Sexp,
         state: &mut AgentState,
         mut process_primitive: F,
     ) -> Result<Self, Error>

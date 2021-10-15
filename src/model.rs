@@ -1,6 +1,6 @@
 use crate::agent::agent_state::AgentState;
 use crate::primitive::{Error, Node, Primitive};
-use crate::sexp::{HeapSexp, Sexp};
+use crate::sexp::Sexp;
 
 
 pub type Ret = Result<Sexp, Error>;
@@ -20,7 +20,7 @@ pub trait Model {
     /// uniformly in the face of, say, a structure made of unresolved Symbols
     /// vs one made of resolved Nodes.
     fn reflect<F>(
-        structure: HeapSexp,
+        structure: Sexp,
         state: &mut AgentState,
         process_primitive: F,
     ) -> Result<Self, Error>
