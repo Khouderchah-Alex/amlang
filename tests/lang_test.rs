@@ -99,6 +99,19 @@ fn lambda_duplicate_argname() {
 }
 
 #[test]
+fn let_basic() {
+    let mut lang_agent = common::setup().unwrap();
+
+    let results = common::results(
+        &mut lang_agent,
+        "(let ((a 2)
+               (b 4))
+           (+ a b))",
+    );
+    assert_eq!(results, vec![Number::Integer(6).into()]);
+}
+
+#[test]
 fn basic_fexpr() {
     let mut lang_agent = common::setup().unwrap();
 

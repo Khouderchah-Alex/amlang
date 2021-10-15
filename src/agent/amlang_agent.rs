@@ -574,6 +574,13 @@ impl Eval for AmlangAgent {
                         let proc = self.make_lambda(params, body, reflect)?;
                         return Ok(proc.into());
                     }
+                    _ if Node::new(context.lang_env(), context.let_basic) == node => {
+                        let (params, exprs, body) = let_wrapper(cdr, &self.state())?;
+                        let proc = self.make_lambda(params, body, false)?;
+                        let proc_node = self.eval_to_node(proc.into())?;
+                        let args = self.evlis(Some(exprs), true)?;
+                        return Ok(Procedure::Application(proc_node, args).into());
+                    }
                     _ if Node::new(context.lang_env(), context.branch) == node => {
                         let args = self.evlis(cdr, true)?;
                         if args.len() != 3 {

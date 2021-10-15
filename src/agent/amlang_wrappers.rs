@@ -1,8 +1,9 @@
 use std::borrow::Cow;
 
 use crate::agent::agent_state::AgentState;
-use crate::primitive::error::{ExpectedCount, Error};
+use crate::primitive::error::{Error, ExpectedCount};
 use crate::primitive::{Node, Primitive, Symbol};
+use crate::sexp::cons_list::ConsList;
 use crate::sexp::{HeapSexp, Sexp, SexpIntoIter};
 
 
@@ -51,6 +52,54 @@ pub fn make_lambda_wrapper(
     return match body {
         Some(hsexp) => match *hsexp {
             Sexp::Cons(_) => Ok((params, hsexp)),
+            Sexp::Primitive(primitive) => err!(
+                state,
+                InvalidArgument {
+                    given: primitive.into(),
+                    expected: Cow::Borrowed("procedure body"),
+                }
+            ),
+        },
+        None => err!(
+            state,
+            WrongArgumentCount {
+                given: 1,
+                expected: ExpectedCount::AtLeast(2),
+            }
+        ),
+    };
+}
+
+pub fn let_wrapper(
+    args: Option<HeapSexp>,
+    state: &AgentState,
+) -> Result<(Vec<Symbol>, HeapSexp, HeapSexp), Error> {
+    if args.is_none() {
+        return err!(
+            state,
+            WrongArgumentCount {
+                given: 0,
+                expected: ExpectedCount::AtLeast(2),
+            }
+        );
+    }
+
+    let (bindings, body) = break_sexp!(args.unwrap() => (HeapSexp; remainder), state)?;
+    let len = bindings.iter().count();
+    let mut params = Vec::with_capacity(len);
+    let mut exprs = ConsList::new();
+    for (binding, proper) in bindings {
+        if !proper {
+            return err!(state, InvalidSexp(*binding));
+        }
+        let (name, expr) = break_sexp!(binding => (Symbol, HeapSexp), state)?;
+        params.push(name);
+        exprs.append(expr);
+    }
+
+    return match body {
+        Some(hsexp) => match *hsexp {
+            Sexp::Cons(_) => Ok((params, HeapSexp::new(exprs.release()), hsexp)),
             Sexp::Primitive(primitive) => err!(
                 state,
                 InvalidArgument {

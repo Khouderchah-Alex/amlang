@@ -154,6 +154,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
                            import: "import",
                            branch: "if",
                            progn: "progn",
+                           let_basic: "let",
                            env_find: "env_find",
                            t: "true",
                            f: "false",
