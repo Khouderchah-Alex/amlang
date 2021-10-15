@@ -6,7 +6,7 @@ use std::iter::Peekable;
 use crate::primitive::symbol::ToSymbol;
 use crate::primitive::symbol_policies::policy_base;
 use crate::sexp::cons_list::ConsList;
-use crate::sexp::HeapSexp;
+use crate::sexp::{HeapSexp, Sexp};
 use crate::token::{Token, TokenInfo};
 
 use self::ParseErrorReason::*;
@@ -33,7 +33,7 @@ pub struct ParseError {
 pub fn parse_sexp<I: Iterator<Item = TokenInfo>>(
     tokens: &mut Peekable<I>,
     depth: usize,
-) -> Result<Option<HeapSexp>, ParseError> {
+) -> Result<Option<Sexp>, ParseError> {
     // Let's just ignore comments for now.
     let mut current = tokens.next();
     while let Some(TokenInfo {
@@ -85,7 +85,7 @@ pub fn parse_sexp<I: Iterator<Item = TokenInfo>>(
                             token,
                         });
                     }
-                    return Ok(Some(HeapSexp::new(list.release_with_tail(*cdr))));
+                    return Ok(Some(list.release_with_tail(cdr)));
                 }
 
                 if let Some(TokenInfo {
@@ -94,12 +94,12 @@ pub fn parse_sexp<I: Iterator<Item = TokenInfo>>(
                 }) = tokens.peek()
                 {
                     tokens.next();
-                    return Ok(Some(HeapSexp::new(list.release())));
+                    return Ok(Some(list.release()));
                 }
 
                 let sexp = parse_sexp(tokens, depth + 1)?;
                 if let Some(val) = sexp {
-                    list.append(val);
+                    list.append(HeapSexp::new(val));
                 } else {
                     return Err(ParseError {
                         reason: UnmatchedOpen,
@@ -113,11 +113,9 @@ pub fn parse_sexp<I: Iterator<Item = TokenInfo>>(
             if let Some(val) = sexp {
                 let mut list = ConsList::new();
 
-                list.append(HeapSexp::new(
-                    "quote".to_symbol_or_panic(policy_base).into(),
-                ));
-                list.append(val);
-                return Ok(Some(HeapSexp::new(list.release())));
+                list.append("quote".to_symbol_or_panic(policy_base).into());
+                list.append(HeapSexp::new(val));
+                return Ok(Some(list.release()));
             } else {
                 return Err(ParseError {
                     reason: TrailingQuote,
@@ -138,7 +136,7 @@ pub fn parse_sexp<I: Iterator<Item = TokenInfo>>(
             });
         }
         Token::Primitive(primitive) => {
-            return Ok(Some(HeapSexp::new(primitive.into())));
+            return Ok(Some(primitive.into()));
         }
         Token::Comment(_) => {
             unreachable!();

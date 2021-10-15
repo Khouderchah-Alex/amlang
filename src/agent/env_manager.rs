@@ -436,7 +436,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         }
     }
 
-    fn deserialize_nodes(&mut self, structure: HeapSexp) -> Result<(), DeserializeError> {
+    fn deserialize_nodes(&mut self, structure: Sexp) -> Result<(), DeserializeError> {
         let builtins = generate_builtin_map();
         let (command, remainder) = break_sexp!(structure => (Symbol; remainder), self.state())?;
         if command.as_str() != "nodes" {
@@ -546,7 +546,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         }
     }
 
-    fn deserialize_triples(&mut self, structure: HeapSexp) -> Result<(), DeserializeError> {
+    fn deserialize_triples(&mut self, structure: Sexp) -> Result<(), DeserializeError> {
         let (command, remainder) = break_sexp!(structure => (Symbol; remainder), self.state())?;
         if command.as_str() != "triples" {
             return Err(UnexpectedCommand(command.into()));
@@ -621,7 +621,7 @@ impl<Policy: EnvPolicy> Agent for EnvManager<Policy> {
 }
 
 impl<Policy: EnvPolicy> Eval for EnvManager<Policy> {
-    fn eval(&mut self, _structure: HeapSexp) -> Ret {
+    fn eval(&mut self, _structure: Sexp) -> Ret {
         Ok(Sexp::default())
     }
 }

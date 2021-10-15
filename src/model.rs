@@ -7,7 +7,7 @@ pub type Ret = Result<Sexp, Error>;
 
 /// Meaning of Structures.
 pub trait Eval {
-    fn eval(&mut self, structure: HeapSexp) -> Ret;
+    fn eval(&mut self, structure: Sexp) -> Ret;
 }
 
 pub trait Model {

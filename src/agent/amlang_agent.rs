@@ -99,7 +99,7 @@ impl AmlangAgent {
                 if !proper {
                     return err!(self.state(), InvalidSexp(*elem));
                 }
-                let eval = self.eval(elem)?;
+                let eval = self.eval(*elem)?;
                 let node = self
                     .state_mut()
                     .env()
@@ -295,7 +295,7 @@ impl AmlangAgent {
 
                 let val_node = if let Some(s) = val {
                     let original = self.state_mut().designate(s.into())?;
-                    let meaning = self.eval(original.into())?;
+                    let meaning = self.eval(original)?;
                     let meaning_node = self.history_insert(meaning);
                     let val = self.exec(meaning_node)?;
                     self.eval_to_node(val)?.local()
@@ -428,7 +428,7 @@ impl AmlangAgent {
                 let arg = self.state_mut().designate(arg_nodes[0].into())?;
                 if is_eval {
                     debug!("applying (eval {})", arg);
-                    self.eval(HeapSexp::new(arg))
+                    self.eval(arg)
                 } else {
                     debug!("applying (exec {})", arg);
                     let meaning_node = self.history_insert(arg.into());
@@ -487,7 +487,7 @@ impl AmlangAgent {
                 continue;
             }
 
-            let val = self.eval(structure)?;
+            let val = self.eval(*structure)?;
             args.push(self.eval_to_node(val)?);
         }
         Ok(args)
@@ -526,8 +526,8 @@ impl Agent for AmlangAgent {
 }
 
 impl Eval for AmlangAgent {
-    fn eval(&mut self, structure: HeapSexp) -> Ret {
-        match *structure {
+    fn eval(&mut self, structure: Sexp) -> Ret {
+        match structure {
             Sexp::Primitive(primitive) => {
                 if let Primitive::Symbol(symbol) = &primitive {
                     for frame in self.eval_state.iter() {
@@ -546,7 +546,7 @@ impl Eval for AmlangAgent {
                     None => return err!(self.state(), InvalidSexp(Cons::new(car, cdr).into())),
                 };
 
-                let eval_car = self.eval(car)?;
+                let eval_car = self.eval(*car)?;
                 let node = match eval_car {
                     Sexp::Primitive(Primitive::Procedure(_))
                     | Sexp::Primitive(Primitive::Node(_)) => self.eval_to_node(eval_car)?,

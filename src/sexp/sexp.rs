@@ -341,7 +341,7 @@ impl FromStr for Sexp {
         };
 
         return match parse_sexp(&mut stream.peekable(), 0) {
-            Ok(Some(sexp)) => Ok(*sexp),
+            Ok(Some(sexp)) => Ok(sexp),
             Ok(None) => Ok(Sexp::default()),
             Err(err) => Err(FromStrError::ParseError(err)),
         };
