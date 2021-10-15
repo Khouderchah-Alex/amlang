@@ -420,6 +420,26 @@ impl AgentState {
 
 // Print functionality.
 impl AgentState {
+    pub fn trace_error(&mut self, err: &Error) {
+        if let Some(state) = err.state() {
+            let mut stored_state = state.clone();
+            std::mem::swap(self, &mut stored_state);
+            println!("");
+            println!("  --TRACE--");
+            let end = state.exec_state().depth() - 1;
+            for (i, frame) in state.exec_state().iter().enumerate() {
+                if i == end {
+                    break;
+                }
+                self.exec_state_mut().pop();
+                print!("   {})  ", i);
+                self.print_list(&frame.context().into());
+                println!("");
+            }
+            std::mem::swap(self, &mut stored_state);
+        }
+    }
+
     pub fn print_list(&mut self, structure: &Sexp) {
         let mut writer = BufWriter::new(stdout());
         if let Err(err) = self.write_list_internal(&mut writer, structure, 0, true) {

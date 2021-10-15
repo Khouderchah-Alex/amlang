@@ -8,9 +8,9 @@ use super::agent_state::{AgentState, ExecFrame};
 use super::amlang_wrappers::*;
 use super::continuation::Continuation;
 use crate::environment::LocalNode;
-use crate::primitive::error::{ExpectedCount, Error};
 use crate::model::{Eval, Model, Ret};
 use crate::parser::{parse_sexp, ParseError};
+use crate::primitive::error::{Error, ExpectedCount};
 use crate::primitive::prelude::*;
 use crate::primitive::table::Table;
 use crate::sexp::{Cons, HeapSexp, Sexp};
@@ -502,6 +502,17 @@ impl AmlangAgent {
             .insert_structure(structure);
         Node::new(env, node)
     }
+
+    fn print_curr_triples(&mut self) {
+        let local = self.state().pos().local();
+        let triples = self.state_mut().env().match_any(local);
+        for triple in triples {
+            print!("    ");
+            let structure = triple.reify(self.state_mut());
+            self.state_mut().print_list(&structure);
+            println!("");
+        }
+    }
 }
 
 
@@ -634,39 +645,5 @@ where
         };
         (self.handler)(&mut self.agent, &res);
         Some(res)
-    }
-}
-
-
-impl AmlangAgent {
-    pub fn trace_error(&mut self, err: &Error) {
-        if let Some(state) = err.state() {
-            let mut stored_state = state.clone();
-            std::mem::swap(self.state_mut(), &mut stored_state);
-            println!("");
-            println!("  --TRACE--");
-            let end = state.exec_state().depth() - 1;
-            for (i, frame) in state.exec_state().iter().enumerate() {
-                if i == end {
-                    break;
-                }
-                self.state_mut().exec_state_mut().pop();
-                print!("   {})  ", i);
-                self.state_mut().print_list(&frame.context().into());
-                println!("");
-            }
-            std::mem::swap(self.state_mut(), &mut stored_state);
-        }
-    }
-
-    fn print_curr_triples(&mut self) {
-        let local = self.state().pos().local();
-        let triples = self.state_mut().env().match_any(local);
-        for triple in triples {
-            print!("    ");
-            let structure = triple.reify(self.state_mut());
-            self.state_mut().print_list(&structure);
-            println!("");
-        }
     }
 }
