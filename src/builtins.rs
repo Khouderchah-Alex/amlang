@@ -32,34 +32,13 @@ pub fn generate_builtin_map() -> HashMap<&'static str, BuiltIn> {
     builtins![car, cdr, cons, println, eq, add, sub, mul, div]
 }
 
-
-/// Autogen function taking args: Vec<Sexp> from one taking specific subtypes.
-macro_rules! wrap_builtin {
-    ($raw:ident($ta:ident) => $wrapped:ident) => {
-        fn $wrapped(args: Args, state: &mut AgentState) -> Ret {
-            let (a,) = break_sexp!(args.into_iter().map(|e| (e, true)) => ($ta), state)?;
-            $raw(a, state)
-        }
-    };
-    ($raw:ident($ta:ident, $tb:ident) => $wrapped:ident) => {
-        fn $wrapped(args: Args, state: &mut AgentState) -> Ret {
-            let (a, b) = break_sexp!(args.into_iter().map(|e| (e, true)) => ($ta, $tb), state)?;
-            $raw(a, b, state)
-        }
-    };
-    ($raw:ident($($type:ident),+) => $wrapped:ident) => {
-        fn $wrapped(args: Args, state: &mut AgentState) -> Ret {
-            let tuple = break_sexp!(args.into_iter().map(|e| (e, true)) => ($($type),+), state)?;
-            $raw(tuple, state)
-        }
-    };
-}
-
+// Auto-gen builtins from raw rust functions.
 wrap_builtin!(car_(Cons) => car);
 wrap_builtin!(cdr_(Cons) => cdr);
 wrap_builtin!(cons_(HeapSexp, HeapSexp) => cons);
 wrap_builtin!(println_(Sexp) => println);
 wrap_builtin!(eq_(Sexp, Sexp) => eq);
+
 
 fn car_(cons: Cons, _state: &mut AgentState) -> Ret {
     if let Some(val) = cons.consume().0 {
@@ -206,3 +185,27 @@ fn div(args: Args, state: &mut AgentState) -> Ret {
 
     Ok(curr.into())
 }
+
+
+/// Autogen function taking args: Vec<Sexp> from one taking specific subtypes.
+macro_rules! wrap_builtin {
+    ($raw:ident($ta:ident) => $wrapped:ident) => {
+        fn $wrapped(args: Args, state: &mut AgentState) -> Ret {
+            let (a,) = break_sexp!(args.into_iter().map(|e| (e, true)) => ($ta), state)?;
+            $raw(a, state)
+        }
+    };
+    ($raw:ident($ta:ident, $tb:ident) => $wrapped:ident) => {
+        fn $wrapped(args: Args, state: &mut AgentState) -> Ret {
+            let (a, b) = break_sexp!(args.into_iter().map(|e| (e, true)) => ($ta, $tb), state)?;
+            $raw(a, b, state)
+        }
+    };
+    ($raw:ident($($type:ident),+) => $wrapped:ident) => {
+        fn $wrapped(args: Args, state: &mut AgentState) -> Ret {
+            let tuple = break_sexp!(args.into_iter().map(|e| (e, true)) => ($($type),+), state)?;
+            $raw(tuple, state)
+        }
+    };
+}
+use wrap_builtin;
