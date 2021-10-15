@@ -13,7 +13,7 @@ pub enum Procedure {
     Application(Node, Vec<Node>),
     Abstraction(Vec<Node>, Node, bool),
     Sequence(Vec<Node>),
-    Branch(Node, Node, Node), // Pred, A, B.
+    Branch(Box<(Node, Node, Node)>), // Pred, A, B.
 }
 
 
@@ -41,9 +41,10 @@ impl Model for Procedure {
                 )
                 .into()
             }
-            Procedure::Branch(pred, a, b) => {
+            Procedure::Branch(t) => {
                 let branch_node = Node::new(context.lang_env(), context.branch);
-                list!(branch_node, *pred, *a, *b,)
+                let (pred, a, b) = **t;
+                list!(branch_node, pred, a, b,)
             }
         }
     }
@@ -153,11 +154,11 @@ impl Model for Procedure {
 
             let (pred, a, b) =
                 break_sexp!(cdr.unwrap() => (Primitive, Primitive, Primitive), state)?;
-            Ok(Procedure::Branch(
+            Ok(Procedure::Branch(Box::new((
                 process_primitive(state, &pred)?,
                 process_primitive(state, &a)?,
                 process_primitive(state, &b)?,
-            )
+            )))
             .into())
         } else {
             panic!()

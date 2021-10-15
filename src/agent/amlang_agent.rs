@@ -144,7 +144,8 @@ impl AmlangAgent {
                         self.state_mut().exec_state_mut().pop();
                         res
                     }
-                    Procedure::Branch(pred, a, b) => {
+                    Procedure::Branch(t) => {
+                        let (pred, a, b) = *t;
                         let cpred = self.state().concretize(pred);
                         let ca = self.state().concretize(a);
                         let cb = self.state().concretize(b);
@@ -584,7 +585,7 @@ impl Eval for AmlangAgent {
                                 }
                             );
                         }
-                        let proc = Procedure::Branch(args[0], args[1], args[2]);
+                        let proc = Procedure::Branch((args[0], args[1], args[2]).into());
                         return Ok(proc.into());
                     }
                     _ if Node::new(context.lang_env(), context.progn) == node => {
