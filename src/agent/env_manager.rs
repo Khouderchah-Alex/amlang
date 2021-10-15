@@ -94,11 +94,11 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         // nodes, like {,de}serializing this as a bootstrap kernel.
         context.lang_env = LocalNode::new(8);
         // Procedure nodes.
-        context.lambda = LocalNode::new(13);
-        context.apply = LocalNode::new(33);
-        context.branch = LocalNode::new(41);
-        context.fexpr = LocalNode::new(45);
-        context.progn = LocalNode::new(49);
+        context.lambda = LocalNode::new(9);
+        context.apply = LocalNode::new(23);
+        context.branch = LocalNode::new(31);
+        context.fexpr = LocalNode::new(35);
+        context.progn = LocalNode::new(37);
         // Table nodes.
         context.symbol_table = LocalNode::new(57);
         context.local_node_table = LocalNode::new(59);
