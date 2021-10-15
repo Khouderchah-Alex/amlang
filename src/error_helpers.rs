@@ -6,9 +6,9 @@
 /// Stateful errors should always be used when possible.
 macro_rules! err {
     ($state:expr, $($kind:tt)+) => {
-        Err(crate::primitive::error::Error::with_state(
+        Err($crate::primitive::error::Error::with_state(
             $state.clone(),
-            crate::primitive::error::ErrKind::$($kind)+,
+            $crate::primitive::error::ErrKind::$($kind)+,
         ))
     };
 }
@@ -19,8 +19,8 @@ macro_rules! err {
 /// Stateful errors are always preferred when possible.
 macro_rules! err_nost {
     ($($kind:tt)+) => {
-        Err(crate::primitive::error::Error::empty_state(
-            crate::primitive::error::ErrKind::$($kind)+,
+        Err($crate::primitive::error::Error::empty_state(
+            $crate::primitive::error::ErrKind::$($kind)+,
         ))
     };
 }

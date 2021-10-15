@@ -16,13 +16,13 @@ macro_rules! break_sexp {
             // Generate stateful or stateless error depending on existence of $state.
             let err = |kind| {
                 $(
-                    return Err(crate::primitive::error::Error::with_state(
+                    return Err($crate::primitive::error::Error::with_state(
                         $state.clone(),
                         kind
                     ));
                 )*
                 #[allow(unreachable_code)]
-                Err(crate::primitive::error::Error::empty_state(kind))
+                Err($crate::primitive::error::Error::empty_state(kind))
             };
             let mut iter = $sexp.into_iter();
             let tuple = || {
@@ -37,28 +37,31 @@ macro_rules! break_sexp {
                         match iter.next() {
                             Some((sexp, proper)) =>  {
                                 if !proper {
-                                    return err(crate::primitive::error::ErrKind::InvalidSexp(sexp.into()));
+                                    return err($crate::primitive::error::ErrKind::InvalidSexp(
+                                        sexp.into())
+                                    );
                                 }
-                                match <$type as std::convert::TryFrom<crate::sexp::Sexp>
+                                match <$type as std::convert::TryFrom<$crate::sexp::Sexp>
                                        >::try_from(sexp.into()) {
                                     Ok(val) => {
                                         i += 1;
                                         val
                                     },
                                     Err(original) => {
-                                        return err(crate::primitive::error::ErrKind::InvalidArgument{
-                                            given: original.into(),
-                                            expected: std::borrow::Cow::Owned(
-                                                "type ".to_string() + stringify!($type)
-                                            ),
-                                        });
+                                        return err(
+                                            $crate::primitive::error::ErrKind::InvalidArgument{
+                                                given: original.into(),
+                                                expected: std::borrow::Cow::Owned(
+                                                    "type ".to_string() + stringify!($type)
+                                                ),
+                                            });
                                     }
                                 }
                             }
                             None =>  {
-                                return err(crate::primitive::error::ErrKind::WrongArgumentCount{
+                                return err($crate::primitive::error::ErrKind::WrongArgumentCount{
                                     given: i,
-                                    expected: crate::primitive::error::ExpectedCount::Exactly(
+                                    expected: $crate::primitive::error::ExpectedCount::Exactly(
                                         expected
                                     ),
                                 });
@@ -75,12 +78,12 @@ macro_rules! break_sexp {
 
                 $(
                     break_sexp!(@ignore $remainder);
-                    iter = crate::sexp::SexpIntoIter::default();
+                    iter = $crate::sexp::SexpIntoIter::default();
                 )*
                 if let Some(_) = iter.next() {
-                    return err(crate::primitive::error::ErrKind::WrongArgumentCount{
+                    return err($crate::primitive::error::ErrKind::WrongArgumentCount{
                         given: i + 1 + iter.count(),
-                        expected: crate::primitive::error::ExpectedCount::Exactly(i),
+                        expected: $crate::primitive::error::ExpectedCount::Exactly(i),
                     });
                 }
                 ret
@@ -95,14 +98,14 @@ macro_rules! break_sexp {
 macro_rules! list_inner {
     () => { None };
     (@cons $car:expr, $cdr:expr) => {
-        <crate::sexp::Sexp>::from(
-            crate::sexp::Cons::new($car.into(), $cdr.into()))
+        <$crate::sexp::Sexp>::from(
+            $crate::sexp::Cons::new($car.into(), $cdr.into()))
     };
     (($elem:expr, $($sub_tail:tt)*), $($tail:tt)*) => {
         {
             list_inner!(@cons
                   list_inner!(@cons
-                    Some(crate::sexp::HeapSexp::new($elem.into())),
+                    Some($crate::sexp::HeapSexp::new($elem.into())),
                     list_inner!($($sub_tail)*)),
                 list_inner!($($tail)*))
         }
@@ -110,7 +113,7 @@ macro_rules! list_inner {
     ($elem:expr, $($tail:tt)*) => {
         {
             list_inner!(@cons
-                Some(crate::sexp::HeapSexp::new($elem.into())),
+                Some($crate::sexp::HeapSexp::new($elem.into())),
                 list_inner!($($tail)*))
         }
     };
