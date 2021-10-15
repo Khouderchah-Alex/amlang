@@ -2,9 +2,9 @@ use std::borrow::Cow;
 use std::collections::HashMap;
 
 use crate::agent::agent_state::AgentState;
-use crate::primitive::error::ExpectedCount;
 use crate::model::Ret;
 use crate::primitive::builtin::Args;
+use crate::primitive::error::ExpectedCount;
 use crate::primitive::{BuiltIn, Node, Number, Primitive};
 use crate::sexp::{Cons, HeapSexp, Sexp};
 
@@ -78,7 +78,9 @@ fn cdr_(cons: Cons, _state: &mut AgentState) -> Ret {
 }
 
 fn cons_(car: HeapSexp, cdr: HeapSexp, _state: &mut AgentState) -> Ret {
-    Ok(Cons::new(Some(car), Some(cdr)).into())
+    // Prefer to represent '() using None.
+    let to_option = |s: HeapSexp| if s.is_none() { None } else { Some(s) };
+    Ok(Cons::new(to_option(car), to_option(cdr)).into())
 }
 
 fn println_(arg: Sexp, state: &mut AgentState) -> Ret {
