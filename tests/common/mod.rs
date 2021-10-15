@@ -24,7 +24,7 @@ pub fn setup() -> Result<AmlangAgent, String> {
     let manager =
         match amlang::agent::env_manager::EnvManager::<SimplePolicy>::bootstrap(META_ENV_PATH) {
             Ok(val) => val,
-            Err(err) => return Err(format!("{:?}", err)),
+            Err(err) => return Err(format!("{}", err)),
         };
 
     // Prep agent.

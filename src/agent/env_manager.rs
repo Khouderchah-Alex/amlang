@@ -638,3 +638,20 @@ impl From<parser::ParseError> for DeserializeError {
         ParseError(err)
     }
 }
+
+impl std::fmt::Display for DeserializeError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "[Deserialize Error] ")?;
+        match self {
+            FileStreamError(err) => write!(f, "FileStream error: {:?}", err),
+            ParseError(err) => write!(f, "Parse error: {}", err),
+            MissingNodeSection => write!(f, "Expected node section"),
+            MissingTripleSection => write!(f, "Expected triple section"),
+            ExtraneousSection => write!(f, "Extraneous section"),
+            UnexpectedCommand(cmd) => write!(f, "Unexpected command: {}", cmd),
+            ExpectedSymbol => write!(f, "Expected a symbol"),
+            UnrecognizedBuiltIn(name) => write!(f, "Unrecognized builtin: {}", name),
+            Error(err) => write!(f, "{}", err),
+        }
+    }
+}
