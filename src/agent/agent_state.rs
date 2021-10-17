@@ -466,6 +466,11 @@ impl AgentState {
             }
         }
 
+        // Any list longer than this will simply be suffixed with "..." after these
+        // many elements.
+        const MAX_LENGTH: usize = 64;
+        const MAX_DEPTH: usize = 16;
+
         structure.write_list(
             w,
             depth,
@@ -476,6 +481,8 @@ impl AgentState {
                 let (r, g, b) = paren_color(depth);
                 write!(writer, "{}", paren.truecolor(r, g, b))
             },
+            Some(MAX_LENGTH),
+            Some(MAX_DEPTH),
         )
     }
 

@@ -89,17 +89,14 @@ impl Sexp {
         depth: usize,
         write_primitive: &mut F,
         write_paren: &mut P,
+        max_length: Option<usize>,
+        max_depth: Option<usize>,
     ) -> std::io::Result<()>
     where
         W: std::io::Write,
         F: FnMut(&mut W, &Primitive, usize) -> std::io::Result<()>,
         P: FnMut(&mut W, &str, usize) -> std::io::Result<()>,
     {
-        // Any list longer than this will simply be suffixed with "..." after these
-        // many elements.
-        const MAX_DISPLAY_LENGTH: usize = 64;
-        const MAX_DISPLAY_DEPTH: usize = 32;
-
         let mut pos: usize = 0;
         let mut outer_quote = false;
         for (val, proper) in self.iter() {
@@ -110,8 +107,10 @@ impl Sexp {
                     };
                 }
 
-                if depth >= MAX_DISPLAY_DEPTH {
-                    return write!(w, "(..)");
+                if let Some(max) = max_depth {
+                    if depth >= max {
+                        return write!(w, "(..)");
+                    }
                 }
                 if let Ok(symbol) = <&Symbol>::try_from(val) {
                     if symbol.as_str() == "quote" {
@@ -124,9 +123,11 @@ impl Sexp {
                 write_paren(w, "(", depth)?;
             }
 
-            if pos >= MAX_DISPLAY_LENGTH {
-                write!(w, "...")?;
-                break;
+            if let Some(max) = max_length {
+                if pos >= max {
+                    write!(w, " ...")?;
+                    break;
+                }
             }
 
             if pos > 0 && !outer_quote {
@@ -136,7 +137,14 @@ impl Sexp {
                     write!(w, " . ")?;
                 }
             }
-            val.write_list(w, depth + 1, write_primitive, write_paren)?;
+            val.write_list(
+                w,
+                depth + 1,
+                write_primitive,
+                write_paren,
+                max_length,
+                max_depth,
+            )?;
 
             pos += 1;
         }
@@ -277,11 +285,18 @@ impl Default for Sexp {
 
 impl fmt::Display for Sexp {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // Any list longer than this will simply be suffixed with "..." after these
+        // many elements.
+        const MAX_LENGTH: usize = 64;
+        const MAX_DEPTH: usize = 16;
+
         match self.write_list(
             &mut FmtIoAdapter::new(f),
             0,
             &mut |writer, primitive, _depth| write!(writer, "{}", primitive),
             &mut |writer, paren, _depth| write!(writer, "{}", paren),
+            Some(MAX_LENGTH),
+            Some(MAX_DEPTH),
         ) {
             Ok(()) => Ok(()),
             Err(_) => Err(fmt::Error),
