@@ -133,15 +133,15 @@ impl<Backend: MemBackend> Environment for MemEnvironment<Backend> {
         .into()
     }
     fn entry_mut(&mut self, node: LocalNode) -> EntryMut {
-        if is_triple_id(node.id()) {
-            return None.into();
-        }
-
-        match self.backend.node_mut_unchecked(node) {
-            Node::Atomic => None,
-            Node::Structured(structure) => Some(structure),
-        }
-        .into()
+        let data = if is_triple_id(node.id()) {
+            None
+        } else {
+            match self.backend.node_mut_unchecked(node) {
+                Node::Atomic => None,
+                Node::Structured(structure) => Some(structure),
+            }
+        };
+        EntryMut::new(node, data)
     }
     fn node_as_triple(&self, node: LocalNode) -> Option<LocalTriple> {
         if !is_triple_id(node.id()) {

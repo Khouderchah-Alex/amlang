@@ -14,6 +14,7 @@
 // TODO(flex) Implement build script solution.
 
 use crate::environment::environment::EnvObject;
+use crate::environment::LocalNode;
 use crate::primitive::Primitive;
 use crate::sexp::Sexp;
 
@@ -23,7 +24,12 @@ pub enum Entry<'a> {
     Structured(&'a Sexp),
 }
 
-pub enum EntryMut<'a> {
+pub struct EntryMut<'a> {
+    node: LocalNode,
+    kind: EntryMutKind<'a>,
+}
+
+enum EntryMutKind<'a> {
     Atomic,
     Structured(&'a mut Sexp),
 }
@@ -66,11 +72,19 @@ impl<'a> Entry<'a> {
 }
 
 impl<'a> EntryMut<'a> {
+    pub(super) fn new(node: LocalNode, data: Option<&'a mut Sexp>) -> Self {
+        let kind = match data {
+            None => EntryMutKind::Atomic,
+            Some(sexp) => EntryMutKind::Structured(sexp),
+        };
+        Self { node, kind }
+    }
+
     /// Similar to Option::unwrap, but ties reference ownership back to
     /// &mut self, since Entries may own the structures in some impls.
     pub fn structure(&mut self) -> &mut Sexp {
-        match self {
-            Self::Structured(sexp) => *sexp,
+        match &mut self.kind {
+            EntryMutKind::Structured(sexp) => sexp,
             _ => panic!(),
         }
     }
@@ -78,17 +92,17 @@ impl<'a> EntryMut<'a> {
     /// Presents an Option, but ties reference ownership back to &mut self,
     /// since Entries may own the structures in some impls.
     pub fn as_option(&mut self) -> Option<&mut Sexp> {
-        match self {
-            Self::Atomic => None,
-            Self::Structured(sexp) => Some(*sexp),
+        match &mut self.kind {
+            EntryMutKind::Atomic => None,
+            EntryMutKind::Structured(sexp) => Some(sexp),
         }
     }
 
     /// Return as a &mut Env if posssible. Ownership of the reference ties back
     /// to that of the Environment which created this Entry.
     pub fn env(self) -> Option<&'a mut Box<EnvObject>> {
-        match self {
-            Self::Structured(Sexp::Primitive(Primitive::Env(env))) => Some(env),
+        match self.kind {
+            EntryMutKind::Structured(Sexp::Primitive(Primitive::Env(env))) => Some(env),
             _ => None,
         }
     }
@@ -97,15 +111,6 @@ impl<'a> EntryMut<'a> {
 
 impl<'a> From<Option<&'a Sexp>> for Entry<'a> {
     fn from(option: Option<&'a Sexp>) -> Self {
-        match option {
-            None => Self::Atomic,
-            Some(sexp) => Self::Structured(sexp),
-        }
-    }
-}
-
-impl<'a> From<Option<&'a mut Sexp>> for EntryMut<'a> {
-    fn from(option: Option<&'a mut Sexp>) -> Self {
         match option {
             None => Self::Atomic,
             Some(sexp) => Self::Structured(sexp),
