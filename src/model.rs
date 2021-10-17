@@ -3,8 +3,6 @@ use crate::primitive::{Error, Node, Primitive};
 use crate::sexp::Sexp;
 
 
-pub type Ret = Result<Sexp, Error>;
-
 /// Meaning of Structure, according to (possibly implicit) metamodel.
 ///
 /// The meaning of Structures in the methods below can be represented by the
@@ -22,7 +20,7 @@ pub type Ret = Result<Sexp, Error>;
 /// form of construe (or eval/call/etc) to reify some form of internal theory.
 pub trait Interpretation {
     /// Meaning of internal Structure.
-    fn contemplate(&mut self, structure: Sexp) -> Ret;
+    fn contemplate(&mut self, structure: Sexp) -> Result<Sexp, Error>;
 
     /// Meaning of external Structure.
     ///
@@ -34,7 +32,7 @@ pub trait Interpretation {
     /// The default implementation directly passing to |contemplate| represents
     /// an abstractive base case, where external and internal Structures are the
     /// same.
-    fn construe(&mut self, structure: Sexp) -> Ret {
+    fn construe(&mut self, structure: Sexp) -> Result<Sexp, Error> {
         self.contemplate(structure)
     }
 }

@@ -13,9 +13,9 @@ use super::env_policy::EnvPolicy;
 use crate::builtins::generate_builtin_map;
 use crate::environment::environment::Environment;
 use crate::environment::LocalNode;
-use crate::model::{Interpretation, Reflective, Ret};
+use crate::model::{Interpretation, Reflective};
 use crate::parser::{self, parse_sexp};
-use crate::primitive::error;
+use crate::primitive::error::ErrKind;
 use crate::primitive::prelude::*;
 use crate::primitive::symbol_policies::{policy_admin, AdminSymbolInfo};
 use crate::primitive::table::Table;
@@ -41,7 +41,7 @@ pub enum DeserializeError {
     UnexpectedCommand(Sexp),
     ExpectedSymbol,
     UnrecognizedBuiltIn(Symbol),
-    Error(error::Error),
+    AmlError(Error),
 }
 
 /// Replace placeholder'd context nodes through AmlangDesignation lookups.
@@ -468,10 +468,10 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
     }
 
     fn parse_node(&mut self, sym: &Symbol) -> Result<Node, DeserializeError> {
-        EnvManager::<Policy>::parse_node_inner(self.state_mut(), sym).map_err(|e| Error(e))
+        EnvManager::<Policy>::parse_node_inner(self.state_mut(), sym).map_err(|e| AmlError(e))
     }
 
-    fn parse_node_inner(state: &mut AgentState, sym: &Symbol) -> Result<Node, error::Error> {
+    fn parse_node_inner(state: &mut AgentState, sym: &Symbol) -> Result<Node, Error> {
         match policy_admin(sym.as_str()).unwrap() {
             AdminSymbolInfo::Identifier => err!(state, UnboundSymbol(sym.clone())),
             AdminSymbolInfo::LocalNode(node) => Ok(node.globalize(state)),
@@ -556,7 +556,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         let iter = match SexpIntoIter::try_from(remainder) {
             Ok(iter) => iter,
             Err(err) => {
-                if matches!(err.kind(), error::ErrKind::WrongArgumentCount { .. }) {
+                if matches!(err.kind(), ErrKind::WrongArgumentCount { .. }) {
                     return Ok(());
                 }
                 return Err(err.into());
@@ -622,15 +622,15 @@ impl<Policy: EnvPolicy> Agent for EnvManager<Policy> {
 }
 
 impl<Policy: EnvPolicy> Interpretation for EnvManager<Policy> {
-    fn contemplate(&mut self, _structure: Sexp) -> Ret {
+    fn contemplate(&mut self, _structure: Sexp) -> Result<Sexp, Error> {
         Ok(Sexp::default())
     }
 }
 
 
-impl From<error::Error> for DeserializeError {
-    fn from(err: error::Error) -> Self {
-        Error(err)
+impl From<Error> for DeserializeError {
+    fn from(err: Error) -> Self {
+        AmlError(err)
     }
 }
 
@@ -652,7 +652,7 @@ impl std::fmt::Display for DeserializeError {
             UnexpectedCommand(cmd) => write!(f, "Unexpected command: {}", cmd),
             ExpectedSymbol => write!(f, "Expected a symbol"),
             UnrecognizedBuiltIn(name) => write!(f, "Unrecognized builtin: {}", name),
-            Error(err) => write!(f, "{}", err),
+            AmlError(err) => write!(f, "{}", err),
         }
     }
 }

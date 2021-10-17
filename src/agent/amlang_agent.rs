@@ -8,7 +8,7 @@ use super::agent_state::{AgentState, ExecFrame};
 use super::amlang_wrappers::*;
 use super::continuation::Continuation;
 use crate::environment::LocalNode;
-use crate::model::{Interpretation, Reflective, Ret};
+use crate::model::{Interpretation, Reflective};
 use crate::parser::{parse_sexp, ParseError};
 use crate::primitive::error::{Error, ExpectedCount};
 use crate::primitive::prelude::*;
@@ -123,7 +123,7 @@ impl AmlangAgent {
         res
     }
 
-    fn exec(&mut self, meaning_node: Node) -> Ret {
+    fn exec(&mut self, meaning_node: Node) -> Result<Sexp, Error> {
         let meaning = self.state_mut().designate(meaning_node.into())?;
         match meaning {
             Sexp::Primitive(Primitive::Procedure(proc)) => {
@@ -182,7 +182,7 @@ impl AmlangAgent {
         }
     }
 
-    fn apply(&mut self, proc_node: Node, arg_nodes: Vec<Node>) -> Ret {
+    fn apply(&mut self, proc_node: Node, arg_nodes: Vec<Node>) -> Result<Sexp, Error> {
         match self.state_mut().designate(proc_node.into())? {
             Sexp::Primitive(Primitive::Node(node)) => {
                 if node.env() == self.state().context().lang_env() {
@@ -252,7 +252,11 @@ impl AmlangAgent {
         }
     }
 
-    fn apply_special(&mut self, special_node: LocalNode, arg_nodes: Vec<Node>) -> Ret {
+    fn apply_special(
+        &mut self,
+        special_node: LocalNode,
+        arg_nodes: Vec<Node>,
+    ) -> Result<Sexp, Error> {
         let context = self.state().context();
         match special_node {
             _ if context.tell == special_node || context.ask == special_node => {
@@ -527,7 +531,7 @@ impl Agent for AmlangAgent {
 }
 
 impl Interpretation for AmlangAgent {
-    fn contemplate(&mut self, structure: Sexp) -> Ret {
+    fn contemplate(&mut self, structure: Sexp) -> Result<Sexp, Error> {
         match structure {
             Sexp::Primitive(primitive) => {
                 if let Primitive::Symbol(symbol) = &primitive {
