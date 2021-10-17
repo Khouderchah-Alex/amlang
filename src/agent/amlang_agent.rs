@@ -514,7 +514,7 @@ impl AmlangAgent {
         for triple in triples {
             print!("    ");
             let structure = triple.reify(self.state_mut());
-            self.state_mut().print_list(&structure);
+            self.state_mut().print_sexp(&structure);
             println!("");
         }
     }

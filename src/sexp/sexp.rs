@@ -83,7 +83,7 @@ impl Sexp {
         }
     }
 
-    pub fn write_list<W, F, P>(
+    pub fn write<W, F, P>(
         &self,
         w: &mut W,
         depth: usize,
@@ -137,7 +137,7 @@ impl Sexp {
                     write!(w, " . ")?;
                 }
             }
-            val.write_list(
+            val.write(
                 w,
                 depth + 1,
                 write_primitive,
@@ -290,7 +290,7 @@ impl fmt::Display for Sexp {
         const MAX_LENGTH: usize = 64;
         const MAX_DEPTH: usize = 16;
 
-        match self.write_list(
+        match self.write(
             &mut FmtIoAdapter::new(f),
             0,
             &mut |writer, primitive, _depth| write!(writer, "{}", primitive),

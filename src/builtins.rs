@@ -62,7 +62,7 @@ fn cons_(car: HeapSexp, cdr: HeapSexp, _state: &mut AgentState) -> Result<Cons, 
 }
 
 fn println_(arg: Sexp, state: &mut AgentState) -> Result<Sexp, Error> {
-    state.print_list(&arg);
+    state.print_sexp(&arg);
     println!("");
     Ok(Sexp::default())
 }

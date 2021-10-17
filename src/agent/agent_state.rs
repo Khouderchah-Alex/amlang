@@ -433,22 +433,22 @@ impl AgentState {
                 }
                 self.exec_state_mut().pop();
                 print!("   {})  ", i);
-                self.print_list(&frame.context().into());
+                self.print_sexp(&frame.context().into());
                 println!("");
             }
             std::mem::swap(self, &mut stored_state);
         }
     }
 
-    pub fn print_list(&mut self, structure: &Sexp) {
+    pub fn print_sexp(&mut self, structure: &Sexp) {
         let mut writer = BufWriter::new(stdout());
-        if let Err(err) = self.write_list_internal(&mut writer, structure, 0, true) {
-            println!("print_list error: {:?}", err);
+        if let Err(err) = self.write_sexp(&mut writer, structure, 0, true) {
+            println!("print_sexp error: {:?}", err);
         }
     }
 
     // TODO(func) Make show_redirects & paren_color configurable & introspectable.
-    fn write_list_internal<W: std::io::Write>(
+    fn write_sexp<W: std::io::Write>(
         &mut self,
         w: &mut W,
         structure: &Sexp,
@@ -471,7 +471,7 @@ impl AgentState {
         const MAX_LENGTH: usize = 64;
         const MAX_DEPTH: usize = 16;
 
-        structure.write_list(
+        structure.write(
             w,
             depth,
             &mut |writer, primitive, depth| {
@@ -507,7 +507,7 @@ impl AgentState {
                     .node_as_triple(node.local())
                 {
                     let s = triple.reify(self);
-                    self.write_list_internal(w, &s, depth, show_redirects)
+                    self.write_sexp(w, &s, depth, show_redirects)
                 } else {
                     let s = if let Some(structure) = self
                         .access_env(node.env())
@@ -528,21 +528,21 @@ impl AgentState {
                     if s == node.into() || depth > MAX_DEPTH {
                         write!(w, "{}", node)
                     } else {
-                        self.write_list_internal(w, &s, depth, show_redirects)
+                        self.write_sexp(w, &s, depth, show_redirects)
                     }
                 }
             }
             Primitive::Procedure(procedure) => {
                 let s = procedure.reify(self);
-                self.write_list_internal(w, &s, depth, false)
+                self.write_sexp(w, &s, depth, false)
             }
             Primitive::SymbolTable(table) => {
                 let s = table.reify(self);
-                self.write_list_internal(w, &s, depth, false)
+                self.write_sexp(w, &s, depth, false)
             }
             Primitive::LocalNodeTable(table) => {
                 let s = table.reify(self);
-                self.write_list_internal(w, &s, depth, false)
+                self.write_sexp(w, &s, depth, false)
             }
             _ => write!(w, "{}", primitive),
         }
