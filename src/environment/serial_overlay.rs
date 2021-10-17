@@ -86,11 +86,11 @@ impl<T: Environment + Clone> Environment for SerialOverlay<T> {
         self.base().match_all()
     }
 
-    fn node_structure(&self, node: LocalNode) -> Entry {
-        self.base().node_structure(node)
+    fn entry(&self, node: LocalNode) -> Entry {
+        self.base().entry(node)
     }
-    fn node_structure_mut(&mut self, node: LocalNode) -> EntryMut {
-        self.base().node_structure_mut(node)
+    fn entry_mut(&mut self, node: LocalNode) -> EntryMut {
+        self.base().entry_mut(node)
     }
     fn node_as_triple(&self, node: LocalNode) -> Option<LocalTriple> {
         self.base().node_as_triple(node)

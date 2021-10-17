@@ -121,7 +121,7 @@ impl<Backend: MemBackend> Environment for MemEnvironment<Backend> {
             .collect()
     }
 
-    fn node_structure(&self, node: LocalNode) -> Entry {
+    fn entry(&self, node: LocalNode) -> Entry {
         if is_triple_id(node.id()) {
             return None.into();
         }
@@ -132,7 +132,7 @@ impl<Backend: MemBackend> Environment for MemEnvironment<Backend> {
         }
         .into()
     }
-    fn node_structure_mut(&mut self, node: LocalNode) -> EntryMut {
+    fn entry_mut(&mut self, node: LocalNode) -> EntryMut {
         if is_triple_id(node.id()) {
             return None.into();
         }
@@ -173,7 +173,7 @@ impl<Backend: MemBackend> Clone for MemEnvironment<Backend> {
     fn clone(&self) -> Self {
         warn!(
             "Env @ {} being empty-cloned.",
-            self.node_structure(LocalNode::default()).structure(),
+            self.entry(LocalNode::default()).structure(),
         );
         MemEnvironment::new()
     }

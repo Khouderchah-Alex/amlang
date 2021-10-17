@@ -130,7 +130,7 @@ impl AgentState {
             return Some(meta);
         }
 
-        meta.node_structure_mut(meta_node).env()
+        meta.entry_mut(meta_node).env()
     }
 
     pub fn env(&mut self) -> &mut Box<EnvObject> {
@@ -151,7 +151,7 @@ impl AgentState {
         let names = env.match_but_object(node.local(), designation);
         if let Some(name_node) = names.iter().next() {
             let name = env.triple_object(*name_node);
-            if let Ok(sym) = Symbol::try_from(env.node_structure(name).owned().unwrap()) {
+            if let Ok(sym) = Symbol::try_from(env.entry(name).owned().unwrap()) {
                 return Some(sym);
             }
         }
@@ -169,7 +169,7 @@ impl AgentState {
 
         for i in 0..self.designation_chain.len() {
             let env = self.access_env(self.designation_chain[i]).unwrap();
-            let entry = env.node_structure(designation);
+            let entry = env.entry(designation);
             let table = <&SymbolTable>::try_from(entry.as_option()).unwrap();
             if let Some(node) = table.lookup(name) {
                 return Ok(node);
@@ -187,7 +187,7 @@ impl AgentState {
                 if let Some(structure) = self
                     .access_env(node.env())
                     .unwrap()
-                    .node_structure(node.local())
+                    .entry(node.local())
                     .owned()
                 {
                     Ok(structure)
@@ -212,18 +212,14 @@ impl AgentState {
     }
 
     pub fn name_node(&mut self, name: LocalNode, node: LocalNode) -> Result<Node, Error> {
-        let name_sexp = self.env().node_structure(name);
+        let name_sexp = self.env().entry(name);
         let symbol = if let Ok(symbol) = <Symbol>::try_from(name_sexp.owned()) {
             symbol
         } else {
             return err!(
                 self,
                 InvalidArgument {
-                    given: self
-                        .env()
-                        .node_structure(name)
-                        .owned()
-                        .unwrap_or(Sexp::default()),
+                    given: self.env().entry(name).owned().unwrap_or(Sexp::default()),
                     expected: Cow::Borrowed("Node abstracting Symbol"),
                 }
             );
@@ -242,7 +238,7 @@ impl AgentState {
         let designation = self.context().designation();
         // Use designation of current environment.
         if let Ok(table) =
-            <&mut SymbolTable>::try_from(self.env().node_structure_mut(designation).as_option())
+            <&mut SymbolTable>::try_from(self.env().entry_mut(designation).as_option())
         {
             table.insert(symbol, global_node);
         } else {
@@ -365,7 +361,7 @@ impl AgentState {
         };
 
         if let Ok(table) =
-            <&LocalNodeTable>::try_from(self.context.meta().node_structure(table_node).as_option())
+            <&LocalNodeTable>::try_from(self.context.meta().entry(table_node).as_option())
         {
             if let Some(imported) = table.lookup(&original.local()) {
                 return Ok(imported.globalize(&self));
@@ -382,10 +378,7 @@ impl AgentState {
 
         let imported = self.env().insert_structure(original.into());
         if let Ok(table) = <&mut LocalNodeTable>::try_from(
-            self.context
-                .meta_mut()
-                .node_structure_mut(table_node)
-                .as_option(),
+            self.context.meta_mut().entry_mut(table_node).as_option(),
         ) {
             table.insert(original.local(), imported);
         } else {
@@ -405,7 +398,7 @@ impl AgentState {
         let triples = meta.match_predicate(self.context.serialize_path);
         for triple in triples {
             let object_node = meta.triple_object(triple);
-            let entry = meta.node_structure(object_node);
+            let entry = meta.entry(object_node);
             let object = entry.structure();
             if let Ok(path) = <&Path>::try_from(object) {
                 if path.as_std_path().ends_with(s.as_ref()) {
@@ -512,7 +505,7 @@ impl AgentState {
                     let s = if let Some(structure) = self
                         .access_env(node.env())
                         .unwrap()
-                        .node_structure(node.local())
+                        .entry(node.local())
                         .owned()
                     {
                         if show_redirects {

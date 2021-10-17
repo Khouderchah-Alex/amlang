@@ -34,7 +34,7 @@ impl InteractiveHelper {
 
         let mut res = Vec::<Symbol>::new();
         for env in state.designation_chain().clone() {
-            let entry = state.access_env(env).unwrap().node_structure(designation);
+            let entry = state.access_env(env).unwrap().entry(designation);
             let table = <&SymbolTable>::try_from(entry.as_option()).unwrap();
             res.extend(
                 table

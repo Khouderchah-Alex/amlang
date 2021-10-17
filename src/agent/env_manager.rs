@@ -53,7 +53,7 @@ macro_rules! bootstrap_context {
     ) => {
         let ($($node,)+) = {
             let desig_node = $manager.state().context().designation();
-            let entry = $manager.state_mut().env().node_structure(desig_node);
+            let entry = $manager.state_mut().env().entry(desig_node);
             let table = if let Ok(table) =
                 <&SymbolTable>::try_from(entry.as_option()) {
                     table
@@ -135,7 +135,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
                 .clone();
             let lang_path_node = meta.triple_object(lang_path_triple);
 
-            Path::try_from(meta.node_structure(lang_path_node).owned()).unwrap()
+            Path::try_from(meta.entry(lang_path_node).owned()).unwrap()
         };
         manager.deserialize_curr_env(lang_path.as_std_path())?;
         bootstrap_context!(manager,
@@ -176,7 +176,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
             }
 
             let object_node = context.meta().triple_object(triple);
-            let entry = context.meta().node_structure(object_node);
+            let entry = context.meta().entry(object_node);
             let object = entry.structure();
             let env_path = <&Path>::try_from(&*object).unwrap();
 
@@ -215,9 +215,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
 
         // Set up designation node.
         let designation = env.insert_structure(SymbolTable::default().into());
-        if let Ok(table) =
-            <&mut SymbolTable>::try_from(env.node_structure_mut(designation).as_option())
-        {
+        if let Ok(table) = <&mut SymbolTable>::try_from(env.entry_mut(designation).as_option()) {
             table.insert(
                 AMLANG_DESIGNATION.to_symbol_or_panic(policy_admin),
                 Node::new(env_node, designation),
@@ -232,7 +230,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
     fn initialize_env_node(&mut self, env_node: LocalNode) {
         let env = EnvManager::create_env(&mut self.policy, env_node);
         let meta = self.state_mut().context_mut().meta_mut();
-        *meta.node_structure_mut(env_node).structure() = env.into();
+        *meta.entry_mut(env_node).structure() = env.into();
     }
 }
 
@@ -257,7 +255,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
             let subject_node = self.state().context().meta().triple_subject(triple);
             let path = {
                 let object_node = self.state().context().meta().triple_object(triple);
-                let entry = self.state().context().meta().node_structure(object_node);
+                let entry = self.state().context().meta().entry(object_node);
                 Path::try_from(entry.owned()).unwrap()
             };
 
@@ -277,7 +275,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         for (i, node) in self.state_mut().env().all_nodes().into_iter().enumerate() {
             write!(&mut w, "\n    ")?;
 
-            let s = self.state_mut().env().node_structure(node).owned();
+            let s = self.state_mut().env().entry(node).owned();
             let (write_structure, add_quote) = match &s {
                 // Serialize self_des as ^1 since it can be reconstructed.
                 _ if i == 1 => (false, false),
@@ -598,10 +596,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
                 };
 
                 if let Ok(table) = <&mut SymbolTable>::try_from(
-                    self.state_mut()
-                        .env()
-                        .node_structure_mut(designation)
-                        .as_option(),
+                    self.state_mut().env().entry_mut(designation).as_option(),
                 ) {
                     table.insert(name, subject);
                 } else {
