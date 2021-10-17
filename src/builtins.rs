@@ -55,10 +55,10 @@ fn cdr_(cons: Cons, _state: &mut AgentState) -> Result<Sexp, Error> {
     }
 }
 
-fn cons_(car: HeapSexp, cdr: HeapSexp, _state: &mut AgentState) -> Result<Sexp, Error> {
+fn cons_(car: HeapSexp, cdr: HeapSexp, _state: &mut AgentState) -> Result<Cons, Error> {
     // Prefer to represent '() using None.
     let to_option = |s: HeapSexp| if s.is_none() { None } else { Some(s) };
-    Ok(Cons::new(to_option(car), to_option(cdr)).into())
+    Ok(Cons::new(to_option(car), to_option(cdr)))
 }
 
 fn println_(arg: Sexp, state: &mut AgentState) -> Result<Sexp, Error> {
@@ -67,13 +67,13 @@ fn println_(arg: Sexp, state: &mut AgentState) -> Result<Sexp, Error> {
     Ok(Sexp::default())
 }
 
-fn eq_(a: Sexp, b: Sexp, state: &mut AgentState) -> Result<Sexp, Error> {
+fn eq_(a: Sexp, b: Sexp, state: &mut AgentState) -> Result<Node, Error> {
     let local = if a == b {
         state.context().t
     } else {
         state.context().f
     };
-    Ok(Node::new(state.context().lang_env(), local).into())
+    Ok(Node::new(state.context().lang_env(), local))
 }
 
 
@@ -191,13 +191,13 @@ macro_rules! wrap_builtin {
     ($raw:ident($ta:ident) => $wrapped:ident) => {
         fn $wrapped(args: Args, state: &mut AgentState) -> Result<Sexp, Error> {
             let (a,) = break_sexp!(args.into_iter().map(|e| (e, true)) => ($ta), state)?;
-            $raw(a, state)
+            Ok($raw(a, state)?.into())
         }
     };
     ($raw:ident($ta:ident, $tb:ident) => $wrapped:ident) => {
         fn $wrapped(args: Args, state: &mut AgentState) -> Result<Sexp, Error> {
             let (a, b) = break_sexp!(args.into_iter().map(|e| (e, true)) => ($ta, $tb), state)?;
-            $raw(a, b, state)
+            Ok($raw(a, b, state)?.into())
         }
     };
     ($raw:ident($($type:ident),+) => $wrapped:ident) => {
