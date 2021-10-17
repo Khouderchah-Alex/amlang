@@ -5,7 +5,7 @@
 use std::fmt;
 
 use crate::agent::agent_state::AgentState;
-use crate::model::Model;
+use crate::model::Reflective;
 use crate::primitive::{Error, Node};
 use crate::sexp::Sexp;
 
@@ -45,7 +45,7 @@ impl LocalTriple {
 }
 
 
-impl Model for LocalTriple {
+impl Reflective for LocalTriple {
     fn reify(&self, state: &mut AgentState) -> Sexp {
         let e = state.pos().env();
         let env = state.env();

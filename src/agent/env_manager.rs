@@ -13,7 +13,7 @@ use super::env_policy::EnvPolicy;
 use crate::builtins::generate_builtin_map;
 use crate::environment::environment::Environment;
 use crate::environment::LocalNode;
-use crate::model::{Eval, Model, Ret};
+use crate::model::{Interpretation, Reflective, Ret};
 use crate::parser::{self, parse_sexp};
 use crate::primitive::error;
 use crate::primitive::prelude::*;
@@ -89,8 +89,8 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
             LocalNode::new(0), // self
             LocalNode::new(1), // designation
         );
-        // Make context usable for reflecting Models during bootstrapping.
-        // TODO(flex) Find more flexible approch to bootstrapping Model
+        // Make context usable for reflecting Reflectives during bootstrapping.
+        // TODO(flex) Find more flexible approch to bootstrapping Reflective
         // nodes, like {,de}serializing this as a bootstrap kernel.
         context.lang_env = LocalNode::new(8);
         // Procedure nodes.
@@ -500,7 +500,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         let (command, cdr) = break_sexp!(structure => (Symbol; remainder), self.state())?;
 
         // Note(subtle): during the initial deserialization of the meta & lang
-        // envs, Model context nodes are only valid because they're specially
+        // envs, Reflective context nodes are only valid because they're specially
         // set before actual context bootstrapping occurs.
         if let Ok(node) = self.parse_node(&command) {
             let process_primitive = |state: &mut AgentState, p: &Primitive| match p {
@@ -621,8 +621,8 @@ impl<Policy: EnvPolicy> Agent for EnvManager<Policy> {
     }
 }
 
-impl<Policy: EnvPolicy> Eval for EnvManager<Policy> {
-    fn eval(&mut self, _structure: Sexp) -> Ret {
+impl<Policy: EnvPolicy> Interpretation for EnvManager<Policy> {
+    fn contemplate(&mut self, _structure: Sexp) -> Ret {
         Ok(Sexp::default())
     }
 }

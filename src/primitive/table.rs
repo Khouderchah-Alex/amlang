@@ -8,7 +8,7 @@ use std::convert::TryFrom;
 use super::{Error, Node, Primitive, Symbol};
 use crate::agent::AgentState;
 use crate::environment::LocalNode;
-use crate::model::Model;
+use crate::model::Reflective;
 use crate::sexp::{Cons, Sexp};
 
 
@@ -75,8 +75,8 @@ impl<K: Ord, V> Default for AmlangTable<K, V> {
 }
 
 
-// TODO (flex) Would rather impl Model once. Maybe use macro.
-impl Model for AmlangTable<Symbol, Node> {
+// TODO (flex) Would rather impl Reflective once. Maybe use macro.
+impl Reflective for AmlangTable<Symbol, Node> {
     fn reify(&self, state: &mut AgentState) -> Sexp {
         let mut alist = None;
         for (k, v) in self.as_map() {
@@ -156,7 +156,7 @@ impl Model for AmlangTable<Symbol, Node> {
     }
 }
 
-impl Model for AmlangTable<LocalNode, LocalNode> {
+impl Reflective for AmlangTable<LocalNode, LocalNode> {
     fn reify(&self, state: &mut AgentState) -> Sexp {
         let mut alist = None;
         for (k, v) in self.as_map() {

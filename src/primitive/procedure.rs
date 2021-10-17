@@ -3,7 +3,7 @@ use std::convert::TryFrom;
 
 use super::{Node, Primitive};
 use crate::agent::agent_state::AgentState;
-use crate::model::Model;
+use crate::model::Reflective;
 use crate::primitive::error::{Error, ExpectedCount};
 use crate::sexp::{Cons, HeapSexp, Sexp};
 
@@ -17,7 +17,7 @@ pub enum Procedure {
 }
 
 
-impl Model for Procedure {
+impl Reflective for Procedure {
     fn reify(&self, state: &mut AgentState) -> Sexp {
         let context = state.context();
         match self {

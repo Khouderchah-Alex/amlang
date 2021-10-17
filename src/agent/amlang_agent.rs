@@ -8,7 +8,7 @@ use super::agent_state::{AgentState, ExecFrame};
 use super::amlang_wrappers::*;
 use super::continuation::Continuation;
 use crate::environment::LocalNode;
-use crate::model::{Eval, Model, Ret};
+use crate::model::{Interpretation, Reflective, Ret};
 use crate::parser::{parse_sexp, ParseError};
 use crate::primitive::error::{Error, ExpectedCount};
 use crate::primitive::prelude::*;
@@ -99,7 +99,7 @@ impl AmlangAgent {
                 if !proper {
                     return err!(self.state(), InvalidSexp(*elem));
                 }
-                let eval = self.eval(*elem)?;
+                let eval = self.construe(*elem)?;
                 let node = self
                     .state_mut()
                     .env()
@@ -296,7 +296,7 @@ impl AmlangAgent {
 
                 let val_node = if let Some(s) = val {
                     let original = self.state_mut().designate(s.into())?;
-                    let meaning = self.eval(original)?;
+                    let meaning = self.construe(original)?;
                     let meaning_node = self.history_insert(meaning);
                     let val = self.exec(meaning_node)?;
                     self.eval_to_node(val)?.local()
@@ -329,7 +329,7 @@ impl AmlangAgent {
                     );
                 }
 
-                // If original expr eval + exec -> Node, use that.
+                // If original expr construe + exec -> Node, use that.
                 let dest = self.exec_to_node(arg_nodes[0])?;
                 self.state_mut().jump(dest);
                 self.print_curr_triples();
@@ -346,7 +346,7 @@ impl AmlangAgent {
                     );
                 }
 
-                // If original expr eval + exec -> Node, use that.
+                // If original expr construe + exec -> Node, use that.
                 let original = self.exec_to_node(arg_nodes[0])?;
                 let imported = self.state_mut().import(original)?;
                 return Ok(imported.into());
@@ -429,7 +429,7 @@ impl AmlangAgent {
                 let arg = self.state_mut().designate(arg_nodes[0].into())?;
                 if is_eval {
                     debug!("applying (eval {})", arg);
-                    self.eval(arg)
+                    self.construe(arg)
                 } else {
                     debug!("applying (exec {})", arg);
                     let meaning_node = self.history_insert(arg.into());
@@ -488,7 +488,7 @@ impl AmlangAgent {
                 continue;
             }
 
-            let val = self.eval(*structure)?;
+            let val = self.construe(*structure)?;
             args.push(self.eval_to_node(val)?);
         }
         Ok(args)
@@ -526,8 +526,8 @@ impl Agent for AmlangAgent {
     }
 }
 
-impl Eval for AmlangAgent {
-    fn eval(&mut self, structure: Sexp) -> Ret {
+impl Interpretation for AmlangAgent {
+    fn contemplate(&mut self, structure: Sexp) -> Ret {
         match structure {
             Sexp::Primitive(primitive) => {
                 if let Primitive::Symbol(symbol) = &primitive {
@@ -547,7 +547,7 @@ impl Eval for AmlangAgent {
                     None => return err!(self.state(), InvalidSexp(Cons::new(car, cdr).into())),
                 };
 
-                let eval_car = self.eval(*car)?;
+                let eval_car = self.construe(*car)?;
                 let node = match eval_car {
                     Sexp::Primitive(Primitive::Procedure(_))
                     | Sexp::Primitive(Primitive::Node(_)) => self.eval_to_node(eval_car)?,
@@ -637,7 +637,7 @@ where
             }
         };
 
-        let meaning = match self.agent.eval(sexp) {
+        let meaning = match self.agent.construe(sexp) {
             Ok(meaning) => meaning,
             Err(err) => {
                 let res = Err(RunError::CompileError(err));

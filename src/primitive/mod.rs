@@ -54,9 +54,9 @@ pub enum Primitive {
     // *within* the core amlang implementation; Result is simply too useful WRT
     // compilation & error handling. However, providing Error as a Primitive
     // variant allows library clients to pass Errors back into their system.
-    // Implementing Model will also enable clients to model errors in amlang.
+    // Implementing Reflective will also enable clients to model errors in amlang.
     //
-    // TODO(func) Impl Model.
+    // TODO(func) Impl Reflective.
     Error(Error),
     // Presumably only present in meta env Nodes, but this comes down
     // to how base Agents are implemented.

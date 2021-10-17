@@ -10,7 +10,7 @@ use super::amlang_context::AmlangContext;
 use super::continuation::Continuation;
 use crate::environment::environment::{EnvObject, TripleSet};
 use crate::environment::LocalNode;
-use crate::model::Model;
+use crate::model::Reflective;
 use crate::primitive::prelude::*;
 use crate::primitive::symbol_policies::policy_admin;
 use crate::primitive::table::{AmlangTable, Table};
@@ -202,7 +202,7 @@ impl AgentState {
                     Ok(node.into())
                 }
             }
-            // Reify Models.
+            // Reify Reflectives.
             Primitive::Procedure(proc) => Ok(proc.reify(self)),
             Primitive::SymbolTable(table) => Ok(table.reify(self)),
             Primitive::LocalNodeTable(table) => Ok(table.reify(self)),
