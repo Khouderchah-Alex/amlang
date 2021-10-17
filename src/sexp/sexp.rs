@@ -34,7 +34,7 @@ use std::str::FromStr;
 
 use super::cons::Cons;
 use super::cons_list::ConsList;
-use super::fmt_io_bridge::FmtIoBridge;
+use super::fmt_io_adapter::FmtIoAdapter;
 use crate::environment::Environment;
 use crate::parser::{parse_sexp, ParseError};
 use crate::primitive::error::{Error, ExpectedCount};
@@ -278,7 +278,7 @@ impl Default for Sexp {
 impl fmt::Display for Sexp {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.write_list(
-            &mut FmtIoBridge::new(f),
+            &mut FmtIoAdapter::new(f),
             0,
             &mut |writer, primitive, _depth| write!(writer, "{}", primitive),
             &mut |writer, paren, _depth| write!(writer, "{}", paren),

@@ -5,7 +5,7 @@ pub mod cons;
 pub mod cons_list;
 pub mod sexp;
 
-mod fmt_io_bridge;
+mod fmt_io_adapter;
 
 
 pub use cons::Cons;

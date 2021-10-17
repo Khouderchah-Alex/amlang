@@ -9,18 +9,18 @@ use std::str::from_utf8;
 use std::{fmt, io};
 
 
-pub struct FmtIoBridge<'a, F: fmt::Write> {
+pub struct FmtIoAdapter<'a, F: fmt::Write> {
     fmt_writer: &'a mut F,
 }
 
-impl<'a, F: fmt::Write> FmtIoBridge<'a, F> {
+impl<'a, F: fmt::Write> FmtIoAdapter<'a, F> {
     pub fn new(fmt_writer: &'a mut F) -> Self {
         Self { fmt_writer }
     }
 }
 
 
-impl<'a, F: fmt::Write> io::Write for FmtIoBridge<'a, F> {
+impl<'a, F: fmt::Write> io::Write for FmtIoAdapter<'a, F> {
     fn write(&mut self, bytes: &[u8]) -> std::result::Result<usize, std::io::Error> {
         // fmt::Write only takes UTF-8, while io::Write is a byte-oriented sink.
         let utf = match from_utf8(bytes) {
