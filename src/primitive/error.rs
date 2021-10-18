@@ -7,7 +7,7 @@ use self::ExpectedCount::*;
 use super::Primitive;
 use crate::agent::agent_state::AgentState;
 use crate::primitive::Symbol;
-use crate::sexp::Sexp;
+use crate::sexp::{HeapSexp, Sexp};
 
 
 #[derive(Clone, Debug)]
@@ -114,6 +114,7 @@ impl fmt::Display for ExpectedCount {
 
 
 impl_try_from!(Sexp              ->  Error,      Error;
+               HeapSexp          ->  Error,      Error;
                ref Sexp          ->  ref Error,  Error;
                Option<Sexp>      ->  Error,      Error;
                Option<ref Sexp>  ->  ref Error,  Error;

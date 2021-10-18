@@ -182,6 +182,7 @@ impl Reflective for Procedure {
 
 
 impl_try_from!(Sexp              ->  Procedure,      Procedure;
+               HeapSexp          ->  Procedure,      Procedure;
                ref Sexp          ->  ref Procedure,  Procedure;
                Option<Sexp>      ->  Procedure,      Procedure;
                Option<ref Sexp>  ->  ref Procedure,  Procedure;

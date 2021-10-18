@@ -5,7 +5,7 @@ use std::fmt;
 
 use crate::agent::agent_state::AgentState;
 use crate::primitive::{Error, Primitive};
-use crate::sexp::Sexp;
+use crate::sexp::{HeapSexp, Sexp};
 
 
 pub type Args = Vec<Sexp>;
@@ -53,6 +53,7 @@ impl fmt::Display for BuiltIn {
 
 
 impl_try_from!(Sexp              ->  BuiltIn,      BuiltIn;
+               HeapSexp          ->  BuiltIn,      BuiltIn;
                ref Sexp          ->  ref BuiltIn,  BuiltIn;
                Option<Sexp>      ->  BuiltIn,      BuiltIn;
                Option<ref Sexp>  ->  ref BuiltIn,  BuiltIn;

@@ -3,7 +3,7 @@ use std::convert::TryFrom;
 use std::fmt;
 
 use super::Primitive;
-use crate::sexp::Sexp;
+use crate::sexp::{HeapSexp, Sexp};
 
 
 /// String which can be used as an identifier (amlang designator).
@@ -94,6 +94,7 @@ impl Borrow<str> for Symbol {
 
 
 impl_try_from!(Sexp              ->  Symbol,      Symbol;
+               HeapSexp          ->  Symbol,      Symbol;
                ref Sexp          ->  ref Symbol,  Symbol;
                Option<Sexp>      ->  Symbol,      Symbol;
                Option<ref Sexp>  ->  ref Symbol,  Symbol;

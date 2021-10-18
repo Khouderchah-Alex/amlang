@@ -9,7 +9,7 @@ use super::{Error, Node, Primitive, Symbol};
 use crate::agent::AgentState;
 use crate::environment::LocalNode;
 use crate::model::Reflective;
-use crate::sexp::{Cons, Sexp};
+use crate::sexp::{Cons, HeapSexp, Sexp};
 
 
 pub type SymbolTable = AmlangTable<Symbol, Node>;
@@ -250,6 +250,7 @@ impl Reflective for AmlangTable<LocalNode, LocalNode> {
 
 
 impl_try_from!(Sexp                 ->  SymbolTable,          SymbolTable;
+               HeapSexp             ->  SymbolTable,          SymbolTable;
                ref Sexp             ->  ref SymbolTable,      SymbolTable;
                Option<Sexp>         ->  SymbolTable,          SymbolTable;
                Option<ref Sexp>     ->  ref SymbolTable,      SymbolTable;
@@ -259,6 +260,7 @@ impl_try_from!(Sexp                 ->  SymbolTable,          SymbolTable;
 );
 
 impl_try_from!(Sexp                 ->  LocalNodeTable,          LocalNodeTable;
+               HeapSexp             ->  LocalNodeTable,          LocalNodeTable;
                ref Sexp             ->  ref LocalNodeTable,      LocalNodeTable;
                Option<Sexp>         ->  LocalNodeTable,          LocalNodeTable;
                Option<ref Sexp>     ->  ref LocalNodeTable,      LocalNodeTable;

@@ -318,6 +318,18 @@ impl TryFrom<Sexp> for Primitive {
     }
 }
 
+impl TryFrom<HeapSexp> for Primitive {
+    type Error = HeapSexp;
+
+    fn try_from(value: HeapSexp) -> Result<Self, <Self as TryFrom<HeapSexp>>::Error> {
+        if let Sexp::Primitive(primitive) = *value {
+            Ok(primitive)
+        } else {
+            Err(value)
+        }
+    }
+}
+
 impl<'a> TryFrom<&'a Sexp> for &'a Primitive {
     type Error = &'a Sexp;
 

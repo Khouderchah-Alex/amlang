@@ -2,7 +2,7 @@ use std::convert::TryFrom;
 use std::fmt;
 
 use super::Primitive;
-use crate::sexp::Sexp;
+use crate::sexp::{HeapSexp, Sexp};
 
 
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -45,6 +45,7 @@ impl fmt::Display for AmString {
 
 
 impl_try_from!(Sexp              ->  AmString,      AmString;
+               HeapSexp          ->  AmString,      AmString;
                ref Sexp          ->  ref AmString,  AmString;
                Option<Sexp>      ->  AmString,      AmString;
                Option<ref Sexp>  ->  ref AmString,  AmString;

@@ -4,10 +4,12 @@ macro_rules! impl_try_from {
             type Error = $from;
 
             fn try_from(value: $from) -> Result<Self, Self::Error> {
-                if let Sexp::Primitive(Primitive::$name(val)) = value {
+                let v = value.into();
+                if let Sexp::Primitive(Primitive::$name(val)) = v {
                     Ok(val)
                 } else {
-                    Err(value)
+                    // No copy for Sexp, but HeapSexp will involve re-boxing.
+                    Err(v.into())
                 }
             }
         }

@@ -3,7 +3,7 @@ use std::fmt;
 use std::path::PathBuf;
 
 use super::Primitive;
-use crate::sexp::Sexp;
+use crate::sexp::{HeapSexp, Sexp};
 
 
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -28,6 +28,7 @@ impl fmt::Display for Path {
 
 
 impl_try_from!(Sexp              ->  Path,      Path;
+               HeapSexp          ->  Path,      Path;
                ref Sexp          ->  ref Path,  Path;
                Option<Sexp>      ->  Path,      Path;
                Option<ref Sexp>  ->  ref Path,  Path;

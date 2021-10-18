@@ -7,7 +7,7 @@ use std::str;
 
 use self::Number::*;
 use super::Primitive;
-use crate::sexp::Sexp;
+use crate::sexp::{HeapSexp, Sexp};
 
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -138,6 +138,7 @@ impl ops::DivAssign for Number {
 
 
 impl_try_from!(Sexp              ->  Number,      Number;
+               HeapSexp          ->  Number,      Number;
                ref Sexp          ->  ref Number,  Number;
                Option<Sexp>      ->  Number,      Number;
                Option<ref Sexp>  ->  ref Number,  Number;

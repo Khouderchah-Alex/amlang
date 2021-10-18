@@ -5,7 +5,7 @@ use std::fmt;
 
 use crate::environment::LocalNode;
 use crate::primitive::Primitive;
-use crate::sexp::Sexp;
+use crate::sexp::{HeapSexp, Sexp};
 
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialOrd, PartialEq)]
@@ -37,7 +37,8 @@ impl fmt::Display for Node {
 }
 
 
-impl_try_from!(Sexp -> Node, Node;
+impl_try_from!(Sexp          -> Node,       Node;
+               HeapSexp      -> Node,       Node;
                // Prefer not to use this but need consistency for sexp_conversion.
                ref Sexp      ->  ref Node,  Node;
                Option<Sexp>  ->  Node,      Node;

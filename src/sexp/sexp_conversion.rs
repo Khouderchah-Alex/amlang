@@ -41,8 +41,7 @@ macro_rules! break_sexp {
                                         sexp.into())
                                     );
                                 }
-                                match <$type as std::convert::TryFrom<$crate::sexp::Sexp>
-                                       >::try_from(sexp.into()) {
+                                match <$type as std::convert::TryFrom<_>>::try_from(sexp) {
                                     Ok(val) => {
                                         i += 1;
                                         val

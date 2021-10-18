@@ -54,6 +54,18 @@ impl TryFrom<Sexp> for Cons {
     }
 }
 
+impl TryFrom<HeapSexp> for Cons {
+    type Error = HeapSexp;
+
+    fn try_from(value: HeapSexp) -> Result<Self, Self::Error> {
+        if let Sexp::Cons(cons) = *value {
+            Ok(cons)
+        } else {
+            Err(value)
+        }
+    }
+}
+
 impl<'a> TryFrom<&'a Sexp> for &'a Cons {
     type Error = &'a Sexp;
 
