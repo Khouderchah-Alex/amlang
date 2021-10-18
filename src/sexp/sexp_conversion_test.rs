@@ -35,6 +35,28 @@ fn list_sexp() {
 }
 
 #[test]
+fn ref_elements() {
+    let original: Sexp = "(a b c)".parse().unwrap();
+    let (a, r) = break_sexp!(original.iter() => (&Symbol; remainder)).unwrap();
+    assert_eq!(a.as_str(), "a");
+
+    let (b, r2) = break_sexp!(r.unwrap() => (&Symbol; remainder)).unwrap();
+    assert_eq!(b.as_str(), "b");
+
+    let (c, r3) = break_sexp!(r2.unwrap() => (&Symbol; remainder)).unwrap();
+    assert_eq!(c.as_str(), "c");
+    assert_eq!(r3, None);
+
+    let (a, b, c) = break_sexp!(original.iter() => (&Symbol, &Symbol, &Symbol)).unwrap();
+    assert_eq!(a.as_str(), "a");
+    assert_eq!(b.as_str(), "b");
+    assert_eq!(c.as_str(), "c");
+
+    // Verify original is unmodified.
+    assert_eq!(original, "(a b c)".parse().unwrap());
+}
+
+#[test]
 fn vec_break_no_remainder() {
     let original: Vec<Sexp> = vec![
         Number::Integer(1).into(),

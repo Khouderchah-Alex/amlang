@@ -170,6 +170,12 @@ impl SexpIntoIter {
     }
 }
 
+impl<'a> SexpIter<'a> {
+    pub fn consume(self) -> Option<&'a Sexp> {
+        self.current
+    }
+}
+
 impl<'a> Iterator for SexpIter<'a> {
     // (&Sexp, proper).
     //
@@ -209,6 +215,12 @@ impl<'a> IntoIterator for &'a Sexp {
 impl Default for SexpIntoIter {
     fn default() -> Self {
         Self::None
+    }
+}
+
+impl<'a> Default for SexpIter<'a> {
+    fn default() -> Self {
+        Self { current: None }
     }
 }
 

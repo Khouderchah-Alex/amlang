@@ -1,5 +1,6 @@
-/// Breaks a Sexp/HeapSexp into Result<tuple of component types, Error>,
-/// assuming all component types implement TryFrom<$type> for Sexp.
+/// Breaks a Sexp, HeapSexp, or Sexp iter of some kind into Result<tuple of
+/// component types, Error>, assuming all component types implement
+/// TryFrom<$type> for Sexp.
 ///
 /// Optional remainder accepts an arbitrary identifier and append an
 /// Option<HeapSexp> to the end of the result tuple.
@@ -10,8 +11,8 @@
 ///  let (a, b, tail) = break_sexp!(original => (Symbol, HeapSexp; remainder), self.state())?;
 // TODO(func) Have remainder return iter so that other Iterators can be used.
 macro_rules! break_sexp {
-    (@ignore $_ignored:ident) => {};
-    ($sexp:expr => ($($type:ident),+ $(;$remainder:tt)?) $(,$state:expr)?) => {
+    (@ignore $_ignored:ty) => {};
+    ($sexp:expr => ($($type:ty),+ $(;$remainder:tt)?) $(,$state:expr)?) => {
         {
             // Generate stateful or stateless error depending on existence of $state.
             let err = |kind| {
@@ -38,7 +39,8 @@ macro_rules! break_sexp {
                             Some((sexp, proper)) =>  {
                                 if !proper {
                                     return err($crate::primitive::error::ErrKind::InvalidSexp(
-                                        sexp.into())
+                                        // TODO(perf) Avoid clone for non-ref types.
+                                        sexp.clone().into())
                                     );
                                 }
                                 match <$type as std::convert::TryFrom<_>>::try_from(sexp) {
@@ -49,7 +51,8 @@ macro_rules! break_sexp {
                                     Err(original) => {
                                         return err(
                                             $crate::primitive::error::ErrKind::InvalidArgument{
-                                                given: original.into(),
+                                                // TODO(perf) Avoid clone for non-ref types.
+                                                given: original.clone().into(),
                                                 expected: std::borrow::Cow::Owned(
                                                     "type ".to_string() + stringify!($type)
                                                 ),
@@ -77,7 +80,7 @@ macro_rules! break_sexp {
 
                 $(
                     break_sexp!(@ignore $remainder);
-                    iter = $crate::sexp::SexpIntoIter::default();
+                    iter = Default::default();
                 )*
                 if let Some(_) = iter.next() {
                     return err($crate::primitive::error::ErrKind::WrongArgumentCount{
