@@ -20,7 +20,7 @@ use crate::primitive::error::ErrKind;
 use crate::primitive::prelude::*;
 use crate::primitive::symbol_policies::{policy_admin, AdminSymbolInfo};
 use crate::primitive::table::Table;
-use crate::sexp::{Cons, HeapSexp, Sexp, SexpIntoIter};
+use crate::sexp::{HeapSexp, Sexp, SexpIntoIter};
 use crate::token::file_stream::{self, FileStream, FileStreamError};
 
 use DeserializeError::*;
@@ -489,17 +489,16 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
 
     fn eval_structure(
         &mut self,
-        structure: HeapSexp,
+        hsexp: HeapSexp,
         builtins: &HashMap<&'static str, BuiltIn>,
     ) -> Result<Sexp, DeserializeError> {
-        match *structure {
+        match *hsexp {
             Sexp::Primitive(Primitive::Symbol(sym)) => return Ok(self.parse_node(&sym)?.into()),
             Sexp::Primitive(Primitive::AmString(s)) => return Ok(s.into()),
             _ => {}
         }
 
-        let (command, cdr) = break_sexp!(structure => (Symbol; remainder), self.state())?;
-
+        let (command, _) = break_sexp!(hsexp.iter() => (&Symbol; remainder), self.state())?;
         // Note(subtle): during the initial deserialization of the meta & lang
         // envs, Reflective context nodes are only valid because they're specially
         // set before actual context bootstrapping occurs.
@@ -511,19 +510,19 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
             };
 
             if Procedure::valid_discriminator(node, self.state()) {
-                let sexp = Cons::new(Some(command.into()), cdr).into();
-                return Ok(Procedure::reflect(sexp, self.state_mut(), process_primitive)?.into());
+                return Ok(Procedure::reflect(*hsexp, self.state_mut(), process_primitive)?.into());
             } else if LocalNodeTable::valid_discriminator(node, self.state()) {
-                let sexp = Cons::new(Some(command.into()), cdr).into();
                 return Ok(
-                    LocalNodeTable::reflect(sexp, self.state_mut(), process_primitive)?.into(),
+                    LocalNodeTable::reflect(*hsexp, self.state_mut(), process_primitive)?.into(),
                 );
             } else if SymbolTable::valid_discriminator(node, self.state()) {
-                let sexp = Cons::new(Some(command.into()), cdr).into();
-                return Ok(SymbolTable::reflect(sexp, self.state_mut(), process_primitive)?.into());
+                return Ok(
+                    SymbolTable::reflect(*hsexp, self.state_mut(), process_primitive)?.into(),
+                );
             }
         }
 
+        let (command, cdr) = break_sexp!(hsexp => (Symbol; remainder), self.state())?;
         match command.as_str() {
             "quote" => Ok(*quote_wrapper(cdr, self.state())?),
             "__builtin" => {
