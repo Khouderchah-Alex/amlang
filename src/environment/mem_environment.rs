@@ -3,7 +3,7 @@
 use log::warn;
 use std::fmt::Debug;
 
-use super::entry::{Entry, EntryMut};
+use super::entry::{Entry, EntryKind, EntryMut, EntryMutKind};
 use super::environment::{Environment, NodeSet, TripleSet};
 use super::local_node::{LocalId, LocalNode, LocalTriple};
 use super::mem_backend::{index_id_conv::*, Edges, MemBackend, Node, Triple};
@@ -11,7 +11,7 @@ use crate::sexp::Sexp;
 
 
 #[derive(Debug, Default)]
-pub struct MemEnvironment<Backend: MemBackend> {
+pub struct MemEnvironment<Backend: MemBackend + 'static> {
     backend: Backend,
 }
 
@@ -122,26 +122,46 @@ impl<Backend: MemBackend> Environment for MemEnvironment<Backend> {
     }
 
     fn entry(&self, node: LocalNode) -> Entry {
-        if is_triple_id(node.id()) {
-            return None.into();
-        }
-
-        match &self.backend.node_unchecked(node) {
-            Node::Atomic => None,
-            Node::Structured(structure) => Some(structure),
-        }
-        .into()
-    }
-    fn entry_mut(&mut self, node: LocalNode) -> EntryMut {
-        let data = if is_triple_id(node.id()) {
-            None
+        let kind = if is_triple_id(node.id()) {
+            // TODO(func) Add Triple to EntryKind?
+            EntryKind::Atomic
         } else {
-            match self.backend.node_mut_unchecked(node) {
-                Node::Atomic => None,
-                Node::Structured(structure) => Some(structure),
+            match self.backend.node_unchecked(node) {
+                Node::Atomic => EntryKind::Atomic,
+                Node::Structured(structure) => EntryKind::Borrowed(structure),
             }
         };
-        EntryMut::new(node, data)
+        Entry::new(kind)
+    }
+    fn entry_mut(&mut self, node: LocalNode) -> EntryMut {
+        let p = self as *mut _;
+        let kind = if is_triple_id(node.id()) {
+            // TODO(func) Add Triple to EntryMutKind. Leaving this here can lead
+            // to undefined behavior if we call entry_mut on a Triple.
+            EntryMutKind::Atomic
+        } else {
+            match self.backend.node_mut_unchecked(node) {
+                Node::Atomic => EntryMutKind::Atomic,
+                Node::Structured(structure) => EntryMutKind::Borrowed(structure),
+            }
+        };
+        EntryMut::new(node, kind, p)
+    }
+    fn entry_update(&mut self, entry: EntryMut) -> LocalNode {
+        let (node, kind, env) = entry.consume();
+        assert_eq!(self as *mut dyn Environment, env.unwrap());
+
+        let stored = self.backend.node_mut_unchecked(node);
+        match kind {
+            EntryMutKind::Atomic => {
+                *stored = Node::Atomic;
+            }
+            EntryMutKind::Borrowed(_) => { /* Already set this. */ }
+            EntryMutKind::Owned(sexp) => {
+                *stored = Node::Structured(sexp);
+            }
+        }
+        node
     }
     fn node_as_triple(&self, node: LocalNode) -> Option<LocalTriple> {
         if !is_triple_id(node.id()) {

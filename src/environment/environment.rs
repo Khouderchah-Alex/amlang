@@ -57,6 +57,8 @@ pub trait Environment: DynClone {
 
     fn entry(&self, node: LocalNode) -> Entry;
     fn entry_mut(&mut self, node: LocalNode) -> EntryMut;
+    /// Can't be used directly. Use EntryMut::update or implicit drop.
+    fn entry_update(&mut self, entry: EntryMut) -> LocalNode;
     fn node_as_triple(&self, node: LocalNode) -> Option<LocalTriple>;
 
     fn triple_subject(&self, triple: LocalTriple) -> LocalNode;

@@ -377,20 +377,25 @@ impl AgentState {
         };
 
         let imported = self.env().insert_structure(original.into());
-        if let Ok(table) = <&mut LocalNodeTable>::try_from(
+        let success = if let Ok(table) = <&mut LocalNodeTable>::try_from(
             self.context.meta_mut().entry_mut(table_node).as_option(),
         ) {
             table.insert(original.local(), imported);
+            true
         } else {
-            return err!(
+            false
+        };
+        if success {
+            Ok(imported.globalize(&self))
+        } else {
+            err!(
                 self,
                 InvalidState {
                     actual: Cow::Borrowed("import table triple object has no table"),
                     expected: Cow::Borrowed("has table"),
                 }
-            );
-        };
-        Ok(imported.globalize(&self))
+            )
+        }
     }
 
     pub fn find_env<S: AsRef<str>>(&self, s: S) -> Option<LocalNode> {

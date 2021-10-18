@@ -92,6 +92,9 @@ impl<T: Environment + Clone> Environment for SerialOverlay<T> {
     fn entry_mut(&mut self, node: LocalNode) -> EntryMut {
         self.base().entry_mut(node)
     }
+    fn entry_update(&mut self, entry: EntryMut) -> LocalNode {
+        self.base().entry_update(entry)
+    }
     fn node_as_triple(&self, node: LocalNode) -> Option<LocalTriple> {
         self.base().node_as_triple(node)
     }

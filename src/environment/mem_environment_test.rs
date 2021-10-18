@@ -1,5 +1,6 @@
 use super::*;
 
+use crate::environment::entry::EntryMutKind;
 use crate::environment::mem_backend::SimpleBackend;
 
 
@@ -37,6 +38,24 @@ fn structure_insertion() {
     let m = env.match_predicate(b);
     assert_eq!(m.len(), 1);
     assert_eq!(env.triple_object(*m.iter().next().unwrap()), c);
+}
+
+#[test]
+fn entry_update() {
+    let mut env = MemEnvironment::<SimpleBackend>::new();
+    let a = env.insert_atom();
+
+    let mut entry = env.entry_mut(a);
+    assert_eq!(*entry.kind(), EntryMutKind::Atomic);
+
+    // Explicitly use update.
+    *entry.kind_mut() = EntryMutKind::Owned("(1 2 3)".parse().unwrap());
+    entry.update();
+    assert_eq!(*env.entry(a).structure(), "(1 2 3)".parse().unwrap());
+
+    // Implicitly use drop.
+    *env.entry_mut(a).kind_mut() = EntryMutKind::Atomic;
+    assert_eq!(*env.entry(a).kind(), EntryKind::Atomic);
 }
 
 #[test]
