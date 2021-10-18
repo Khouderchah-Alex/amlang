@@ -11,6 +11,7 @@ use super::amlang_context::AmlangContext;
 use super::amlang_wrappers::quote_wrapper;
 use super::env_policy::EnvPolicy;
 use crate::builtins::generate_builtin_map;
+use crate::environment::entry::EntryMutKind;
 use crate::environment::environment::Environment;
 use crate::environment::LocalNode;
 use crate::model::{Interpretation, Reflective};
@@ -230,7 +231,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
     fn initialize_env_node(&mut self, env_node: LocalNode) {
         let env = EnvManager::create_env(&mut self.policy, env_node);
         let meta = self.state_mut().context_mut().meta_mut();
-        *meta.entry_mut(env_node).structure() = env.into();
+        *meta.entry_mut(env_node).kind_mut() = EntryMutKind::Owned(env.into());
     }
 }
 
@@ -286,7 +287,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
                     Sexp::Primitive(Primitive::BuiltIn(_)) => (true, false),
                     Sexp::Primitive(Primitive::Procedure(_)) => (true, false),
                     Sexp::Primitive(Primitive::Node(_)) => (true, false),
-                    Sexp::Primitive(Primitive::Env(_)) => (true, false),
+                    Sexp::Primitive(Primitive::Env(_)) => (false, false),
                     Sexp::Primitive(Primitive::Path(_)) => (true, false),
                     Sexp::Primitive(Primitive::AmString(_)) => (true, false),
                     _ => (true, true),
@@ -432,7 +433,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
                 }
                 write!(w, "^{}", node.local().id())
             }
-            Primitive::Env(_) => write!(w, "(__env)"),
+            Primitive::Env(_) => Ok(()),
             _ => write!(w, "{}", primitive),
         }
     }
@@ -536,9 +537,6 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
                     Err(ExpectedSymbol)
                 }
             }
-            // TODO(func) Remove and load as atom once atomic nodes can be
-            // turned into structured nodes.
-            "__env" => Ok(Sexp::default()),
             "__path" => {
                 let (path,) = break_sexp!(cdr.unwrap() => (AmString), self.state())?;
                 Ok(Path::new(path.as_str().into()).into())
