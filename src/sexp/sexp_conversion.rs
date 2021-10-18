@@ -96,6 +96,19 @@ macro_rules! break_sexp {
     };
 }
 
+/// Returns the elements as a Sexp list.
+///
+/// Provided Primitive elements must implement Into<Sexp>.
+/// Trailing commas currently must be used.
+///
+/// Example:
+///   list!(a, b, (c, (d)), e)
+macro_rules! list {
+    ($($tail:tt)*) => {
+        list_inner!($($tail)*)
+    }
+}
+
 // Should not be used directly. Use list! below.
 macro_rules! list_inner {
     () => { None };
@@ -119,19 +132,6 @@ macro_rules! list_inner {
                 list_inner!($($tail)*))
         }
     };
-}
-
-/// Returns the elements as a Sexp list.
-///
-/// Provided Primitive elements must implement Into<Sexp>.
-/// Trailing commas currently must be used.
-///
-/// Example:
-///   list!(a, b, (c, (d)), e)
-macro_rules! list {
-    ($($tail:tt)*) => {
-        list_inner!($($tail)*)
-    }
 }
 
 
