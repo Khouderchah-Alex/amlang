@@ -120,6 +120,14 @@ fn let_basic() {
 }
 
 #[test]
+fn basic_apply() {
+    let mut lang_agent = common::setup().unwrap();
+
+    let results = common::results(&mut lang_agent, "(apply + '(1 2))");
+    assert_eq!(results, vec![Number::Integer(3).into()]);
+}
+
+#[test]
 fn basic_fexpr() {
     let mut lang_agent = common::setup().unwrap();
 

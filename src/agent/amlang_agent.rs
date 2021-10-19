@@ -178,6 +178,7 @@ impl AmlangAgent {
                     lambda @ Procedure::Abstraction(..) => Ok(lambda.into()),
                 }
             }
+            Sexp::Primitive(Primitive::Node(node)) => Ok(self.state().concretize(node).into()),
             _ => Ok(meaning),
         }
     }
@@ -226,12 +227,7 @@ impl AmlangAgent {
                     debug!("exec_state insert: {} -> {}", params[i], node);
                 }
 
-                let body = self.exec(body_node)?;
-                if let Ok(node) = <Node>::try_from(&body) {
-                    Ok(self.state().concretize(node).into())
-                } else {
-                    Ok(body)
-                }
+                self.exec(body_node)
             }
             not_proc @ _ => err!(
                 self.state(),
