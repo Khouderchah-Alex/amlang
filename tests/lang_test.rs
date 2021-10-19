@@ -87,6 +87,14 @@ fn lambda_nested_exec() {
 }
 
 #[test]
+fn lambda_proc() {
+    let mut lang_agent = common::setup().unwrap();
+
+    let results = common::results(&mut lang_agent, "((lambda (a b) (a b 4)) + 40)");
+    assert_eq!(results, vec![Number::Integer(44).into()]);
+}
+
+#[test]
 fn lambda_duplicate_argname() {
     let mut lang_agent = common::setup().unwrap();
 
