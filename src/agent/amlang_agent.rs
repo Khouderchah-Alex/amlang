@@ -401,7 +401,7 @@ impl AmlangAgent {
                         .globalize(self.state())
                 };
                 let mut args = Vec::new();
-                for (arg, proper) in Box::new(args_sexp).into_iter() {
+                for (arg, proper) in HeapSexp::new(args_sexp).into_iter() {
                     if !proper {
                         return err!(self.state(), InvalidSexp(*arg));
                     }
@@ -559,7 +559,7 @@ impl Interpretation for AmlangAgent {
                         return err!(
                             self.state(),
                             InvalidArgument {
-                                given: Cons::new(Some(Box::new(eval_car)), cdr).into(),
+                                given: Cons::new(Some(eval_car.into()), cdr).into(),
                                 expected: Cow::Borrowed("special form or Procedure application"),
                             }
                         );

@@ -391,7 +391,7 @@ impl<T: Into<Sexp>> From<Vec<T>> for Sexp {
     fn from(vec: Vec<T>) -> Self {
         let mut list = ConsList::new();
         for value in vec {
-            list.append(Box::new(value.into()));
+            list.append(HeapSexp::new(value.into()));
         }
         list.release()
     }
@@ -401,7 +401,7 @@ impl<'a, T: Into<Sexp> + Clone> From<&'a Vec<T>> for Sexp {
     fn from(vec: &'a Vec<T>) -> Self {
         let mut list = ConsList::new();
         for value in vec {
-            list.append(Box::new(value.clone().into()));
+            list.append(HeapSexp::new(value.clone().into()));
         }
         list.release()
     }
