@@ -126,8 +126,12 @@ impl AmlangAgent {
                 match proc {
                     Procedure::Application(proc_node, arg_nodes) => {
                         let frame = ExecFrame::new(meaning_node);
+                        debug!("exec_state push: {}", meaning_node);
                         self.state_mut().exec_state_mut().push(frame);
+
                         let res = self.apply(proc_node, arg_nodes);
+
+                        debug!("exec_state pop: {}", meaning_node);
                         self.state_mut().exec_state_mut().pop();
                         res
                     }
