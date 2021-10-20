@@ -100,11 +100,7 @@ impl AmlangAgent {
                     return err!(self.state(), InvalidSexp(*elem));
                 }
                 let eval = self.construe(*elem)?;
-                let node = self
-                    .state_mut()
-                    .env()
-                    .insert_structure(eval)
-                    .globalize(self.state());
+                let node = self.eval_to_node(eval)?;
                 body_nodes.push(node);
             }
 

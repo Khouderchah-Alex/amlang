@@ -40,6 +40,16 @@ fn basic_arithmetic() {
 }
 
 #[test]
+fn lambda_param_node_body() {
+    let mut lang_agent = common::setup().unwrap();
+
+    // Requires concretization to work properly to avoid returning the abstract
+    // param node itself.
+    let results = common::results(&mut lang_agent, "((lambda (a) a) 4)");
+    assert_eq!(results, vec![Number::Integer(4).into()]);
+}
+
+#[test]
 fn lambda_single_body() {
     let mut lang_agent = common::setup().unwrap();
 
