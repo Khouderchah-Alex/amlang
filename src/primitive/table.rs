@@ -15,7 +15,7 @@ use crate::sexp::{Cons, HeapSexp, Sexp};
 pub type SymbolTable = AmlangTable<Symbol, Node>;
 pub type LocalNodeTable = AmlangTable<LocalNode, LocalNode>;
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct AmlangTable<K, V> {
     map: BTreeMap<K, V>,
 }
@@ -23,7 +23,7 @@ pub struct AmlangTable<K, V> {
 // Using a trait rather than normal impl because LocalNode is a bit of an
 // exception (not convertible to a Sexp through Into). Mostly boils down to:
 //   https://github.com/rust-lang/rust/issues/20400
-pub trait Table<K: Ord, V: Copy> {
+pub trait Table<K: Ord, V: Clone> {
     fn as_map(&self) -> &BTreeMap<K, V>;
     fn as_map_mut(&mut self) -> &mut BTreeMap<K, V>;
 
@@ -32,11 +32,7 @@ pub trait Table<K: Ord, V: Copy> {
         K: Borrow<Q>,
         Q: Ord + Eq + ?Sized,
     {
-        if let Some(v) = self.as_map().get(k) {
-            Some(*v)
-        } else {
-            None
-        }
+        self.as_map().get(k).cloned()
     }
 
     fn contains_key<Q>(&self, k: &Q) -> bool
@@ -57,7 +53,7 @@ pub trait Table<K: Ord, V: Copy> {
 }
 
 
-impl<K: Ord, V: Copy> Table<K, V> for AmlangTable<K, V> {
+impl<K: Ord, V: Clone> Table<K, V> for AmlangTable<K, V> {
     fn as_map(&self) -> &BTreeMap<K, V> {
         &self.map
     }

@@ -4,7 +4,7 @@ use std::borrow::Cow;
 use std::collections::btree_map::Entry;
 use std::collections::VecDeque;
 use std::convert::TryFrom;
-use std::io::{stdout, BufWriter};
+use std::io::{self, stdout, BufWriter};
 
 use super::amlang_context::AmlangContext;
 use super::continuation::Continuation;
@@ -29,10 +29,10 @@ pub struct AgentState {
 pub const AMLANG_DESIGNATION: &str = "__designatedBy";
 
 // TODO(func) Allow for more than dynamic Node lookups (e.g. static tables).
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct ExecFrame {
     context: Node,
-    map: AmlangTable<Node, Node>,
+    map: AmlangTable<Node, Sexp>,
 }
 
 #[derive(Clone, Debug)]
@@ -110,14 +110,16 @@ impl AgentState {
         &mut self.exec_state
     }
 
-    pub fn concretize(&self, node: Node) -> Node {
+    pub fn concretize(&mut self, node: Node) -> Result<Sexp, Error> {
         for frame in self.exec_state().iter() {
-            if let Some(n) = frame.lookup(node) {
-                debug!("concretizing: {} -> {}", node, n);
-                return n;
+            if let Some(s) = frame.lookup(node) {
+                debug!("concretizing: {} -> {}", node, s);
+                // TODO(perf) Shouldn't need to clone, but lifetime must be
+                // constrained to that of ExecFrame.
+                return Ok(s.clone());
             }
         }
-        node
+        self.designate(node.into())
     }
 }
 
@@ -494,10 +496,9 @@ impl AgentState {
         const MAX_DEPTH: usize = 16;
 
         match primitive {
-            Primitive::Node(raw_node) => {
-                let node = self.concretize(*raw_node);
+            Primitive::Node(node) => {
                 // Print Nodes as their designators if possible.
-                if let Some(sym) = self.node_designator(node) {
+                if let Some(sym) = self.node_designator(*node) {
                     write!(w, "{}", sym.as_str())
                 } else if let Some(triple) = self
                     .access_env(node.env())
@@ -507,23 +508,21 @@ impl AgentState {
                     let s = triple.reify(self);
                     self.write_sexp(w, &s, depth, show_redirects)
                 } else {
-                    let s = if let Some(structure) = self
-                        .access_env(node.env())
-                        .unwrap()
-                        .entry(node.local())
-                        .owned()
-                    {
-                        if show_redirects {
-                            write!(w, "{}->", node)?;
+                    let s = match self.concretize(*node) {
+                        Ok(structure) => structure,
+                        Err(err) => {
+                            return Err(io::Error::new(io::ErrorKind::Other, err.to_string()));
                         }
-                        structure
+                    };
+                    if show_redirects {
+                        write!(w, "{}->", node)?;
                     } else {
                         return write!(w, "{}", node);
-                    };
+                    }
 
                     // If we recurse unconditionally, cycles will cause stack
                     // overflows.
-                    if s == node.into() || depth > MAX_DEPTH {
+                    if s == (*node).into() || depth > MAX_DEPTH {
                         write!(w, "{}", node)
                     } else {
                         self.write_sexp(w, &s, depth, show_redirects)
@@ -556,7 +555,7 @@ impl ExecFrame {
         }
     }
 
-    pub fn insert(&mut self, from: Node, to: Node) -> bool {
+    pub fn insert(&mut self, from: Node, to: Sexp) -> bool {
         let entry = self.map.entry(from);
         if let Entry::Occupied(..) = entry {
             false
@@ -566,8 +565,8 @@ impl ExecFrame {
         }
     }
 
-    pub fn lookup(&self, key: Node) -> Option<Node> {
-        self.map.lookup(&key)
+    pub fn lookup(&self, key: Node) -> Option<&Sexp> {
+        self.map.as_map().get(&key)
     }
 
     pub fn context(&self) -> Node {
