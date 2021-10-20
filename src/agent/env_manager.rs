@@ -156,12 +156,12 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
                            branch: "if",
                            progn: "progn",
                            let_basic: "let",
-                           env_find: "env_find",
+                           env_find: "env-find",
                            t: "true",
                            f: "false",
                            eq: "eq",
-                           symbol_table: "table_sym_node",
-                           local_node_table: "table_lnode",
+                           symbol_table: "table-sym-node",
+                           local_node_table: "table-lnode",
         );
         info!("Lang env bootstrapping complete.");
 
