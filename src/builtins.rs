@@ -28,13 +28,14 @@ pub fn generate_builtin_map() -> HashMap<&'static str, BuiltIn> {
         };
     }
 
-    builtins![car, cdr, cons, println, eq, add, sub, mul, div]
+    builtins![car, cdr, cons, list_len, println, eq, add, sub, mul, div]
 }
 
 // Auto-gen builtins from raw rust functions.
 wrap_builtin!(car_(Cons) => car);
 wrap_builtin!(cdr_(Cons) => cdr);
 wrap_builtin!(cons_(HeapSexp, HeapSexp) => cons);
+wrap_builtin!(list_len_(HeapSexp) => list_len);
 wrap_builtin!(println_(Sexp) => println);
 wrap_builtin!(eq_(Sexp, Sexp) => eq);
 
@@ -59,6 +60,23 @@ fn cons_(car: HeapSexp, cdr: HeapSexp, _state: &mut AgentState) -> Result<Cons, 
     // Prefer to represent '() using None.
     let to_option = |s: HeapSexp| if s.is_none() { None } else { Some(s) };
     Ok(Cons::new(to_option(car), to_option(cdr)))
+}
+
+fn list_len_(sexp: HeapSexp, state: &mut AgentState) -> Result<Number, Error> {
+    let mut count = 0i64;
+    for (_elem, proper) in sexp.iter() {
+        if !proper {
+            return err!(
+                state,
+                InvalidArgument {
+                    given: sexp.into(),
+                    expected: "Proper list".into()
+                }
+            );
+        }
+        count = count.saturating_add(1);
+    }
+    Ok(Number::Integer(count).into())
 }
 
 fn println_(arg: Sexp, state: &mut AgentState) -> Result<Sexp, Error> {
