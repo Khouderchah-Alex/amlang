@@ -206,3 +206,43 @@ fn improper_list() {
         .into()
     );
 }
+
+#[test]
+fn basic_ask_tell() {
+    let mut lang_agent = common::setup().unwrap();
+
+    let results = common::results(
+        &mut lang_agent,
+        "(jump lambda)
+         (ask lambda _ _)
+         (def VariantOf)
+         (def Procedure)
+         (tell lambda VariantOf Procedure)
+         (ask lambda _ _)
+         (ask _ VariantOf _)",
+    );
+
+    assert_eq!(results[1].iter().count(), 1);
+    assert_eq!(results[5].iter().count(), 2);
+    assert_eq!(results[6].iter().count(), 1);
+}
+
+#[test]
+fn jump_import() {
+    let mut lang_agent = common::setup().unwrap();
+
+    let results = common::results(
+        &mut lang_agent,
+        "(jump (import lambda))
+         (eq (curr) (import lambda))",
+    );
+
+    assert_eq!(
+        results[1],
+        Node::new(
+            lang_agent.state().context().lang_env(),
+            lang_agent.state().context().t
+        )
+        .into()
+    );
+}
