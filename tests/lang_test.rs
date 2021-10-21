@@ -130,6 +130,20 @@ fn let_basic() {
 }
 
 #[test]
+fn let_star() {
+    let mut lang_agent = common::setup().unwrap();
+
+    let results = common::results(
+        &mut lang_agent,
+        "(let* ((a 2)
+                (b a)
+                (c b))
+           (+ a b c))",
+    );
+    assert_eq!(results, vec![Number::Integer(6).into()]);
+}
+
+#[test]
 fn basic_apply() {
     let mut lang_agent = common::setup().unwrap();
 

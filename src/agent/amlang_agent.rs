@@ -75,7 +75,7 @@ impl AmlangAgent {
         params: Vec<Symbol>,
         body: HeapSexp,
         reflect: bool,
-    ) -> Result<Procedure, Error> {
+    ) -> Result<(Procedure, SymbolTable), Error> {
         let mut surface = Vec::new();
         let mut frame = SymbolTable::default();
         for symbol in params {
@@ -116,8 +116,8 @@ impl AmlangAgent {
                 Ok(Procedure::Abstraction(surface, seq_node, reflect))
             }
         })();
-        self.eval_state.pop();
-        res
+        let frame = self.eval_state.pop().unwrap();
+        Ok((res?, frame))
     }
 
     fn exec(&mut self, meaning_node: Node) -> Result<Sexp, Error> {
@@ -584,14 +584,25 @@ impl Interpretation for AmlangAgent {
                     {
                         let (params, body) = make_lambda_wrapper(cdr, &self.state())?;
                         let reflect = node.local() == context.fexpr;
-                        let proc = self.make_lambda(params, body, reflect)?;
+                        let (proc, _) = self.make_lambda(params, body, reflect)?;
                         return Ok(proc.into());
                     }
-                    _ if Node::new(context.lang_env(), context.let_basic) == node => {
+                    _ if Node::new(context.lang_env(), context.let_basic) == node
+                        || Node::new(context.lang_env(), context.let_star) == node =>
+                    {
                         let (params, exprs, body) = let_wrapper(cdr, &self.state())?;
-                        let proc = self.make_lambda(params, body, false)?;
+                        let recursive = node.local() == context.let_star;
+                        let (proc, frame) = self.make_lambda(params, body, false)?;
                         let proc_node = self.eval_to_node(proc.into())?;
-                        let args = self.evlis(Some(exprs), true)?;
+
+                        let args = if recursive {
+                            self.eval_state.push(frame);
+                            let res = self.evlis(Some(exprs), true);
+                            self.eval_state.pop();
+                            res?
+                        } else {
+                            self.evlis(Some(exprs), true)?
+                        };
                         return Ok(Procedure::Application(proc_node, args).into());
                     }
                     _ if Node::new(context.lang_env(), context.branch) == node => {

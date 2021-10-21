@@ -8,7 +8,10 @@ use crate::environment::local_node::{LocalId, LocalNode};
 pub fn policy_base(s: &str) -> Result<(), SymbolError> {
     match s {
         "+" | "-" | "*" | "/" => Ok(()),
-        _ if s.chars().all(|c| c.is_alphabetic() || c == '_' || c == '-') => {
+        _ if s
+            .chars()
+            .all(|c| c.is_alphabetic() || c == '_' || c == '-' || c == '*') =>
+        {
             if s.chars().take(2).collect::<String>() == "__" {
                 Err(SymbolError::DunderPrefix(s.to_string()))
             } else {
@@ -22,7 +25,10 @@ pub fn policy_base(s: &str) -> Result<(), SymbolError> {
 pub fn policy_admin(s: &str) -> Result<AdminSymbolInfo, SymbolError> {
     match s {
         "+" | "-" | "*" | "/" => Ok(AdminSymbolInfo::Identifier),
-        _ if s.chars().all(|c| c.is_alphabetic() || c == '_' || c == '-') => {
+        _ if s
+            .chars()
+            .all(|c| c.is_alphabetic() || c == '_' || c == '-' || c == '*') =>
+        {
             Ok(AdminSymbolInfo::Identifier)
         }
         _ if s
