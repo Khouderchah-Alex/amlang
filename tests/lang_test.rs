@@ -6,6 +6,7 @@ use amlang::agent::amlang_agent::RunError;
 use amlang::agent::Agent;
 use amlang::primitive::error::ErrKind;
 use amlang::primitive::{Node, Number, Primitive};
+use amlang::sexp::Cons;
 
 
 #[test]
@@ -130,17 +131,53 @@ fn let_basic() {
 }
 
 #[test]
-fn let_star() {
+fn let_rec_vals() {
     let mut lang_agent = common::setup().unwrap();
 
     let results = common::results(
         &mut lang_agent,
-        "(let* ((a 2)
-                (b a)
-                (c b))
+        "(letrec ((a 2)
+                  (b a)
+                  (c b))
            (+ a b c))",
     );
     assert_eq!(results, vec![Number::Integer(6).into()]);
+}
+
+#[test]
+fn let_rec_lambdas() {
+    let mut lang_agent = common::setup().unwrap();
+
+    let results = common::results(
+        &mut lang_agent,
+        "(letrec ((is-even (lambda (n)
+                     (if (eq 0 n) true
+                       (is-odd (- n 1)))))
+                  (is-odd (lambda (n)
+                     (if (eq 0 n) false
+                       (is-even (- n 1))))))
+
+           ;; Consing since seq consumes intermediate results.
+           (cons (is-even 99) (is-odd 33)))",
+    );
+
+    let cons = Cons::try_from(results[0].clone()).unwrap();
+    assert_eq!(
+        *cons.car().unwrap(),
+        Node::new(
+            lang_agent.state().context().lang_env(),
+            lang_agent.state().context().f
+        )
+        .into()
+    );
+    assert_eq!(
+        *cons.cdr().unwrap(),
+        Node::new(
+            lang_agent.state().context().lang_env(),
+            lang_agent.state().context().t
+        )
+        .into()
+    );
 }
 
 #[test]

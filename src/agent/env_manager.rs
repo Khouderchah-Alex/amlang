@@ -156,7 +156,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
                            branch: "if",
                            progn: "progn",
                            let_basic: "let",
-                           let_star: "let*",
+                           let_rec: "letrec",
                            env_find: "env-find",
                            t: "true",
                            f: "false",

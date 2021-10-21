@@ -570,10 +570,10 @@ impl Interpretation for AmlangAgent {
                         return Ok(proc.into());
                     }
                     _ if Node::new(context.lang_env(), context.let_basic) == node
-                        || Node::new(context.lang_env(), context.let_star) == node =>
+                        || Node::new(context.lang_env(), context.let_rec) == node =>
                     {
                         let (params, exprs, body) = let_wrapper(cdr, &self.state())?;
-                        let recursive = node.local() == context.let_star;
+                        let recursive = node.local() == context.let_rec;
                         let (proc, frame) = self.make_lambda(params, body, false)?;
                         let proc_node = self.node_or_insert(proc.into())?;
 
