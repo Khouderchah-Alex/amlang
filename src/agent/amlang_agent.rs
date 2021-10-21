@@ -253,7 +253,10 @@ impl AmlangAgent {
                     if (is_tell || final_node != placeholder)
                         && final_node.env() != self.state().pos().env()
                     {
-                        panic!("Cross-env triples are not yet supported");
+                        return err!(
+                            self.state(),
+                            Unsupported("Cross-env triples are not currently supported".into())
+                        );
                     }
                     Ok(final_node.local())
                 };
