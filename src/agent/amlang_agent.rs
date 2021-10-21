@@ -461,7 +461,7 @@ impl AmlangAgent {
     fn evlis(
         &mut self,
         structures: Option<HeapSexp>,
-        should_eval: bool,
+        should_construe: bool,
     ) -> Result<Vec<Node>, Error> {
         if structures.is_none() {
             return Ok(vec![]);
@@ -475,18 +475,16 @@ impl AmlangAgent {
                 return err!(self.state(), InvalidSexp(*structure));
             }
 
-            if !should_eval {
-                args.push(
-                    self.state_mut()
-                        .env()
-                        .insert_structure(*structure)
-                        .globalize(self.state()),
-                );
-                continue;
-            }
-
-            let val = self.construe(*structure)?;
-            args.push(self.node_or_insert(val)?);
+            let arg_node = if should_construe {
+                let val = self.construe(*structure)?;
+                self.node_or_insert(val)?
+            } else {
+                self.state_mut()
+                    .env()
+                    .insert_structure(*structure)
+                    .globalize(self.state())
+            };
+            args.push(arg_node);
         }
         Ok(args)
     }
@@ -609,7 +607,7 @@ impl Interpretation for AmlangAgent {
                     }
                     _ => {
                         let def_node = Node::new(context.lang_env(), context.def);
-                        let should_eval = match self.state_mut().designate(node.into())? {
+                        let should_construe = match self.state_mut().designate(node.into())? {
                             // Don't evaluate args of reflective Abstractions.
                             Sexp::Primitive(Primitive::Procedure(Procedure::Abstraction(
                                 _,
@@ -618,7 +616,7 @@ impl Interpretation for AmlangAgent {
                             ))) => false,
                             _ => node != def_node,
                         };
-                        let args = self.evlis(cdr, should_eval)?;
+                        let args = self.evlis(cdr, should_construe)?;
                         return Ok(Procedure::Application(node, args).into());
                     }
                 }
