@@ -101,7 +101,7 @@ impl AmlangAgent {
                     return err!(self.state(), InvalidSexp(*elem));
                 }
                 let eval = self.construe(*elem)?;
-                let node = self.eval_to_node(eval)?;
+                let node = self.node_or_insert(eval)?;
                 body_nodes.push(node);
             }
 
@@ -401,29 +401,13 @@ impl AmlangAgent {
                 let args_sexp = self.state_mut().designate(args_node.into())?;
                 debug!("applying (apply {} '{})", proc_sexp, args_sexp);
 
-                let proc = if let Ok(node) = Node::try_from(&proc_sexp) {
-                    node
-                } else {
-                    self.state_mut()
-                        .env()
-                        .insert_structure(proc_sexp)
-                        .globalize(self.state())
-                };
+                let proc = self.node_or_insert(proc_sexp)?;
                 let mut args = Vec::new();
                 for (arg, proper) in HeapSexp::new(args_sexp).into_iter() {
                     if !proper {
                         return err!(self.state(), InvalidSexp(*arg));
                     }
-                    if let Ok(node) = Node::try_from(&*arg) {
-                        args.push(node);
-                    } else {
-                        args.push(
-                            self.state_mut()
-                                .env()
-                                .insert_structure(*arg)
-                                .globalize(self.state()),
-                        );
-                    }
+                    args.push(self.node_or_insert(*arg)?);
                 }
 
                 return self.apply(proc, args);
@@ -462,7 +446,7 @@ impl AmlangAgent {
     // If we need Nodes in a particular context, we must abstract existing
     // Sexps into the env. However, if the sexp is already a Node, just use it
     // directly rather than create a stack of abstractions.
-    fn eval_to_node(&mut self, sexp: Sexp) -> Result<Node, Error> {
+    fn node_or_insert(&mut self, sexp: Sexp) -> Result<Node, Error> {
         if let Ok(node) = <Node>::try_from(&sexp) {
             Ok(node)
         } else {
@@ -502,7 +486,7 @@ impl AmlangAgent {
             }
 
             let val = self.construe(*structure)?;
-            args.push(self.eval_to_node(val)?);
+            args.push(self.node_or_insert(val)?);
         }
         Ok(args)
     }
@@ -563,7 +547,7 @@ impl Interpretation for AmlangAgent {
                 let eval_car = self.construe(*car)?;
                 let node = match eval_car {
                     Sexp::Primitive(Primitive::Procedure(_))
-                    | Sexp::Primitive(Primitive::Node(_)) => self.eval_to_node(eval_car)?,
+                    | Sexp::Primitive(Primitive::Node(_)) => self.node_or_insert(eval_car)?,
                     _ => {
                         return err!(
                             self.state(),
@@ -593,7 +577,7 @@ impl Interpretation for AmlangAgent {
                         let (params, exprs, body) = let_wrapper(cdr, &self.state())?;
                         let recursive = node.local() == context.let_star;
                         let (proc, frame) = self.make_lambda(params, body, false)?;
-                        let proc_node = self.eval_to_node(proc.into())?;
+                        let proc_node = self.node_or_insert(proc.into())?;
 
                         let args = if recursive {
                             self.eval_state.push(frame);
