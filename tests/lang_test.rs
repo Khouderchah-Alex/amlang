@@ -183,6 +183,21 @@ fn def_lambda() {
 }
 
 #[test]
+fn def_recursive_lambda() {
+    let mut lang_agent = common::setup().unwrap();
+
+    let results = common::results(
+        &mut lang_agent,
+        "(def fact (lambda (n)
+           (if (eq n 1) 1
+             (* n (fact (- n 1))))))
+
+         (fact 4)",
+    );
+    assert_eq!(results[1], Number::Integer(24).into());
+}
+
+#[test]
 fn reify_apply() {
     let mut lang_agent = common::setup().unwrap();
 

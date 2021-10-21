@@ -7,6 +7,7 @@ use super::agent::Agent;
 use super::agent_state::{AgentState, ExecFrame};
 use super::amlang_wrappers::*;
 use super::continuation::Continuation;
+use crate::environment::entry::EntryMutKind;
 use crate::environment::LocalNode;
 use crate::model::{Interpretation, Reflective};
 use crate::parser::{parse_sexp, ParseError};
@@ -278,11 +279,36 @@ impl AmlangAgent {
                 }
 
                 let val_node = if let Some(s) = val {
-                    let original = self.state_mut().designate(s.into())?;
-                    let meaning = self.construe(original)?;
-                    let meaning_node = self.history_insert(meaning);
-                    let val = self.exec(meaning_node)?;
-                    self.eval_to_node(val)?.local()
+                    // Ensure construe maps name to this node.
+                    let val_node = self.state_mut().env().insert_atom();
+                    let mut frame = SymbolTable::default();
+                    if let Ok(sym) =
+                        Symbol::try_from(self.state_mut().designate(Primitive::Node(name))?)
+                    {
+                        frame.insert(sym, val_node.globalize(self.state()));
+                    }
+
+                    // Construe, relying on self-evaluation of val_node.
+                    let original = self.state_mut().designate(Primitive::Node(s))?;
+                    self.eval_state.push(frame);
+                    let meaning = self.construe(original.into());
+                    self.eval_state.pop();
+
+                    let meaning_node = self.history_insert(meaning?);
+                    let final_sexp = self.exec(meaning_node)?;
+                    // If final result is a Node, we name that rather
+                    // than nesting abstractions. Perhaps nested
+                    // abstraction is right here?
+                    //
+                    // TODO(func) Either nest abstractions or somehow
+                    // garbage-mark/free the unused atom.
+                    if let Ok(node) = <Node>::try_from(&final_sexp) {
+                        node.local()
+                    } else {
+                        *self.state_mut().env().entry_mut(val_node).kind_mut() =
+                            EntryMutKind::Owned(final_sexp);
+                        val_node
+                    }
                 } else {
                     self.state_mut().env().insert_atom()
                 };
