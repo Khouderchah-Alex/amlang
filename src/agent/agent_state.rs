@@ -213,18 +213,26 @@ impl AgentState {
         }
     }
 
-    pub fn name_node(&mut self, name: LocalNode, node: LocalNode) -> Result<Node, Error> {
-        let name_sexp = self.env().entry(name);
-        let symbol = if let Ok(symbol) = <Symbol>::try_from(name_sexp.owned()) {
-            symbol
-        } else {
+    pub fn name_node(&mut self, name: Node, node: Node) -> Result<Node, Error> {
+        if name.env() != node.env() {
             return err!(
                 self,
-                InvalidArgument {
-                    given: self.env().entry(name).owned().unwrap_or(Sexp::default()),
-                    expected: Cow::Borrowed("Node abstracting Symbol"),
-                }
+                Unsupported("Cross-env triples are not currently supported".into())
             );
+        }
+
+        let name_sexp = self.access_env(name.env()).unwrap().entry(name.local());
+        let symbol = match <Symbol>::try_from(name_sexp.owned()) {
+            Ok(symbol) => symbol,
+            Err(sexp) => {
+                return err!(
+                    self,
+                    InvalidArgument {
+                        given: sexp.unwrap_or(Sexp::default()),
+                        expected: Cow::Borrowed("Node abstracting Symbol"),
+                    }
+                );
+            }
         };
 
         // TODO(func) This prevents us from using an existing designation
@@ -235,21 +243,19 @@ impl AgentState {
             return err!(self, AlreadyBoundSymbol(symbol));
         }
 
-        let global_node = node.globalize(&self);
-
         let designation = self.context().designation();
         // Use designation of current environment.
         if let Ok(table) =
             <&mut SymbolTable>::try_from(self.env().entry_mut(designation).as_option())
         {
-            table.insert(symbol, global_node);
+            table.insert(symbol, node);
         } else {
             panic!("Env designation isn't a symbol table");
         }
 
         self.env()
-            .insert_triple(global_node.local(), designation, name);
-        Ok(global_node)
+            .insert_triple(node.local(), designation, name.local());
+        Ok(node)
     }
 
     pub fn tell(

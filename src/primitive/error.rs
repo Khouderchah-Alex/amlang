@@ -34,6 +34,7 @@ pub enum ErrKind {
     UnboundSymbol(Symbol),
     AlreadyBoundSymbol(Symbol),
     DuplicateTriple(Sexp),
+    Unsupported(Cow<'static, str>),
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -98,6 +99,7 @@ impl fmt::Display for Error {
             UnboundSymbol(symbol) => write!(f, "Unbound symbol: \"{}\"", symbol),
             AlreadyBoundSymbol(symbol) => write!(f, "Already bound symbol: \"{}\"", symbol),
             DuplicateTriple(sexp) => write!(f, "Duplicate triple: {}", sexp),
+            Unsupported(msg) => write!(f, "Unsupported: {}", msg),
         }
     }
 }

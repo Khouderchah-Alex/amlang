@@ -303,16 +303,16 @@ impl AmlangAgent {
                     // TODO(func) Either nest abstractions or somehow
                     // garbage-mark/free the unused atom.
                     if let Ok(node) = <Node>::try_from(&final_sexp) {
-                        node.local()
+                        node
                     } else {
                         *self.state_mut().env().entry_mut(val_node).kind_mut() =
                             EntryMutKind::Owned(final_sexp);
-                        val_node
+                        val_node.globalize(self.state())
                     }
                 } else {
-                    self.state_mut().env().insert_atom()
+                    self.state_mut().env().insert_atom().globalize(self.state())
                 };
-                Ok(self.state_mut().name_node(name.local(), val_node)?.into())
+                Ok(self.state_mut().name_node(name, val_node)?.into())
             }
             _ if context.curr == special_node => {
                 if arg_nodes.len() > 0 {
