@@ -1,6 +1,6 @@
 //! Module for representing table primitives.
 
-use std::borrow::{Borrow, Cow};
+use std::borrow::Borrow;
 use std::collections::btree_map::Entry;
 use std::collections::BTreeMap;
 use std::convert::TryFrom;
@@ -104,7 +104,7 @@ impl Reflective for AmlangTable<Symbol, Node> {
                 state,
                 InvalidArgument {
                     given: command.into(),
-                    expected: Cow::Borrowed("Symbol table node")
+                    expected: "Symbol table node".into()
                 }
             );
         }
@@ -124,7 +124,7 @@ impl Reflective for AmlangTable<Symbol, Node> {
                         state,
                         InvalidArgument {
                             given: Cons::new(Some(k), Some(v)).into(),
-                            expected: Cow::Borrowed("(Symbol . Node) association")
+                            expected: "(Symbol . Node) association".into()
                         }
                     );
                 }
@@ -133,7 +133,7 @@ impl Reflective for AmlangTable<Symbol, Node> {
                         state,
                         InvalidArgument {
                             given: Cons::new(k, v).into(),
-                            expected: Cow::Borrowed("Association cons")
+                            expected: "Association cons".into()
                         }
                     );
                 }
@@ -190,7 +190,7 @@ impl Reflective for AmlangTable<LocalNode, LocalNode> {
                 state,
                 InvalidArgument {
                     given: command.into(),
-                    expected: Cow::Borrowed("Lnode table node")
+                    expected: "Lnode table node".into()
                 }
             );
         }
@@ -215,7 +215,7 @@ impl Reflective for AmlangTable<LocalNode, LocalNode> {
                             state,
                             InvalidArgument {
                                 given: Cons::new(Some(k.into()), Some(v.into())).into(),
-                                expected: Cow::Borrowed("(Node . Node) association")
+                                expected: "(Node . Node) association".into()
                             }
                         );
                     }
@@ -225,7 +225,7 @@ impl Reflective for AmlangTable<LocalNode, LocalNode> {
                         state,
                         InvalidArgument {
                             given: Cons::new(k, v).into(),
-                            expected: Cow::Borrowed("Association cons")
+                            expected: "Association cons".into()
                         }
                     );
                 }

@@ -1,5 +1,4 @@
 use log::debug;
-use std::borrow::Cow;
 use std::convert::TryFrom;
 use std::iter::Peekable;
 
@@ -85,7 +84,7 @@ impl AmlangAgent {
                     self.state(),
                     InvalidArgument {
                         given: symbol.into(),
-                        expected: Cow::Borrowed("unique name within argument list")
+                        expected: "unique name within argument list".into()
                     }
                 );
             }
@@ -151,7 +150,7 @@ impl AmlangAgent {
                                 self.state(),
                                 InvalidArgument {
                                     given: cond,
-                                    expected: Cow::Borrowed("true or false Node"),
+                                    expected: "true or false Node".into(),
                                 }
                             )
                         }
@@ -180,7 +179,7 @@ impl AmlangAgent {
                         self.state(),
                         InvalidArgument {
                             given: node.into(),
-                            expected: Cow::Borrowed("Procedure or special Amlang Node"),
+                            expected: "Procedure or special Amlang Node".into(),
                         }
                     )
                 }
@@ -217,7 +216,7 @@ impl AmlangAgent {
                 self.state(),
                 InvalidArgument {
                     given: not_proc.clone(),
-                    expected: Cow::Borrowed("Procedure"),
+                    expected: "Procedure".into(),
                 }
             ),
         }
@@ -382,7 +381,7 @@ impl AmlangAgent {
                             self.state(),
                             InvalidArgument {
                                 given: des.into(),
-                                expected: Cow::Borrowed("Node containing string"),
+                                expected: "Node containing string".into(),
                             }
                         );
                     }
@@ -437,7 +436,7 @@ impl AmlangAgent {
                 self.state(),
                 InvalidArgument {
                     given: Node::new(self.state().context().lang_env(), special_node).into(),
-                    expected: Cow::Borrowed("special Amlang Node"),
+                    expected: "special Amlang Node".into(),
                 }
             ),
         }
@@ -551,7 +550,7 @@ impl Interpretation for AmlangAgent {
                             self.state(),
                             InvalidArgument {
                                 given: Cons::new(Some(eval_car.into()), cdr).into(),
-                                expected: Cow::Borrowed("special form or Procedure application"),
+                                expected: "special form or Procedure application".into(),
                             }
                         );
                     }

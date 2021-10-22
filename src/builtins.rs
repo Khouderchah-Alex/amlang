@@ -1,4 +1,3 @@
-use std::borrow::Cow;
 use std::collections::HashMap;
 
 use crate::agent::agent_state::AgentState;
@@ -105,7 +104,7 @@ fn add(args: Args, state: &mut AgentState) -> Result<Sexp, Error> {
                 state,
                 InvalidArgument {
                     given: arg.clone(),
-                    expected: Cow::Borrowed("a Number"),
+                    expected: "a Number".into(),
                 }
             );
         }
@@ -140,7 +139,7 @@ fn sub(args: Args, state: &mut AgentState) -> Result<Sexp, Error> {
                 state,
                 InvalidArgument {
                     given: arg.clone(),
-                    expected: Cow::Borrowed("a Number"),
+                    expected: "a Number".into(),
                 }
             );
         }
@@ -159,7 +158,7 @@ fn mul(args: Args, state: &mut AgentState) -> Result<Sexp, Error> {
                 state,
                 InvalidArgument {
                     given: arg.clone(),
-                    expected: Cow::Borrowed("a Number"),
+                    expected: "a Number".into(),
                 }
             );
         }
@@ -194,7 +193,7 @@ fn div(args: Args, state: &mut AgentState) -> Result<Sexp, Error> {
                 state,
                 InvalidArgument {
                     given: arg.clone(),
-                    expected: Cow::Borrowed("a Number"),
+                    expected: "a Number".into(),
                 }
             );
         }

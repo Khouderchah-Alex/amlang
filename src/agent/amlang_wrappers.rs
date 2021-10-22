@@ -1,5 +1,3 @@
-use std::borrow::Cow;
-
 use crate::agent::agent_state::AgentState;
 use crate::primitive::error::{Error, ExpectedCount};
 use crate::primitive::{Node, Primitive, Symbol};
@@ -41,7 +39,7 @@ pub fn make_lambda_wrapper(
                     state,
                     InvalidArgument {
                         given: param.clone().into(),
-                        expected: Cow::Borrowed("symbol"),
+                        expected: "symbol".into(),
                     }
                 );
             }
@@ -56,7 +54,7 @@ pub fn make_lambda_wrapper(
                 state,
                 InvalidArgument {
                     given: primitive.into(),
-                    expected: Cow::Borrowed("procedure body"),
+                    expected: "procedure body".into(),
                 }
             ),
         },
@@ -104,7 +102,7 @@ pub fn let_wrapper(
                 state,
                 InvalidArgument {
                     given: primitive.into(),
-                    expected: Cow::Borrowed("procedure body"),
+                    expected: "procedure body".into(),
                 }
             ),
         },

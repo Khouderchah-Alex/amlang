@@ -1,4 +1,3 @@
-use std::borrow::Cow;
 use std::convert::TryFrom;
 
 use super::{Node, Primitive};
@@ -65,7 +64,7 @@ impl Reflective for Procedure {
                 state,
                 InvalidArgument {
                     given: command.into(),
-                    expected: Cow::Borrowed("Procedure variant")
+                    expected: "Procedure variant".into()
                 }
             );
         }
@@ -130,7 +129,7 @@ impl Reflective for Procedure {
                             state,
                             InvalidArgument {
                                 given: *sexp,
-                                expected: Cow::Borrowed("list of Procedure nodes")
+                                expected: "list of Procedure nodes".into()
                             }
                         );
                     }

@@ -1,6 +1,5 @@
 use colored::*;
 use log::debug;
-use std::borrow::Cow;
 use std::collections::btree_map::Entry;
 use std::collections::VecDeque;
 use std::convert::TryFrom;
@@ -229,7 +228,7 @@ impl AgentState {
                     self,
                     InvalidArgument {
                         given: sexp.unwrap_or(Sexp::default()),
-                        expected: Cow::Borrowed("Node abstracting Symbol"),
+                        expected: "Node abstracting Symbol".into(),
                     }
                 );
             }
@@ -329,7 +328,7 @@ impl AgentState {
                 self,
                 InvalidArgument {
                     given: original.into(),
-                    expected: Cow::Borrowed("Node outside of current env"),
+                    expected: "Node outside of current env".into(),
                 }
             );
         }
@@ -378,8 +377,8 @@ impl AgentState {
             return err!(
                 self,
                 InvalidState {
-                    actual: Cow::Borrowed("import table triple object has no table"),
-                    expected: Cow::Borrowed("has table"),
+                    actual: "import table triple object has no table".into(),
+                    expected: "has table".into(),
                 }
             );
         };
@@ -399,8 +398,8 @@ impl AgentState {
             err!(
                 self,
                 InvalidState {
-                    actual: Cow::Borrowed("import table triple object has no table"),
-                    expected: Cow::Borrowed("has table"),
+                    actual: "import table triple object has no table".into(),
+                    expected: "has table".into(),
                 }
             )
         }
