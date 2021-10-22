@@ -208,7 +208,7 @@ impl AgentState {
             Primitive::SymbolTable(table) => Ok(table.reify(self)),
             Primitive::LocalNodeTable(table) => Ok(table.reify(self)),
             // Base case for self-designating.
-            _ => Ok(designator.clone().into()),
+            _ => Ok(designator.into()),
         }
     }
 
