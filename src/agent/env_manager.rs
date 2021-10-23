@@ -42,6 +42,7 @@ pub enum DeserializeError {
     UnexpectedCommand(Sexp),
     ExpectedSymbol,
     UnrecognizedBuiltIn(Symbol),
+    InvalidNodeEntry(Sexp),
     AmlError(Error),
 }
 
@@ -80,16 +81,15 @@ macro_rules! bootstrap_context {
     };
 }
 
+const SELF_ID: LocalNode = LocalNode::new(0);
+const DESIGNATION_ID: LocalNode = LocalNode::new(1);
+
 impl<Policy: EnvPolicy> EnvManager<Policy> {
     pub fn bootstrap<P: AsRef<StdPath>>(meta_path: P) -> Result<Self, DeserializeError> {
         let mut policy = Policy::default();
         let meta = EnvManager::create_env(&mut policy, LocalNode::default());
 
-        let mut context = AmlangContext::new(
-            meta,
-            LocalNode::new(0), // self
-            LocalNode::new(1), // designation
-        );
+        let mut context = AmlangContext::new(meta, SELF_ID, DESIGNATION_ID);
         // Make context usable for reflecting Reflectives during bootstrapping.
         // TODO(flex) Find more flexible approch to bootstrapping Reflective
         // nodes, like {,de}serializing this as a bootstrap kernel.
@@ -446,8 +446,21 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
             return Err(UnexpectedCommand(command.into()));
         }
 
+        // Ensure first two nodes are as expected.
         let iter = SexpIntoIter::try_from(remainder)?;
-        for (entry, proper) in iter.skip(2) {
+        let (first, second, remainder) =
+            break_sexp!(iter => (HeapSexp, Symbol; remainder), self.state())?;
+        let (self_node_id, self_val_node) = break_sexp!(first => (Symbol, Symbol), self.state())?;
+        if self.parse_node(&self_node_id)?.local() != SELF_ID
+            || self.parse_node(&self_val_node)? != Node::new(SELF_ID, self.state().pos().env())
+        {
+            return Err(InvalidNodeEntry(self_val_node.into()));
+        }
+        if self.parse_node(&second)?.local() != DESIGNATION_ID {
+            return Err(InvalidNodeEntry(second.into()));
+        }
+
+        for (entry, proper) in SexpIntoIter::try_from(remainder)? {
             if !proper {
                 return err!(self.state(), InvalidSexp(*entry))?;
             }
@@ -647,6 +660,7 @@ impl std::fmt::Display for DeserializeError {
             UnexpectedCommand(cmd) => write!(f, "Unexpected command: {}", cmd),
             ExpectedSymbol => write!(f, "Expected a symbol"),
             UnrecognizedBuiltIn(name) => write!(f, "Unrecognized builtin: {}", name),
+            InvalidNodeEntry(sexp) => write!(f, "Invalid node entry: {}", sexp),
             AmlError(err) => write!(f, "{}", err),
         }
     }
