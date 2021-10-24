@@ -141,9 +141,9 @@ impl AmlangAgent {
 
                         // TODO(func) Integrate actual boolean type.
                         let context = self.state().context();
-                        if cond == Node::new(context.lang_env(), context.t).into() {
+                        if cond == amlang_node!(context, t).into() {
                             Ok(self.exec(a)?)
-                        } else if cond == Node::new(context.lang_env(), context.f).into() {
+                        } else if cond == amlang_node!(context, f).into() {
                             Ok(self.exec(b)?)
                         } else {
                             err!(
@@ -244,10 +244,7 @@ impl AmlangAgent {
 
                 // TODO(func) Add support for cross-env triples through surrogates.
                 let mut to_local = |node: Node| {
-                    let placeholder = Node::new(
-                        self.state().context().lang_env(),
-                        self.state().context().placeholder,
-                    );
+                    let placeholder = amlang_node!(self.state().context(), placeholder);
                     let final_node = self.exec_to_node(node)?;
                     if (is_tell || final_node != placeholder)
                         && final_node.env() != self.state().pos().env()
@@ -557,19 +554,19 @@ impl Interpretation for AmlangAgent {
                 };
                 let context = self.state().context();
                 match node {
-                    _ if Node::new(context.lang_env(), context.quote) == node => {
+                    _ if amlang_node!(context, quote) == node => {
                         return Ok(*quote_wrapper(cdr, self.state())?);
                     }
-                    _ if Node::new(context.lang_env(), context.lambda) == node
-                        || Node::new(context.lang_env(), context.fexpr) == node =>
+                    _ if amlang_node!(context, lambda) == node
+                        || amlang_node!(context, fexpr) == node =>
                     {
                         let (params, body) = make_lambda_wrapper(cdr, &self.state())?;
                         let reflect = node.local() == context.fexpr;
                         let (proc, _) = self.make_lambda(params, body, reflect)?;
                         return Ok(proc.into());
                     }
-                    _ if Node::new(context.lang_env(), context.let_basic) == node
-                        || Node::new(context.lang_env(), context.let_rec) == node =>
+                    _ if amlang_node!(context, let_basic) == node
+                        || amlang_node!(context, let_rec) == node =>
                     {
                         let (params, exprs, body) = let_wrapper(cdr, &self.state())?;
                         let recursive = node.local() == context.let_rec;
@@ -586,7 +583,7 @@ impl Interpretation for AmlangAgent {
                         };
                         return Ok(Procedure::Application(proc_node, args).into());
                     }
-                    _ if Node::new(context.lang_env(), context.branch) == node => {
+                    _ if amlang_node!(context, branch) == node => {
                         let args = self.evlis(cdr, true)?;
                         if args.len() != 3 {
                             return err!(
@@ -600,12 +597,12 @@ impl Interpretation for AmlangAgent {
                         let proc = Procedure::Branch((args[0], args[1], args[2]).into());
                         return Ok(proc.into());
                     }
-                    _ if Node::new(context.lang_env(), context.progn) == node => {
+                    _ if amlang_node!(context, progn) == node => {
                         let args = self.evlis(cdr, true)?;
                         return Ok(Procedure::Sequence(args).into());
                     }
                     _ => {
-                        let def_node = Node::new(context.lang_env(), context.def);
+                        let def_node = amlang_node!(context, def);
                         let should_construe = match self.state_mut().designate(node.into())? {
                             // Don't evaluate args of reflective Abstractions.
                             Sexp::Primitive(Primitive::Procedure(Procedure::Abstraction(

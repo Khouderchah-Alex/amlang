@@ -84,7 +84,7 @@ impl Reflective for AmlangTable<Symbol, Node> {
                 .into(),
             );
         }
-        let node = Node::new(state.context().lang_env(), state.context().symbol_table);
+        let node = amlang_node!(state.context(), symbol_table);
         Cons::new(Some(node.into()), alist).into()
     }
 
@@ -170,7 +170,7 @@ impl Reflective for AmlangTable<LocalNode, LocalNode> {
                 .into(),
             );
         }
-        let node = Node::new(state.context().lang_env(), state.context().local_node_table);
+        let node = amlang_node!(state.context(), local_node_table);
         Cons::new(Some(node.into()), alist).into()
     }
 

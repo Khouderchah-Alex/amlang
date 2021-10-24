@@ -21,19 +21,19 @@ impl Reflective for Procedure {
         let context = state.context();
         match self {
             Procedure::Application(func, args) => {
-                let apply_node = Node::new(context.lang_env(), context.apply);
+                let apply_node = amlang_node!(context, apply);
                 list!(apply_node, *func, args,)
             }
             Procedure::Abstraction(params, body, reflect) => {
                 let special_node = if *reflect {
-                    Node::new(context.lang_env(), context.fexpr)
+                    amlang_node!(context, fexpr)
                 } else {
-                    Node::new(context.lang_env(), context.lambda)
+                    amlang_node!(context, lambda)
                 };
                 list!(special_node, params, *body,)
             }
             Procedure::Sequence(seq) => {
-                let progn_node = Node::new(context.lang_env(), context.progn);
+                let progn_node = amlang_node!(context, progn);
                 Cons::new(
                     Some(HeapSexp::new(progn_node.into())),
                     Some(HeapSexp::new(seq.into())),
@@ -41,7 +41,7 @@ impl Reflective for Procedure {
                 .into()
             }
             Procedure::Branch(t) => {
-                let branch_node = Node::new(context.lang_env(), context.branch);
+                let branch_node = amlang_node!(context, branch);
                 let (pred, a, b) = **t;
                 list!(branch_node, pred, a, b,)
             }

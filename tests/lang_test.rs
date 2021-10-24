@@ -4,8 +4,9 @@ use std::convert::TryFrom;
 
 use amlang::agent::amlang_agent::RunError;
 use amlang::agent::Agent;
+use amlang::amlang_node;
 use amlang::primitive::error::ErrKind;
-use amlang::primitive::{Node, Number, Primitive};
+use amlang::primitive::{Number, Primitive};
 use amlang::sexp::Cons;
 
 
@@ -65,13 +66,7 @@ fn lambda_seq_body() {
     let results = common::results(&mut lang_agent, "((lambda (a) (jump a) (curr)) lambda)");
     assert_eq!(
         results,
-        vec![
-            Node::new(
-                lang_agent.state().context().lang_env(),
-                lang_agent.state().context().lambda
-            )
-            .into()
-        ]
+        vec![amlang_node!(lang_agent.state().context(), lambda).into()]
     );
 }
 
@@ -164,19 +159,11 @@ fn let_rec_lambdas() {
     let cons = Cons::try_from(results[0].clone()).unwrap();
     assert_eq!(
         *cons.car().unwrap(),
-        Node::new(
-            lang_agent.state().context().lang_env(),
-            lang_agent.state().context().f
-        )
-        .into()
+        amlang_node!(lang_agent.state().context(), f).into()
     );
     assert_eq!(
         *cons.cdr().unwrap(),
-        Node::new(
-            lang_agent.state().context().lang_env(),
-            lang_agent.state().context().t
-        )
-        .into()
+        amlang_node!(lang_agent.state().context(), t).into()
     );
 }
 
@@ -260,11 +247,7 @@ fn reify_apply() {
     );
     assert_eq!(
         results[0],
-        Node::new(
-            lang_agent.state().context().lang_env(),
-            lang_agent.state().context().apply
-        )
-        .into()
+        amlang_node!(lang_agent.state().context(), apply).into()
     );
 }
 
@@ -275,11 +258,7 @@ fn improper_list() {
     let results = common::results(&mut lang_agent, "(eq '(1 2 . 3) (cons 1 (cons 2 3)))");
     assert_eq!(
         results[0],
-        Node::new(
-            lang_agent.state().context().lang_env(),
-            lang_agent.state().context().t
-        )
-        .into()
+        amlang_node!(lang_agent.state().context(), t).into()
     );
 }
 
@@ -315,10 +294,6 @@ fn jump_import() {
 
     assert_eq!(
         results[1],
-        Node::new(
-            lang_agent.state().context().lang_env(),
-            lang_agent.state().context().t
-        )
-        .into()
+        amlang_node!(lang_agent.state().context(), t).into()
     );
 }

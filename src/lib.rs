@@ -3,6 +3,8 @@ use std::io;
 use std::path::PathBuf;
 
 #[macro_use]
+pub mod amlang_helpers;
+#[macro_use]
 mod error_helpers;
 #[macro_use]
 pub mod sexp;
