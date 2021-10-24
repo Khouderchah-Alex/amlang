@@ -10,6 +10,7 @@
 /// Example:
 ///  let (a, b, tail) = break_sexp!(original => (Symbol, HeapSexp; remainder), self.state())?;
 // TODO(func) Have remainder return iter so that other Iterators can be used.
+#[macro_export]
 macro_rules! break_sexp {
     (@ignore $_ignored:ty) => {};
     ($sexp:expr => ($($type:ty),+ $(;$remainder:tt)?) $(,$state:expr)?) => {
@@ -103,6 +104,7 @@ macro_rules! break_sexp {
 ///
 /// Example:
 ///   list!(a, b, (c, (d)), e)
+#[macro_export]
 macro_rules! list {
     ($($tail:tt)*) => {
         list_inner!($($tail)*)

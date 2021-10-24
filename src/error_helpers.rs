@@ -4,6 +4,7 @@
 ///
 /// Called as:  err!(state, error).
 /// Stateful errors should always be used when possible.
+#[macro_export]
 macro_rules! err {
     ($state:expr, $($kind:tt)+) => {
         Err($crate::primitive::error::Error::with_state(
@@ -17,6 +18,7 @@ macro_rules! err {
 ///
 /// Called as:  err_nost!(error).
 /// Stateful errors are always preferred when possible.
+#[macro_export]
 macro_rules! err_nost {
     ($($kind:tt)+) => {
         Err($crate::primitive::error::Error::empty_state(
