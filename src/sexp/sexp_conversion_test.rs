@@ -1,4 +1,3 @@
-use crate::primitive::error::ErrKind::*;
 use crate::primitive::{AmString, Node, Number, Symbol};
 use crate::sexp::{Cons, HeapSexp, Sexp};
 
@@ -74,7 +73,9 @@ fn vec_break_no_remainder() {
 fn wrong_type() {
     let original: Sexp = "(lambda (a b) ing)".parse().unwrap();
     if let Err(err) = break_sexp!(original => (Node, Sexp, Symbol)) {
-        assert!(matches!(err.kind(), InvalidArgument { .. }));
+        let (_, kind, _) =
+            break_sexp!(err.kind().reify() => (AmString, AmString; remainder)).unwrap();
+        assert_eq!(kind, AmString::new("Invalid argument"));
     } else {
         panic!();
     }
@@ -84,7 +85,9 @@ fn wrong_type() {
 fn extra_arguments() {
     let original: Sexp = "(test ing 1 2)".parse().unwrap();
     if let Err(err) = break_sexp!(original => (Symbol, Symbol)) {
-        assert!(matches!(err.kind(), WrongArgumentCount { given: 4, .. }));
+        let (_, kind, _) =
+            break_sexp!(err.kind().reify() => (AmString, AmString; remainder)).unwrap();
+        assert_eq!(kind, AmString::new("Wrong argument count"));
     } else {
         panic!();
     }
@@ -94,7 +97,9 @@ fn extra_arguments() {
 fn missing_arguments() {
     let original: Sexp = "(test)".parse().unwrap();
     if let Err(err) = break_sexp!(original => (Symbol, Symbol, Symbol)) {
-        assert!(matches!(err.kind(), WrongArgumentCount { given: 1, .. }));
+        let (_, kind, _) =
+            break_sexp!(err.kind().reify() => (AmString, AmString; remainder)).unwrap();
+        assert_eq!(kind, AmString::new("Wrong argument count"));
     } else {
         panic!();
     }

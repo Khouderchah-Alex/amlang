@@ -4,10 +4,9 @@ use std::convert::TryFrom;
 
 use amlang::agent::amlang_agent::RunError;
 use amlang::agent::Agent;
-use amlang::amlang_node;
-use amlang::primitive::error::ErrKind;
-use amlang::primitive::{Number, Primitive};
+use amlang::primitive::{AmString, Number, Primitive};
 use amlang::sexp::Cons;
+use amlang::{amlang_node, break_sexp};
 
 
 #[test]
@@ -106,7 +105,9 @@ fn lambda_duplicate_argname() {
 
     let results = common::results_with_errors(&mut lang_agent, "(lambda (a a) (+ a a))");
     if let Err(RunError::CompileError(err)) = &results[0] {
-        assert!(matches!(err.kind(), ErrKind::InvalidArgument { .. }));
+        let (_, kind, _) =
+            break_sexp!(err.kind().reify() => (AmString, AmString; remainder)).unwrap();
+        assert_eq!(kind, AmString::new("Invalid argument"));
     } else {
         panic!();
     }

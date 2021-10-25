@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
 use crate::agent::agent_state::AgentState;
+use crate::agent::lang_error::ExpectedCount;
 use crate::primitive::builtin::Args;
-use crate::primitive::error::ExpectedCount;
 use crate::primitive::{BuiltIn, Error, Node, Number, Primitive};
 use crate::sexp::{Cons, HeapSexp, Sexp};
 

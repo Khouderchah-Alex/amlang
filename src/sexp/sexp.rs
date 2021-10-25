@@ -37,7 +37,7 @@ use super::cons_list::ConsList;
 use super::fmt_io_adapter::FmtIoAdapter;
 use crate::environment::Environment;
 use crate::parser::{parse_sexp, ParseError};
-use crate::primitive::error::{Error, ExpectedCount};
+use crate::primitive::error::Error;
 use crate::primitive::prelude::*;
 use crate::primitive::symbol_policies::policy_base;
 use crate::token::string_stream::StringStream;
@@ -354,20 +354,6 @@ impl<'a> TryFrom<&'a Sexp> for &'a Primitive {
     }
 }
 
-impl TryFrom<Option<HeapSexp>> for SexpIntoIter {
-    type Error = Error;
-
-    fn try_from(value: Option<HeapSexp>) -> Result<Self, Self::Error> {
-        match value {
-            Some(sexp) => Ok(sexp.into_iter()),
-            None => err_nost!(WrongArgumentCount {
-                given: 0,
-                expected: ExpectedCount::AtLeast(1),
-            }),
-        }
-    }
-}
-
 
 // From<T> impls.
 impl FromStr for Sexp {
@@ -404,6 +390,15 @@ impl<'a, T: Into<Sexp> + Clone> From<&'a Vec<T>> for Sexp {
             list.append(HeapSexp::new(value.clone().into()));
         }
         list.release()
+    }
+}
+
+impl From<Option<HeapSexp>> for SexpIntoIter {
+    fn from(value: Option<HeapSexp>) -> Self {
+        match value {
+            Some(sexp) => sexp.into_iter(),
+            None => Self::default(),
+        }
     }
 }
 

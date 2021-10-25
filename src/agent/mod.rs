@@ -9,6 +9,7 @@ pub mod amlang_agent;
 pub mod amlang_context;
 pub mod env_manager;
 pub mod env_policy;
+pub mod lang_error;
 
 // Private mods.
 mod amlang_wrappers;

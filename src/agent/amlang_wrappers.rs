@@ -1,5 +1,6 @@
 use crate::agent::agent_state::AgentState;
-use crate::primitive::error::{Error, ExpectedCount};
+use crate::agent::lang_error::ExpectedCount;
+use crate::primitive::error::Error;
 use crate::primitive::{Node, Primitive, Symbol};
 use crate::sexp::cons_list::ConsList;
 use crate::sexp::{HeapSexp, Sexp, SexpIntoIter};

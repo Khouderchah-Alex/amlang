@@ -16,7 +16,6 @@ use crate::environment::environment::Environment;
 use crate::environment::LocalNode;
 use crate::model::{Interpretation, Reflective};
 use crate::parser::{self, parse_sexp};
-use crate::primitive::error::ErrKind;
 use crate::primitive::prelude::*;
 use crate::primitive::symbol_policies::{policy_admin, AdminSymbolInfo};
 use crate::primitive::table::Table;
@@ -447,7 +446,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         }
 
         // Ensure first two nodes are as expected.
-        let iter = SexpIntoIter::try_from(remainder)?;
+        let iter = SexpIntoIter::from(remainder);
         let (first, second, remainder) =
             break_sexp!(iter => (HeapSexp, Symbol; remainder), self.state())?;
         let (self_node_id, self_val_node) = break_sexp!(first => (Symbol, Symbol), self.state())?;
@@ -460,7 +459,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
             return Err(InvalidNodeEntry(second.into()));
         }
 
-        for (entry, proper) in SexpIntoIter::try_from(remainder)? {
+        for (entry, proper) in SexpIntoIter::from(remainder) {
             if !proper {
                 return err!(self.state(), InvalidSexp(*entry))?;
             }
@@ -564,17 +563,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
             return Err(UnexpectedCommand(command.into()));
         }
 
-        let iter = match SexpIntoIter::try_from(remainder) {
-            Ok(iter) => iter,
-            Err(err) => {
-                if matches!(err.kind(), ErrKind::WrongArgumentCount { .. }) {
-                    return Ok(());
-                }
-                return Err(err.into());
-            }
-        };
-
-        for (entry, proper) in iter {
+        for (entry, proper) in SexpIntoIter::from(remainder) {
             if !proper {
                 return err!(self.state(), InvalidSexp(*entry))?;
             }

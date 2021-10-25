@@ -20,11 +20,11 @@ macro_rules! break_sexp {
                 $(
                     return Err($crate::primitive::error::Error::with_state(
                         $state.clone(),
-                        kind
+                        Box::new(kind)
                     ));
                 )*
                 #[allow(unreachable_code)]
-                Err($crate::primitive::error::Error::empty_state(kind))
+                Err($crate::primitive::error::Error::empty_state(Box::new(kind)))
             };
             let mut iter = $sexp.into_iter();
             let tuple = || {
@@ -39,7 +39,7 @@ macro_rules! break_sexp {
                         match iter.next() {
                             Some((sexp, proper)) =>  {
                                 if !proper {
-                                    return err($crate::primitive::error::ErrKind::InvalidSexp(
+                                    return err($crate::agent::lang_error::LangError::InvalidSexp(
                                         // TODO(perf) Avoid clone for non-ref types.
                                         sexp.clone().into())
                                     );
@@ -51,7 +51,7 @@ macro_rules! break_sexp {
                                     },
                                     Err(original) => {
                                         return err(
-                                            $crate::primitive::error::ErrKind::InvalidArgument{
+                                            $crate::agent::lang_error::LangError::InvalidArgument{
                                                 // TODO(perf) Avoid clone for non-ref types.
                                                 given: original.clone().into(),
                                                 expected: std::borrow::Cow::Owned(
@@ -62,9 +62,9 @@ macro_rules! break_sexp {
                                 }
                             }
                             None =>  {
-                                return err($crate::primitive::error::ErrKind::WrongArgumentCount{
+                                return err($crate::agent::lang_error::LangError::WrongArgumentCount{
                                     given: i,
-                                    expected: $crate::primitive::error::ExpectedCount::Exactly(
+                                    expected: $crate::agent::lang_error::ExpectedCount::Exactly(
                                         expected
                                     ),
                                 });
@@ -84,9 +84,9 @@ macro_rules! break_sexp {
                     iter = Default::default();
                 )*
                 if let Some(_) = iter.next() {
-                    return err($crate::primitive::error::ErrKind::WrongArgumentCount{
+                    return err($crate::agent::lang_error::LangError::WrongArgumentCount{
                         given: i + 1 + iter.count(),
-                        expected: $crate::primitive::error::ExpectedCount::Exactly(i),
+                        expected: $crate::agent::lang_error::ExpectedCount::Exactly(i),
                     });
                 }
                 ret

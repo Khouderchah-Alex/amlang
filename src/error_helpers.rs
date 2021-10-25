@@ -6,10 +6,10 @@
 /// Stateful errors should always be used when possible.
 #[macro_export]
 macro_rules! err {
-    ($state:expr, $($kind:tt)+) => {
+    ($state:expr, $($inner:tt)+) => {
         Err($crate::primitive::error::Error::with_state(
             $state.clone(),
-            $crate::primitive::error::ErrKind::$($kind)+,
+            Box::new($crate::agent::lang_error::LangError::$($inner)+),
         ))
     };
 }
@@ -20,9 +20,9 @@ macro_rules! err {
 /// Stateful errors are always preferred when possible.
 #[macro_export]
 macro_rules! err_nost {
-    ($($kind:tt)+) => {
+    ($($inner:tt)+) => {
         Err($crate::primitive::error::Error::empty_state(
-            $crate::primitive::error::ErrKind::$($kind)+,
+            Box::new($crate::agent::lang_error::LangError::$($inner)+),
         ))
     };
 }
