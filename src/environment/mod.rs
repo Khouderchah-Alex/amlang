@@ -8,7 +8,7 @@ pub mod environment;
 pub mod local_node;
 pub mod mem_backend;
 pub mod mem_environment;
-pub mod serial_overlay;
+pub mod raw_overlay;
 
 // Private mods.
 #[cfg(test)]

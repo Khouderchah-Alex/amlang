@@ -1,6 +1,6 @@
 use crate::environment::mem_backend::SimpleBackend;
 use crate::environment::mem_environment::MemEnvironment;
-use crate::environment::serial_overlay::SerialOverlay;
+use crate::environment::raw_overlay::RawOverlay;
 use crate::environment::Environment;
 
 
@@ -32,7 +32,7 @@ pub struct SimplePolicy {}
 impl EnvPolicy for SimplePolicy {
     type BaseEnv = MemEnvironment<SimpleBackend>;
     type StoredEnv = Self::Overlay;
-    type Overlay = SerialOverlay<Self::BaseEnv>;
+    type Overlay = RawOverlay<Self::BaseEnv>;
 
     fn new_stored_env(&mut self, base: Self::BaseEnv) -> Box<Self::StoredEnv> {
         Box::new(Self::StoredEnv::new(base))
