@@ -242,22 +242,11 @@ impl AmlangAgent {
             _ if context.tell == special_node || context.ask == special_node => {
                 let is_tell = context.tell == special_node;
                 let (ss, pp, oo) = tell_wrapper(&arg_nodes, &self.state())?;
-
-                // TODO(func) Add support for cross-env triples through surrogates.
-                let mut to_local = |node: Node| {
-                    let placeholder = amlang_node!(self.state().context(), placeholder);
-                    let final_node = self.exec_to_node(node)?;
-                    if (is_tell || final_node != placeholder)
-                        && final_node.env() != self.state().pos().env()
-                    {
-                        return err!(
-                            self.state(),
-                            Unsupported("Cross-env triples are not currently supported".into())
-                        );
-                    }
-                    Ok(final_node.local())
-                };
-                let (s, p, o) = (to_local(ss)?, to_local(pp)?, to_local(oo)?);
+                let (s, p, o) = (
+                    self.exec_to_node(ss)?,
+                    self.exec_to_node(pp)?,
+                    self.exec_to_node(oo)?,
+                );
                 debug!(
                     "({} {} {} {})",
                     if is_tell { "tell" } else { "ask" },

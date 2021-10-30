@@ -257,58 +257,66 @@ impl AgentState {
         Ok(node)
     }
 
-    pub fn tell(
-        &mut self,
-        subject: LocalNode,
-        predicate: LocalNode,
-        object: LocalNode,
-    ) -> Result<Sexp, Error> {
-        if let Some(triple) = self
-            .env()
-            .match_triple(subject, predicate, object)
-            .iter()
-            .next()
-        {
+    pub fn tell(&mut self, subject: Node, predicate: Node, object: Node) -> Result<Sexp, Error> {
+        let to_local = |node: Node| {
+            if node.env() != self.pos().env() {
+                return err!(
+                    self,
+                    Unsupported("Cross-env triples are not currently supported".into())
+                );
+            }
+            Ok(node.local())
+        };
+        let (s, p, o) = (to_local(subject)?, to_local(predicate)?, to_local(object)?);
+
+        if let Some(triple) = self.env().match_triple(s, p, o).iter().next() {
             return err!(self, DuplicateTriple(triple.reify(self)));
         }
 
-        let triple = self.env().insert_triple(subject, predicate, object);
+        let triple = self.env().insert_triple(s, p, o);
         Ok(triple.node().globalize(&self).into())
     }
 
-    pub fn ask(
-        &mut self,
-        subject: LocalNode,
-        predicate: LocalNode,
-        object: LocalNode,
-    ) -> Result<Sexp, Error> {
-        let res = if subject == self.context.placeholder {
-            if predicate == self.context.placeholder {
-                if object == self.context.placeholder {
+    pub fn ask(&mut self, subject: Node, predicate: Node, object: Node) -> Result<Sexp, Error> {
+        let to_local = |node: Node| {
+            let placeholder = amlang_node!(self.context(), placeholder);
+            if node != placeholder && node.env() != self.pos().env() {
+                return err!(
+                    self,
+                    Unsupported("Cross-env triples are not currently supported".into())
+                );
+            }
+            Ok(node.local())
+        };
+        let (s, p, o) = (to_local(subject)?, to_local(predicate)?, to_local(object)?);
+
+        let res = if s == self.context.placeholder {
+            if p == self.context.placeholder {
+                if o == self.context.placeholder {
                     self.env().match_all()
                 } else {
-                    self.env().match_object(object)
+                    self.env().match_object(o)
                 }
             } else {
-                if object == self.context.placeholder {
-                    self.env().match_predicate(predicate)
+                if o == self.context.placeholder {
+                    self.env().match_predicate(p)
                 } else {
-                    self.env().match_but_subject(predicate, object)
+                    self.env().match_but_subject(p, o)
                 }
             }
         } else {
-            if predicate == self.context.placeholder {
-                if object == self.context.placeholder {
-                    self.env().match_subject(subject)
+            if p == self.context.placeholder {
+                if o == self.context.placeholder {
+                    self.env().match_subject(s)
                 } else {
-                    self.env().match_but_predicate(subject, object)
+                    self.env().match_but_predicate(s, o)
                 }
             } else {
-                if object == self.context.placeholder {
-                    self.env().match_but_object(subject, predicate)
+                if o == self.context.placeholder {
+                    self.env().match_but_object(s, p)
                 } else {
                     let mut set = TripleSet::new();
-                    if let Some(triple) = self.env().match_triple(subject, predicate, object) {
+                    if let Some(triple) = self.env().match_triple(s, p, o) {
                         set.insert(triple);
                     }
                     set
