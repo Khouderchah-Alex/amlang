@@ -43,6 +43,7 @@ pub struct AmlangContext {
     pub eq: LocalNode,
     pub symbol_table: LocalNode,
     pub local_node_table: LocalNode,
+    pub label: LocalNode,
 }
 
 
@@ -84,6 +85,7 @@ impl AmlangContext {
             eq: designation.clone(),
             symbol_table: designation.clone(),
             local_node_table: designation.clone(),
+            label: designation.clone(),
         }
     }
 

@@ -162,6 +162,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
                            eq: "eq",
                            symbol_table: "table-sym-node",
                            local_node_table: "table-lnode",
+                           label: "label",
         );
         info!("Lang env bootstrapping complete.");
 

@@ -89,8 +89,17 @@ impl AmlangAgent {
                     }
                 );
             }
-            frame.insert(symbol, node);
+            frame.insert(symbol.clone(), node);
             surface.push(node);
+            let name = self
+                .state_mut()
+                .env()
+                .insert_structure(symbol.into())
+                .globalize(self.state());
+            // Unlike amlang designation, label predicate must be imported.
+            let raw_predicate = amlang_node!(self.state().context(), label);
+            let label_predicate = self.state_mut().import(raw_predicate)?;
+            self.state_mut().tell(node, label_predicate, name)?;
         }
 
         self.eval_state.push(frame);
