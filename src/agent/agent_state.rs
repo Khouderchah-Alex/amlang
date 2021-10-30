@@ -142,6 +142,8 @@ impl AgentState {
         self.access_env(self.pos().env()).unwrap()
     }
 
+    /// Get the amlang designator of a Node, which is (contextually) an
+    /// injective property.
     pub fn node_designator(&mut self, node: Node) -> Option<Symbol> {
         let designation = self.context().designation();
         if node.local() == designation {
@@ -151,6 +153,27 @@ impl AgentState {
         let env = self.access_env(node.env()).unwrap();
         let names = env.match_but_object(node.local(), designation);
         if let Some(name_node) = names.iter().next() {
+            let name = env.triple_object(*name_node);
+            if let Ok(sym) = Symbol::try_from(env.entry(name).owned().unwrap()) {
+                return Some(sym);
+            }
+        }
+        None
+    }
+
+    /// Get the label of a Node, which need not be injective.
+    pub fn node_label(&mut self, node: Node) -> Option<Symbol> {
+        let pos = self.pos();
+        self.jump(node);
+        let label_predicate = match self.import(amlang_node!(self.context(), label)) {
+            Ok(pred) => pred,
+            Err(_) => return None,
+        };
+        self.jump(pos);
+        let env = self.env();
+
+        let labels = env.match_but_object(node.local(), label_predicate.local());
+        if let Some(name_node) = labels.iter().next() {
             let name = env.triple_object(*name_node);
             if let Ok(sym) = Symbol::try_from(env.entry(name).owned().unwrap()) {
                 return Some(sym);
@@ -513,6 +536,8 @@ impl AgentState {
                 {
                     let s = triple.reify(self);
                     self.write_sexp(w, &s, depth, show_redirects)
+                } else if let Some(sym) = self.node_label(*node) {
+                    write!(w, "${}", sym.as_str())
                 } else {
                     let s = match self.concretize(*node) {
                         Ok(structure) => structure,
