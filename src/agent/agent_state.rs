@@ -324,13 +324,7 @@ impl AgentState {
 
     pub fn import(&mut self, original: Node) -> Result<Node, Error> {
         if original.env() == self.pos().env() {
-            return err!(
-                self,
-                InvalidArgument {
-                    given: original.into(),
-                    expected: "Node outside of current env".into(),
-                }
-            );
+            return Ok(original);
         }
 
         let imports_node = self.context.imports;
