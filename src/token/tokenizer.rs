@@ -167,9 +167,8 @@ impl Tokenizer {
                     match c {
                         '\\' => {
                             s.push_str(&line.as_ref()[start..i]);
-                            let mut new = String::default();
-                            std::mem::swap(s, &mut new);
-                            self.state = InStringEscaped(new, *col);
+                            let curr_str = std::mem::replace(s, String::default());
+                            self.state = InStringEscaped(curr_str, *col);
                         }
                         '"' => {
                             s.push_str(&line.as_ref()[start..i]);
@@ -190,9 +189,8 @@ impl Tokenizer {
                     s.push(AmString::unescape_char(c));
 
                     empty = true;
-                    let mut new = String::default();
-                    std::mem::swap(s, &mut new);
-                    self.state = InString(new, *col);
+                    let curr_str = std::mem::replace(s, String::default());
+                    self.state = InString(curr_str, *col);
                 }
             }
         }
@@ -205,9 +203,8 @@ impl Tokenizer {
             }
             InStringEscaped(s, col) => {
                 // \ followed by EOL simply means ignore the newline.
-                let mut new = String::default();
-                std::mem::swap(s, &mut new);
-                self.state = InString(new, *col);
+                let curr_str = std::mem::replace(s, String::default());
+                self.state = InString(curr_str, *col);
             }
             _ => {
                 if !empty {

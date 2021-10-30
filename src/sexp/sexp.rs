@@ -234,9 +234,8 @@ impl Iterator for SexpIntoIter {
 
     fn next(&mut self) -> Option<Self::Item> {
         // Self set to None unless some special-case keeps the iteration going.
-        let mut old = Self::None;
-        std::mem::swap(self, &mut old);
-        match old {
+        let head = std::mem::replace(self, Self::None);
+        match head {
             Self::None => None,
             Self::Stack(sexp) => match sexp {
                 Sexp::Cons(cons) => {

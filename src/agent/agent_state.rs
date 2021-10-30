@@ -421,8 +421,7 @@ impl AgentState {
 impl AgentState {
     pub fn trace_error(&mut self, err: &Error) {
         if let Some(state) = err.state() {
-            let mut stored_state = state.clone();
-            std::mem::swap(self, &mut stored_state);
+            let mut original_state = std::mem::replace(self, state.clone());
             println!("");
             println!("  --TRACE--");
             let end = state.exec_state().depth() - 1;
@@ -435,7 +434,7 @@ impl AgentState {
                 self.print_sexp(&frame.context().into());
                 println!("");
             }
-            std::mem::swap(self, &mut stored_state);
+            std::mem::swap(self, &mut original_state);
         }
     }
 
