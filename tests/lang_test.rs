@@ -284,17 +284,29 @@ fn basic_ask_tell() {
 }
 
 #[test]
-fn jump_import() {
+fn import() {
     let mut lang_agent = common::setup().unwrap();
 
     let results = common::results(
         &mut lang_agent,
-        "(jump (import lambda))
-         (eq (curr) (import lambda))",
+        ";; Once imported, should return same Node.
+         (jump (import lambda))
+         (eq (curr) (import lambda))
+
+         ;; Should be idempotent.
+         (eq (import lambda) (import (import lambda)))
+
+         ;; Should be false since test agent has own working environment.
+         (eq lambda (import lambda))
+
+         ;; Importing from same environment should return original Node.
+         (jump lambda)
+         (eq lambda (import lambda))",
     );
 
-    assert_eq!(
-        results[1],
-        amlang_node!(lang_agent.state().context(), t).into()
-    );
+    let context = lang_agent.state().context();
+    assert_eq!(results[1], amlang_node!(context, t).into());
+    assert_eq!(results[2], amlang_node!(context, t).into());
+    assert_eq!(results[3], amlang_node!(context, f).into());
+    assert_eq!(results[5], amlang_node!(context, t).into());
 }
