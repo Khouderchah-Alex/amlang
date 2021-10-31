@@ -170,7 +170,7 @@ impl AgentState {
             Err(_) => return None,
         };
         self.jump(pos);
-        let env = self.env();
+        let env = self.access_env(node.env()).unwrap();
 
         let labels = env.match_but_object(node.local(), label_predicate.local());
         if let Some(name_node) = labels.iter().next() {
