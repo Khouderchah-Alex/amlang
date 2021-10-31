@@ -165,9 +165,9 @@ impl AgentState {
     pub fn node_label(&mut self, node: Node) -> Option<Symbol> {
         let pos = self.pos();
         self.jump(node);
-        let label_predicate = match self.import(amlang_node!(self.context(), label)) {
-            Ok(pred) => pred,
-            Err(_) => return None,
+        let label_predicate = match self.get_imported(amlang_node!(self.context(), label)) {
+            Some(pred) => pred,
+            None => return None,
         };
         self.jump(pos);
         let env = self.access_env(node.env()).unwrap();
@@ -358,40 +358,7 @@ impl AgentState {
             return Ok(original);
         }
 
-        let imports_node = self.context.imports;
-        let import_table_node = self.context.import_table;
-        let env = self.pos().env();
-        let import_triple = {
-            let meta = self.context.meta_mut();
-            if let Some(triple) = meta.match_triple(env, imports_node, original.env()) {
-                triple
-            } else {
-                meta.insert_triple(env, imports_node, original.env())
-            }
-        };
-
-        let matches = self
-            .context
-            .meta()
-            .match_but_object(import_triple.node(), import_table_node);
-        let table_node = match matches.len() {
-            0 => {
-                let table = LocalNodeTable::default().into();
-                let table_node = self.context.meta_mut().insert_structure(table);
-                self.context.meta_mut().insert_triple(
-                    import_triple.node(),
-                    import_table_node,
-                    table_node,
-                );
-                table_node
-            }
-            1 => self
-                .context
-                .meta()
-                .triple_object(*matches.iter().next().unwrap()),
-            _ => panic!("Found multiple import tables for single import triple"),
-        };
-
+        let table_node = self.get_or_create_import_table(original.env());
         if let Ok(table) =
             <&LocalNodeTable>::try_from(self.context.meta().entry(table_node).as_option())
         {
@@ -430,6 +397,25 @@ impl AgentState {
         }
     }
 
+    pub fn get_imported(&mut self, original: Node) -> Option<Node> {
+        if original.env() == self.pos().env() {
+            return Some(original);
+        }
+
+        let table_node = self.get_import_table(original.env());
+        if table_node.is_none() {
+            return None;
+        }
+        if let Ok(table) =
+            <&LocalNodeTable>::try_from(self.context.meta().entry(table_node.unwrap()).as_option())
+        {
+            if let Some(imported) = table.lookup(&original.local()) {
+                return Some(imported.globalize(&self));
+            }
+        }
+        return None;
+    }
+
     pub fn find_env<S: AsRef<str>>(&self, s: S) -> Option<LocalNode> {
         let meta = self.context.meta();
         let triples = meta.match_predicate(self.context.serialize_path);
@@ -444,6 +430,70 @@ impl AgentState {
             }
         }
         None
+    }
+
+    fn get_or_create_import_table(&mut self, from_env: LocalNode) -> LocalNode {
+        let imports_node = self.context.imports;
+        let import_table_node = self.context.import_table;
+        let env = self.pos().env();
+        let import_triple = {
+            let meta = self.context.meta_mut();
+            if let Some(triple) = meta.match_triple(env, imports_node, from_env) {
+                triple
+            } else {
+                meta.insert_triple(env, imports_node, from_env)
+            }
+        };
+
+        let matches = self
+            .context
+            .meta()
+            .match_but_object(import_triple.node(), import_table_node);
+        match matches.len() {
+            0 => {
+                let table = LocalNodeTable::default().into();
+                let table_node = self.context.meta_mut().insert_structure(table);
+                self.context.meta_mut().insert_triple(
+                    import_triple.node(),
+                    import_table_node,
+                    table_node,
+                );
+                table_node
+            }
+            1 => self
+                .context
+                .meta()
+                .triple_object(*matches.iter().next().unwrap()),
+            _ => panic!("Found multiple import tables for single import triple"),
+        }
+    }
+
+    fn get_import_table(&mut self, from_env: LocalNode) -> Option<LocalNode> {
+        let imports_node = self.context.imports;
+        let import_table_node = self.context.import_table;
+        let env = self.pos().env();
+        let import_triple = {
+            let meta = self.context.meta_mut();
+            if let Some(triple) = meta.match_triple(env, imports_node, from_env) {
+                triple
+            } else {
+                return None;
+            }
+        };
+
+        let matches = self
+            .context
+            .meta()
+            .match_but_object(import_triple.node(), import_table_node);
+        match matches.len() {
+            0 => None,
+            1 => Some(
+                self.context
+                    .meta()
+                    .triple_object(*matches.iter().next().unwrap()),
+            ),
+            _ => panic!("Found multiple import tables for single import triple"),
+        }
     }
 }
 
