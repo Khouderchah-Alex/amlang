@@ -13,7 +13,7 @@ use super::env_policy::EnvPolicy;
 use crate::builtins::generate_builtin_map;
 use crate::environment::entry::EntryMutKind;
 use crate::environment::environment::Environment;
-use crate::environment::LocalNode;
+use crate::environment::local_node::{LocalId, LocalNode};
 use crate::model::{Interpretation, Reflective};
 use crate::parser::{self, parse_sexp};
 use crate::primitive::prelude::*;
@@ -89,16 +89,16 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         // Make context usable for reflecting Reflectives during bootstrapping.
         // TODO(flex) Find more flexible approch to bootstrapping Reflective
         // nodes, like {,de}serializing this as a bootstrap kernel.
-        context.lang_env = LocalNode::new(9);
+        context.lang_env = LocalNode::new(16);
         // Procedure nodes.
-        context.lambda = LocalNode::new(10);
-        context.apply = LocalNode::new(24);
-        context.branch = LocalNode::new(32);
-        context.fexpr = LocalNode::new(36);
-        context.progn = LocalNode::new(38);
+        context.lambda = LocalNode::new(17);
+        context.apply = LocalNode::new(31);
+        context.branch = LocalNode::new(39);
+        context.fexpr = LocalNode::new(43);
+        context.progn = LocalNode::new(45);
         // Table nodes.
-        context.symbol_table = LocalNode::new(58);
-        context.local_node_table = LocalNode::new(60);
+        context.symbol_table = LocalNode::new(65);
+        context.local_node_table = LocalNode::new(67);
 
         // Bootstrap meta env.
         let meta_state = AgentState::new(
@@ -213,6 +213,11 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         let self_env = env.insert_structure(Node::new(LocalNode::default(), env_node).into());
         let designation = env.insert_structure(SymbolTable::default().into());
         let tell_handler = env.insert_atom();
+        let mut reserved_id = env.all_nodes().len() as LocalId;
+        while let Some(_) = LocalNode::new(reserved_id).as_prelude() {
+            env.insert_structure("RESERVED".to_symbol_or_panic(policy_admin).into());
+            reserved_id += 1;
+        }
 
         // Name nodes.
         if let Ok(table) = <&mut SymbolTable>::try_from(env.entry_mut(designation).as_option()) {
@@ -464,10 +469,19 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
             return Err(UnexpectedCommand(command.into()));
         }
 
-        // Ensure first two nodes are as expected.
+        // Ensure prelude nodes are as expected.
         let iter = SexpIntoIter::from(remainder);
-        let (first, second, third, remainder) =
-            break_sexp!(iter => (HeapSexp, Symbol, Symbol; remainder), self.state())?;
+        let (first, second, third, _r0, _r1, _r2, _r3, _r4, _r5, _r6, remainder) = break_sexp!(
+            iter => (HeapSexp,
+                     Symbol,
+                     Symbol,
+                     HeapSexp,
+                     HeapSexp,
+                     HeapSexp,
+                     HeapSexp,
+                     HeapSexp,
+                     HeapSexp,
+                     HeapSexp; remainder), self.state())?;
         let (self_node_id, self_val_node) = break_sexp!(first => (Symbol, Symbol), self.state())?;
         let self_id = EnvPrelude::SelfEnv.local();
         if self.parse_node(&self_node_id)?.local() != self_id

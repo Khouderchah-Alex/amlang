@@ -39,6 +39,13 @@ impl LocalNode {
             0 => Some(EnvPrelude::SelfEnv),
             1 => Some(EnvPrelude::Designation),
             2 => Some(EnvPrelude::TellHandler),
+            3 => Some(EnvPrelude::Reserved0),
+            4 => Some(EnvPrelude::Reserved1),
+            5 => Some(EnvPrelude::Reserved2),
+            6 => Some(EnvPrelude::Reserved3),
+            7 => Some(EnvPrelude::Reserved4),
+            8 => Some(EnvPrelude::Reserved5),
+            9 => Some(EnvPrelude::Reserved6),
             _ => None,
         }
     }
