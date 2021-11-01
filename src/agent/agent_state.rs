@@ -163,11 +163,12 @@ impl AgentState {
     pub fn node_label(&mut self, node: Node) -> Option<Symbol> {
         let pos = self.pos();
         self.jump(node);
-        let label_predicate = match self.get_imported(amlang_node!(self.context(), label)) {
+        let try_import = self.get_imported(amlang_node!(self.context(), label));
+        self.jump(pos);
+        let label_predicate = match try_import {
             Some(pred) => pred,
             None => return None,
         };
-        self.jump(pos);
         let env = self.access_env(node.env()).unwrap();
 
         let labels = env.match_but_object(node.local(), label_predicate.local());
