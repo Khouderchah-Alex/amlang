@@ -6,8 +6,8 @@ use std::io::{BufWriter, Write};
 use std::path::Path as StdPath;
 
 use super::agent::Agent;
-use super::agent_state::{AgentState, AMLANG_DESIGNATION};
-use super::amlang_context::AmlangContext;
+use super::agent_state::AgentState;
+use super::amlang_context::{AmlangContext, EnvPrelude};
 use super::amlang_wrappers::quote_wrapper;
 use super::env_policy::EnvPolicy;
 use crate::builtins::generate_builtin_map;
@@ -80,15 +80,12 @@ macro_rules! bootstrap_context {
     };
 }
 
-const SELF_ID: LocalNode = LocalNode::new(0);
-const DESIGNATION_ID: LocalNode = LocalNode::new(1);
-
 impl<Policy: EnvPolicy> EnvManager<Policy> {
     pub fn bootstrap<P: AsRef<StdPath>>(meta_path: P) -> Result<Self, DeserializeError> {
         let mut policy = Policy::default();
         let meta = EnvManager::create_env(&mut policy, LocalNode::default());
 
-        let mut context = AmlangContext::new(meta, SELF_ID, DESIGNATION_ID);
+        let mut context = AmlangContext::new(meta);
         // Make context usable for reflecting Reflectives during bootstrapping.
         // TODO(flex) Find more flexible approch to bootstrapping Reflective
         // nodes, like {,de}serializing this as a bootstrap kernel.
@@ -212,14 +209,26 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
     fn create_env(policy: &mut Policy, env_node: LocalNode) -> Box<Policy::StoredEnv> {
         let mut env = Policy::BaseEnv::default();
 
-        // Set up self node.
-        let _self_node = env.insert_structure(Node::new(LocalNode::default(), env_node).into());
-
-        // Set up designation node.
+        // Create nodes.
+        let self_env = env.insert_structure(Node::new(LocalNode::default(), env_node).into());
         let designation = env.insert_structure(SymbolTable::default().into());
+
+        // Name nodes.
         if let Ok(table) = <&mut SymbolTable>::try_from(env.entry_mut(designation).as_option()) {
             table.insert(
-                AMLANG_DESIGNATION.to_symbol_or_panic(policy_admin),
+                self_env
+                    .as_prelude()
+                    .unwrap()
+                    .name()
+                    .to_symbol_or_panic(policy_admin),
+                Node::new(env_node, self_env),
+            );
+            table.insert(
+                designation
+                    .as_prelude()
+                    .unwrap()
+                    .name()
+                    .to_symbol_or_panic(policy_admin),
                 Node::new(env_node, designation),
             );
         } else {
@@ -451,12 +460,13 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         let (first, second, remainder) =
             break_sexp!(iter => (HeapSexp, Symbol; remainder), self.state())?;
         let (self_node_id, self_val_node) = break_sexp!(first => (Symbol, Symbol), self.state())?;
-        if self.parse_node(&self_node_id)?.local() != SELF_ID
-            || self.parse_node(&self_val_node)? != Node::new(SELF_ID, self.state().pos().env())
+        let self_id = EnvPrelude::SelfEnv.local();
+        if self.parse_node(&self_node_id)?.local() != self_id
+            || self.parse_node(&self_val_node)? != Node::new(self_id, self.state().pos().env())
         {
             return Err(InvalidNodeEntry(self_val_node.into()));
         }
-        if self.parse_node(&second)?.local() != DESIGNATION_ID {
+        if self.parse_node(&second)?.local() != EnvPrelude::Designation.local() {
             return Err(InvalidNodeEntry(second.into()));
         }
 

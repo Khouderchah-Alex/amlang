@@ -5,7 +5,7 @@ use std::collections::VecDeque;
 use std::convert::TryFrom;
 use std::io::{self, stdout, BufWriter};
 
-use super::amlang_context::AmlangContext;
+use super::amlang_context::{AmlangContext, EnvPrelude};
 use super::continuation::Continuation;
 use crate::environment::environment::{EnvObject, TripleSet};
 use crate::environment::LocalNode;
@@ -24,8 +24,6 @@ pub struct AgentState {
 
     context: AmlangContext,
 }
-
-pub const AMLANG_DESIGNATION: &str = "__designatedBy";
 
 // TODO(func) Allow for more than dynamic Node lookups (e.g. static tables).
 #[derive(Clone, Debug, PartialEq)]
@@ -145,11 +143,11 @@ impl AgentState {
     /// Get the amlang designator of a Node, which is (contextually) an
     /// injective property.
     pub fn node_designator(&mut self, node: Node) -> Option<Symbol> {
-        let designation = self.context().designation();
-        if node.local() == designation {
-            return Some(AMLANG_DESIGNATION.to_symbol_or_panic(policy_admin));
+        if let Some(prelude) = node.local().as_prelude() {
+            return Some(prelude.name().to_symbol_or_panic(policy_admin));
         }
 
+        let designation = self.context().designation();
         let env = self.access_env(node.env()).unwrap();
         let names = env.match_but_object(node.local(), designation);
         if let Some(name_node) = names.iter().next() {
@@ -183,14 +181,12 @@ impl AgentState {
     }
 
     pub fn resolve(&mut self, name: &Symbol) -> Result<Node, Error> {
-        let designation = self.context().designation();
-        // Always get self_* nodes from current env.
-        match name.as_str() {
-            "self_env" => return Ok(Node::new(self.pos().env(), LocalNode::default())),
-            "self_des" => return Ok(Node::new(self.pos().env(), designation)),
-            _ => {}
+        // Always get prelude nodes from current env.
+        if let Some(prelude) = EnvPrelude::from_name(name.as_str()) {
+            return Ok(Node::new(self.pos().env(), prelude.local()));
         }
 
+        let designation = self.context().designation();
         for i in 0..self.designation_chain.len() {
             let env = self.access_env(self.designation_chain[i]).unwrap();
             let entry = env.entry(designation);

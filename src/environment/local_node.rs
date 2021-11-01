@@ -5,6 +5,7 @@
 use std::fmt;
 
 use crate::agent::agent_state::AgentState;
+use crate::agent::amlang_context::EnvPrelude;
 use crate::model::Reflective;
 use crate::primitive::{Error, Node};
 use crate::sexp::Sexp;
@@ -24,13 +25,21 @@ impl LocalNode {
         LocalNode(id)
     }
 
-    pub fn id(&self) -> LocalId {
+    pub const fn id(&self) -> LocalId {
         self.0
     }
 
     /// Globalize relative to current env of state.
     pub fn globalize(self, state: &AgentState) -> Node {
         state.globalize(self)
+    }
+
+    pub const fn as_prelude(&self) -> Option<EnvPrelude> {
+        match self.id() {
+            0 => Some(EnvPrelude::SelfEnv),
+            1 => Some(EnvPrelude::Designation),
+            _ => None,
+        }
     }
 }
 

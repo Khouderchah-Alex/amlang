@@ -9,10 +9,6 @@ use crate::environment::LocalNode;
 pub struct AmlangContext {
     meta: Box<EnvObject>,
 
-    // Available in all envs.
-    self_node: LocalNode,
-    designation: LocalNode,
-
     // Relative to meta env.
     pub lang_env: LocalNode,
     pub imports: LocalNode,
@@ -46,46 +42,51 @@ pub struct AmlangContext {
     pub label: LocalNode,
 }
 
+/// All environments are created with the following Nodes before all other
+/// Nodes. This can be seen as a set of implicitly imported Nodes.
+pub enum EnvPrelude {
+    SelfEnv,
+    Designation,
+}
+
 
 impl AmlangContext {
-    pub(super) fn new(meta: Box<EnvObject>, self_node: LocalNode, designation: LocalNode) -> Self {
+    pub(super) fn new(meta: Box<EnvObject>) -> Self {
+        let placeholder = LocalNode::new(1);
         Self {
             meta,
 
-            self_node,
-            designation: designation.clone(),
-
             // This is delicate; putting placeholders here, which must be set
             // properly during bootstrapping.
-            lang_env: designation.clone(),
-            imports: designation.clone(),
-            import_table: designation.clone(),
-            serialize_path: designation.clone(),
+            lang_env: placeholder.clone(),
+            imports: placeholder.clone(),
+            import_table: placeholder.clone(),
+            serialize_path: placeholder.clone(),
 
-            quote: designation.clone(),
-            lambda: designation.clone(),
-            fexpr: designation.clone(),
-            def: designation.clone(),
-            tell: designation.clone(),
-            curr: designation.clone(),
-            jump: designation.clone(),
-            ask: designation.clone(),
-            placeholder: designation.clone(),
-            apply: designation.clone(),
-            eval: designation.clone(),
-            exec: designation.clone(),
-            import: designation.clone(),
-            progn: designation.clone(),
-            branch: designation.clone(),
-            let_basic: designation.clone(),
-            let_rec: designation.clone(),
-            env_find: designation.clone(),
-            t: designation.clone(),
-            f: designation.clone(),
-            eq: designation.clone(),
-            symbol_table: designation.clone(),
-            local_node_table: designation.clone(),
-            label: designation.clone(),
+            quote: placeholder.clone(),
+            lambda: placeholder.clone(),
+            fexpr: placeholder.clone(),
+            def: placeholder.clone(),
+            tell: placeholder.clone(),
+            curr: placeholder.clone(),
+            jump: placeholder.clone(),
+            ask: placeholder.clone(),
+            placeholder: placeholder.clone(),
+            apply: placeholder.clone(),
+            eval: placeholder.clone(),
+            exec: placeholder.clone(),
+            import: placeholder.clone(),
+            progn: placeholder.clone(),
+            branch: placeholder.clone(),
+            let_basic: placeholder.clone(),
+            let_rec: placeholder.clone(),
+            env_find: placeholder.clone(),
+            t: placeholder.clone(),
+            f: placeholder.clone(),
+            eq: placeholder.clone(),
+            symbol_table: placeholder.clone(),
+            local_node_table: placeholder.clone(),
+            label: placeholder.clone(),
         }
     }
 
@@ -100,13 +101,34 @@ impl AmlangContext {
         self.lang_env
     }
 
-    pub fn self_node(&self) -> LocalNode {
-        self.self_node
+    pub const fn self_node(&self) -> LocalNode {
+        EnvPrelude::SelfEnv.local()
+    }
+    pub const fn designation(&self) -> LocalNode {
+        EnvPrelude::Designation.local()
+    }
+}
+
+impl EnvPrelude {
+    pub const fn local(&self) -> LocalNode {
+        match self {
+            Self::SelfEnv => LocalNode::new(0),
+            Self::Designation => LocalNode::new(1),
+        }
     }
 
-    /// Returns designation node, which has the same id in every environment, as
-    /// enforced by EnvManager.
-    pub fn designation(&self) -> LocalNode {
-        self.designation
+    pub const fn name(&self) -> &str {
+        match self {
+            Self::SelfEnv => "self_env",
+            Self::Designation => "amlang_designator",
+        }
+    }
+
+    pub fn from_name(name: &str) -> Option<Self> {
+        match name {
+            "self_env" => Some(Self::SelfEnv),
+            "amlang_designator" => Some(Self::Designation),
+            _ => None,
+        }
     }
 }
