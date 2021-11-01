@@ -9,7 +9,7 @@ use super::{Error, Node, Primitive, Symbol};
 use crate::agent::AgentState;
 use crate::environment::LocalNode;
 use crate::model::Reflective;
-use crate::sexp::{Cons, HeapSexp, Sexp};
+use crate::sexp::{Cons, HeapSexp, Sexp, SexpIntoIter};
 
 
 pub type SymbolTable = AmlangTable<Symbol, Node>;
@@ -110,8 +110,19 @@ impl Reflective for AmlangTable<Symbol, Node> {
         }
 
         let mut table = Self::default();
-        for assoc in cdr {
-            let (cons,) = break_sexp!(assoc => (Cons), state)?;
+        for (assoc, _proper) in SexpIntoIter::from(cdr) {
+            let cons = match Cons::try_from(assoc) {
+                Ok(cons) => cons,
+                Err(err) => {
+                    return err!(
+                        state,
+                        InvalidArgument {
+                            given: *err,
+                            expected: "Association Cons".into()
+                        }
+                    );
+                }
+            };
             match cons.consume() {
                 (Some(k), Some(v)) => {
                     if let Ok(kk) = <&Symbol>::try_from(&*k) {
@@ -196,8 +207,19 @@ impl Reflective for AmlangTable<LocalNode, LocalNode> {
         }
 
         let mut table = Self::default();
-        for assoc in cdr {
-            let (cons,) = break_sexp!(assoc => (Cons), state)?;
+        for (assoc, _proper) in SexpIntoIter::from(cdr) {
+            let cons = match Cons::try_from(assoc) {
+                Ok(cons) => cons,
+                Err(err) => {
+                    return err!(
+                        state,
+                        InvalidArgument {
+                            given: *err,
+                            expected: "Association Cons".into()
+                        }
+                    );
+                }
+            };
             match cons.consume() {
                 (Some(k), Some(v)) => match (*k, *v) {
                     (Sexp::Primitive(kp), Sexp::Primitive(vp)) => {
