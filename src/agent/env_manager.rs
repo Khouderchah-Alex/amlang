@@ -89,16 +89,16 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         // Make context usable for reflecting Reflectives during bootstrapping.
         // TODO(flex) Find more flexible approch to bootstrapping Reflective
         // nodes, like {,de}serializing this as a bootstrap kernel.
-        context.lang_env = LocalNode::new(8);
+        context.lang_env = LocalNode::new(9);
         // Procedure nodes.
-        context.lambda = LocalNode::new(9);
-        context.apply = LocalNode::new(23);
-        context.branch = LocalNode::new(31);
-        context.fexpr = LocalNode::new(35);
-        context.progn = LocalNode::new(37);
+        context.lambda = LocalNode::new(10);
+        context.apply = LocalNode::new(24);
+        context.branch = LocalNode::new(32);
+        context.fexpr = LocalNode::new(36);
+        context.progn = LocalNode::new(38);
         // Table nodes.
-        context.symbol_table = LocalNode::new(57);
-        context.local_node_table = LocalNode::new(59);
+        context.symbol_table = LocalNode::new(58);
+        context.local_node_table = LocalNode::new(60);
 
         // Bootstrap meta env.
         let meta_state = AgentState::new(
@@ -212,6 +212,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         // Create nodes.
         let self_env = env.insert_structure(Node::new(LocalNode::default(), env_node).into());
         let designation = env.insert_structure(SymbolTable::default().into());
+        let tell_handler = env.insert_atom();
 
         // Name nodes.
         if let Ok(table) = <&mut SymbolTable>::try_from(env.entry_mut(designation).as_option()) {
@@ -230,6 +231,14 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
                     .name()
                     .to_symbol_or_panic(policy_admin),
                 Node::new(env_node, designation),
+            );
+            table.insert(
+                tell_handler
+                    .as_prelude()
+                    .unwrap()
+                    .name()
+                    .to_symbol_or_panic(policy_admin),
+                Node::new(env_node, tell_handler),
             );
         } else {
             panic!("Env designation isn't a symbol table");
@@ -457,8 +466,8 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
 
         // Ensure first two nodes are as expected.
         let iter = SexpIntoIter::from(remainder);
-        let (first, second, remainder) =
-            break_sexp!(iter => (HeapSexp, Symbol; remainder), self.state())?;
+        let (first, second, third, remainder) =
+            break_sexp!(iter => (HeapSexp, Symbol, Symbol; remainder), self.state())?;
         let (self_node_id, self_val_node) = break_sexp!(first => (Symbol, Symbol), self.state())?;
         let self_id = EnvPrelude::SelfEnv.local();
         if self.parse_node(&self_node_id)?.local() != self_id
@@ -468,6 +477,9 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         }
         if self.parse_node(&second)?.local() != EnvPrelude::Designation.local() {
             return Err(InvalidNodeEntry(second.into()));
+        }
+        if self.parse_node(&third)?.local() != EnvPrelude::TellHandler.local() {
+            return Err(InvalidNodeEntry(third.into()));
         }
 
         for (entry, proper) in SexpIntoIter::from(remainder) {

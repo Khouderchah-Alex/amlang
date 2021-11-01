@@ -38,6 +38,7 @@ impl LocalNode {
         match self.id() {
             0 => Some(EnvPrelude::SelfEnv),
             1 => Some(EnvPrelude::Designation),
+            2 => Some(EnvPrelude::TellHandler),
             _ => None,
         }
     }

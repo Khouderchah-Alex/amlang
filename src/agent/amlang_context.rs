@@ -47,6 +47,7 @@ pub struct AmlangContext {
 pub enum EnvPrelude {
     SelfEnv,
     Designation,
+    TellHandler,
 }
 
 
@@ -107,6 +108,9 @@ impl AmlangContext {
     pub const fn designation(&self) -> LocalNode {
         EnvPrelude::Designation.local()
     }
+    pub const fn tell_handler(&self) -> LocalNode {
+        EnvPrelude::TellHandler.local()
+    }
 }
 
 impl EnvPrelude {
@@ -114,6 +118,7 @@ impl EnvPrelude {
         match self {
             Self::SelfEnv => LocalNode::new(0),
             Self::Designation => LocalNode::new(1),
+            Self::TellHandler => LocalNode::new(2),
         }
     }
 
@@ -121,6 +126,7 @@ impl EnvPrelude {
         match self {
             Self::SelfEnv => "self_env",
             Self::Designation => "amlang_designator",
+            Self::TellHandler => "tell_handler",
         }
     }
 
@@ -128,6 +134,7 @@ impl EnvPrelude {
         match name {
             "self_env" => Some(Self::SelfEnv),
             "amlang_designator" => Some(Self::Designation),
+            "tell_handler" => Some(Self::TellHandler),
             _ => None,
         }
     }
