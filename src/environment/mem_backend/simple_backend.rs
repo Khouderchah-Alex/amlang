@@ -19,7 +19,6 @@ pub struct SimpleBackend {
 
 impl MemBackend for SimpleBackend {
     fn edges(&self, node: LocalNode) -> &Edges {
-        // TODO(sec) Under what conditions could IDs be faked?
         trace!("Env {}: edge lookup: {}", self.env_id(), node.id());
         if is_triple_id(node.id()) {
             &self.triple_edges[triple_index_unchecked(node.id())]
@@ -28,7 +27,6 @@ impl MemBackend for SimpleBackend {
         }
     }
     fn edges_mut(&mut self, node: LocalNode) -> &mut Edges {
-        // TODO(sec) Under what conditions could IDs be faked?
         trace!("Env {}: edge mut lookup: {}", self.env_id(), node.id());
         if is_triple_id(node.id()) {
             &mut self.triple_edges[triple_index_unchecked(node.id())]
