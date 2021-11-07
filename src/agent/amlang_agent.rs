@@ -6,7 +6,7 @@ use super::agent::Agent;
 use super::agent_state::{AgentState, ExecFrame};
 use super::amlang_wrappers::*;
 use super::continuation::Continuation;
-use crate::agent::lang_error::ExpectedCount;
+use crate::agent::lang_error::{ExpectedCount, LangError};
 use crate::environment::entry::EntryMutKind;
 use crate::environment::LocalNode;
 use crate::error::Error;
@@ -83,7 +83,7 @@ impl AmlangAgent {
             if frame.contains_key(&symbol) {
                 return err!(
                     self.state(),
-                    InvalidArgument {
+                    LangError::InvalidArgument {
                         given: symbol.into(),
                         expected: "unique name within argument list".into()
                     }
@@ -107,7 +107,7 @@ impl AmlangAgent {
             let mut body_nodes = vec![];
             for (elem, proper) in body.into_iter() {
                 if !proper {
-                    return err!(self.state(), InvalidSexp(*elem));
+                    return err!(self.state(), LangError::InvalidSexp(*elem));
                 }
                 let eval = self.construe(*elem)?;
                 let node = self.node_or_insert(eval)?;
@@ -158,7 +158,7 @@ impl AmlangAgent {
                         } else {
                             err!(
                                 self.state(),
-                                InvalidArgument {
+                                LangError::InvalidArgument {
                                     given: cond,
                                     expected: "true or false Node".into(),
                                 }
@@ -187,7 +187,7 @@ impl AmlangAgent {
                 } else {
                     err!(
                         self.state(),
-                        InvalidArgument {
+                        LangError::InvalidArgument {
                             given: node.into(),
                             expected: "Procedure or special Amlang Node".into(),
                         }
@@ -205,7 +205,7 @@ impl AmlangAgent {
                 if arg_nodes.len() != params.len() {
                     return err!(
                         self.state(),
-                        WrongArgumentCount {
+                        LangError::WrongArgumentCount {
                             given: arg_nodes.len(),
                             // TODO(func) support variable arity.
                             expected: ExpectedCount::Exactly(params.len()),
@@ -224,7 +224,7 @@ impl AmlangAgent {
             }
             not_proc @ _ => err!(
                 self.state(),
-                InvalidArgument {
+                LangError::InvalidArgument {
                     given: not_proc.clone(),
                     expected: "Procedure".into(),
                 }
@@ -316,7 +316,7 @@ impl AmlangAgent {
                 if arg_nodes.len() > 0 {
                     return err!(
                         self.state(),
-                        WrongArgumentCount {
+                        LangError::WrongArgumentCount {
                             given: arg_nodes.len(),
                             expected: ExpectedCount::Exactly(0),
                         }
@@ -329,7 +329,7 @@ impl AmlangAgent {
                 if arg_nodes.len() != 1 {
                     return err!(
                         self.state(),
-                        WrongArgumentCount {
+                        LangError::WrongArgumentCount {
                             given: arg_nodes.len(),
                             expected: ExpectedCount::Exactly(1),
                         }
@@ -346,7 +346,7 @@ impl AmlangAgent {
                 if arg_nodes.len() != 1 {
                     return err!(
                         self.state(),
-                        WrongArgumentCount {
+                        LangError::WrongArgumentCount {
                             given: arg_nodes.len(),
                             expected: ExpectedCount::Exactly(1),
                         }
@@ -362,7 +362,7 @@ impl AmlangAgent {
                 if arg_nodes.len() != 1 {
                     return err!(
                         self.state(),
-                        WrongArgumentCount {
+                        LangError::WrongArgumentCount {
                             given: arg_nodes.len(),
                             expected: ExpectedCount::Exactly(1),
                         }
@@ -375,7 +375,7 @@ impl AmlangAgent {
                     _ => {
                         return err!(
                             self.state(),
-                            InvalidArgument {
+                            LangError::InvalidArgument {
                                 given: des.into(),
                                 expected: "Node containing string".into(),
                             }
@@ -400,7 +400,7 @@ impl AmlangAgent {
                 let mut args = Vec::new();
                 for (arg, proper) in HeapSexp::new(args_sexp).into_iter() {
                     if !proper {
-                        return err!(self.state(), InvalidSexp(*arg));
+                        return err!(self.state(), LangError::InvalidSexp(*arg));
                     }
                     args.push(self.node_or_insert(*arg)?);
                 }
@@ -411,7 +411,7 @@ impl AmlangAgent {
                 if arg_nodes.len() != 1 {
                     return err!(
                         self.state(),
-                        WrongArgumentCount {
+                        LangError::WrongArgumentCount {
                             given: arg_nodes.len(),
                             expected: ExpectedCount::Exactly(1),
                         }
@@ -430,7 +430,7 @@ impl AmlangAgent {
             }
             _ => err!(
                 self.state(),
-                InvalidArgument {
+                LangError::InvalidArgument {
                     given: Node::new(self.state().context().lang_env(), special_node).into(),
                     expected: "special Amlang Node".into(),
                 }
@@ -467,7 +467,7 @@ impl AmlangAgent {
         let mut args = Vec::<Node>::with_capacity(s.iter().count());
         for (structure, proper) in s.into_iter() {
             if !proper {
-                return err!(self.state(), InvalidSexp(*structure));
+                return err!(self.state(), LangError::InvalidSexp(*structure));
             }
 
             let arg_node = if should_construe {
@@ -534,7 +534,12 @@ impl Interpretation for AmlangAgent {
                 let (car, cdr) = cons.consume();
                 let car = match car {
                     Some(car) => car,
-                    None => return err!(self.state(), InvalidSexp(Cons::new(car, cdr).into())),
+                    None => {
+                        return err!(
+                            self.state(),
+                            LangError::InvalidSexp(Cons::new(car, cdr).into())
+                        );
+                    }
                 };
 
                 let eval_car = self.construe(*car)?;
@@ -544,7 +549,7 @@ impl Interpretation for AmlangAgent {
                     _ => {
                         return err!(
                             self.state(),
-                            InvalidArgument {
+                            LangError::InvalidArgument {
                                 given: Cons::new(Some(eval_car.into()), cdr).into(),
                                 expected: "special form or Procedure application".into(),
                             }
@@ -587,7 +592,7 @@ impl Interpretation for AmlangAgent {
                         if args.len() != 3 {
                             return err!(
                                 self.state(),
-                                WrongArgumentCount {
+                                LangError::WrongArgumentCount {
                                     given: args.len(),
                                     expected: ExpectedCount::Exactly(3),
                                 }

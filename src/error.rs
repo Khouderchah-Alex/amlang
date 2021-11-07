@@ -10,28 +10,24 @@ use crate::agent::agent_state::AgentState;
 use crate::sexp::Sexp;
 
 
-/// Creates a stateful Error (currently of kind LangError).
-///
-/// Called as:  err!(state, error).
+/// Creates a stateful Error.
 /// Stateful errors should always be used when possible.
 #[macro_export]
 macro_rules! err {
-    ($state:expr, $($inner:tt)+) => {
+    ($state:expr, $($kind:tt)+) => {
         Err($crate::error::Error::with_state(
             $state.clone(),
-            Box::new($crate::agent::lang_error::LangError::$($inner)+),
+            Box::new($($kind)+),
         ))
     };
 }
-/// Creates a stateless Error (currently of kind LangError).
-///
-/// Called as:  err_nost!(error).
+/// Creates a stateless Error.
 /// Stateful errors are always preferred when possible.
 #[macro_export]
 macro_rules! err_nost {
-    ($($inner:tt)+) => {
+    ($($kind:tt)+) => {
         Err($crate::error::Error::empty_state(
-            Box::new($crate::agent::lang_error::LangError::$($inner)+),
+            Box::new($($kind)+),
         ))
     };
 }

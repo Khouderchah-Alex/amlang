@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::agent::agent_state::AgentState;
-use crate::agent::lang_error::ExpectedCount;
+use crate::agent::lang_error::{ExpectedCount, LangError};
 use crate::error::Error;
 use crate::primitive::builtin::Args;
 use crate::primitive::{BuiltIn, Node, Number, Primitive};
@@ -68,7 +68,7 @@ fn list_len_(sexp: HeapSexp, state: &mut AgentState) -> Result<Number, Error> {
         if !proper {
             return err!(
                 state,
-                InvalidArgument {
+                LangError::InvalidArgument {
                     given: sexp.into(),
                     expected: "Proper list".into()
                 }
@@ -103,7 +103,7 @@ fn add(args: Args, state: &mut AgentState) -> Result<Sexp, Error> {
         } else {
             return err!(
                 state,
-                InvalidArgument {
+                LangError::InvalidArgument {
                     given: arg.clone(),
                     expected: "a Number".into(),
                 }
@@ -118,7 +118,7 @@ fn sub(args: Args, state: &mut AgentState) -> Result<Sexp, Error> {
     if args.len() < 1 {
         return err!(
             state,
-            WrongArgumentCount {
+            LangError::WrongArgumentCount {
                 given: 0,
                 expected: ExpectedCount::AtLeast(1),
             }
@@ -138,7 +138,7 @@ fn sub(args: Args, state: &mut AgentState) -> Result<Sexp, Error> {
         } else {
             return err!(
                 state,
-                InvalidArgument {
+                LangError::InvalidArgument {
                     given: arg.clone(),
                     expected: "a Number".into(),
                 }
@@ -157,7 +157,7 @@ fn mul(args: Args, state: &mut AgentState) -> Result<Sexp, Error> {
         } else {
             return err!(
                 state,
-                InvalidArgument {
+                LangError::InvalidArgument {
                     given: arg.clone(),
                     expected: "a Number".into(),
                 }
@@ -172,7 +172,7 @@ fn div(args: Args, state: &mut AgentState) -> Result<Sexp, Error> {
     if args.len() < 1 {
         return err!(
             state,
-            WrongArgumentCount {
+            LangError::WrongArgumentCount {
                 given: 0,
                 expected: ExpectedCount::AtLeast(1),
             }
@@ -192,7 +192,7 @@ fn div(args: Args, state: &mut AgentState) -> Result<Sexp, Error> {
         } else {
             return err!(
                 state,
-                InvalidArgument {
+                LangError::InvalidArgument {
                     given: arg.clone(),
                     expected: "a Number".into(),
                 }

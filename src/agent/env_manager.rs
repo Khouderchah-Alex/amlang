@@ -10,6 +10,7 @@ use super::agent_state::AgentState;
 use super::amlang_context::{AmlangContext, EnvPrelude};
 use super::amlang_wrappers::quote_wrapper;
 use super::env_policy::EnvPolicy;
+use crate::agent::lang_error::LangError;
 use crate::builtins::generate_builtin_map;
 use crate::environment::entry::EntryMutKind;
 use crate::environment::environment::Environment;
@@ -67,7 +68,7 @@ macro_rules! bootstrap_context {
                 if let Some(node) = table.lookup(s) {
                     Ok(node.local())
                 } else {
-                    err_nost!(UnboundSymbol(s.to_symbol_or_panic(policy_admin)))?
+                    err_nost!(LangError::UnboundSymbol(s.to_symbol_or_panic(policy_admin)))?
                 }
             };
             (
@@ -499,7 +500,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
 
         for (entry, proper) in SexpIntoIter::from(remainder) {
             if !proper {
-                return err!(self.state(), InvalidSexp(*entry))?;
+                return err!(self.state(), LangError::InvalidSexp(*entry))?;
             }
             match *entry {
                 Sexp::Primitive(primitive) => {
@@ -525,7 +526,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
 
     fn parse_node_inner(state: &mut AgentState, sym: &Symbol) -> Result<Node, Error> {
         match policy_admin(sym.as_str()).unwrap() {
-            AdminSymbolInfo::Identifier => err!(state, UnboundSymbol(sym.clone())),
+            AdminSymbolInfo::Identifier => err!(state, LangError::UnboundSymbol(sym.clone())),
             AdminSymbolInfo::LocalNode(node) => Ok(node.globalize(state)),
             AdminSymbolInfo::LocalTriple(idx) => {
                 let triple = state.env().triple_from_index(idx);
@@ -603,7 +604,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
 
         for (entry, proper) in SexpIntoIter::from(remainder) {
             if !proper {
-                return err!(self.state(), InvalidSexp(*entry))?;
+                return err!(self.state(), LangError::InvalidSexp(*entry))?;
             }
             let (s, p, o) = break_sexp!(entry => (Symbol, Symbol, Symbol), self.state())?;
 

@@ -7,6 +7,7 @@ use std::io::{self, stdout, BufWriter};
 
 use super::amlang_context::{AmlangContext, EnvPrelude};
 use super::continuation::Continuation;
+use crate::agent::lang_error::LangError;
 use crate::environment::environment::{EnvObject, TripleSet};
 use crate::environment::LocalNode;
 use crate::error::Error;
@@ -197,7 +198,7 @@ impl AgentState {
                 return Ok(node);
             }
         }
-        err!(self, UnboundSymbol(name.clone()))
+        err!(self, LangError::UnboundSymbol(name.clone()))
     }
 
     pub fn designate(&mut self, designator: Primitive) -> Result<Sexp, Error> {
@@ -237,7 +238,7 @@ impl AgentState {
         if name.env() != node.env() {
             return err!(
                 self,
-                Unsupported("Cross-env triples are not currently supported".into())
+                LangError::Unsupported("Cross-env triples are not currently supported".into())
             );
         }
 
@@ -247,7 +248,7 @@ impl AgentState {
             Err(sexp) => {
                 return err!(
                     self,
-                    InvalidArgument {
+                    LangError::InvalidArgument {
                         given: sexp.unwrap_or(Sexp::default()),
                         expected: "Node abstracting Symbol".into(),
                     }
@@ -260,7 +261,7 @@ impl AgentState {
         // designations; that is, only fail if the designation exists earlier in
         // the chain than the current environment.
         if let Ok(_) = self.resolve(&symbol) {
-            return err!(self, AlreadyBoundSymbol(symbol));
+            return err!(self, LangError::AlreadyBoundSymbol(symbol));
         }
 
         let designation = self.context().designation();
@@ -283,7 +284,7 @@ impl AgentState {
             if node.env() != self.pos().env() {
                 return err!(
                     self,
-                    Unsupported("Cross-env triples are not currently supported".into())
+                    LangError::Unsupported("Cross-env triples are not currently supported".into())
                 );
             }
             Ok(node.local())
@@ -291,7 +292,7 @@ impl AgentState {
         let (s, p, o) = (to_local(subject)?, to_local(predicate)?, to_local(object)?);
 
         if let Some(triple) = self.env().match_triple(s, p, o).iter().next() {
-            return err!(self, DuplicateTriple(triple.reify(self)));
+            return err!(self, LangError::DuplicateTriple(triple.reify(self)));
         }
 
         let triple = self.env().insert_triple(s, p, o);
@@ -304,7 +305,7 @@ impl AgentState {
             if node != placeholder && node.env() != self.pos().env() {
                 return err!(
                     self,
-                    Unsupported("Cross-env triples are not currently supported".into())
+                    LangError::Unsupported("Cross-env triples are not currently supported".into())
                 );
             }
             Ok(node.local())
@@ -366,7 +367,7 @@ impl AgentState {
         } else {
             return err!(
                 self,
-                InvalidState {
+                LangError::InvalidState {
                     actual: "import table triple object has no table".into(),
                     expected: "has table".into(),
                 }
@@ -387,7 +388,7 @@ impl AgentState {
         } else {
             err!(
                 self,
-                InvalidState {
+                LangError::InvalidState {
                     actual: "import table triple object has no table".into(),
                     expected: "has table".into(),
                 }

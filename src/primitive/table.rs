@@ -6,6 +6,7 @@ use std::collections::BTreeMap;
 use std::convert::TryFrom;
 
 use super::{Node, Primitive, Symbol};
+use crate::agent::lang_error::LangError;
 use crate::agent::AgentState;
 use crate::environment::LocalNode;
 use crate::error::Error;
@@ -103,7 +104,7 @@ impl Reflective for AmlangTable<Symbol, Node> {
         if !Self::valid_discriminator(node, state) {
             return err!(
                 state,
-                InvalidArgument {
+                LangError::InvalidArgument {
                     given: command.into(),
                     expected: "Symbol table node".into()
                 }
@@ -117,7 +118,7 @@ impl Reflective for AmlangTable<Symbol, Node> {
                 Err(err) => {
                     return err!(
                         state,
-                        InvalidArgument {
+                        LangError::InvalidArgument {
                             given: *err,
                             expected: "Association Cons".into()
                         }
@@ -134,7 +135,7 @@ impl Reflective for AmlangTable<Symbol, Node> {
                     }
                     return err!(
                         state,
-                        InvalidArgument {
+                        LangError::InvalidArgument {
                             given: Cons::new(Some(k), Some(v)).into(),
                             expected: "(Symbol . Node) association".into()
                         }
@@ -143,7 +144,7 @@ impl Reflective for AmlangTable<Symbol, Node> {
                 (k, v) => {
                     return err!(
                         state,
-                        InvalidArgument {
+                        LangError::InvalidArgument {
                             given: Cons::new(k, v).into(),
                             expected: "Association cons".into()
                         }
@@ -200,7 +201,7 @@ impl Reflective for AmlangTable<LocalNode, LocalNode> {
         if !Self::valid_discriminator(node, state) {
             return err!(
                 state,
-                InvalidArgument {
+                LangError::InvalidArgument {
                     given: command.into(),
                     expected: "Lnode table node".into()
                 }
@@ -214,7 +215,7 @@ impl Reflective for AmlangTable<LocalNode, LocalNode> {
                 Err(err) => {
                     return err!(
                         state,
-                        InvalidArgument {
+                        LangError::InvalidArgument {
                             given: *err,
                             expected: "Association Cons".into()
                         }
@@ -236,7 +237,7 @@ impl Reflective for AmlangTable<LocalNode, LocalNode> {
                     (k, v) => {
                         return err!(
                             state,
-                            InvalidArgument {
+                            LangError::InvalidArgument {
                                 given: Cons::new(Some(k.into()), Some(v.into())).into(),
                                 expected: "(Node . Node) association".into()
                             }
@@ -246,7 +247,7 @@ impl Reflective for AmlangTable<LocalNode, LocalNode> {
                 (k, v) => {
                     return err!(
                         state,
-                        InvalidArgument {
+                        LangError::InvalidArgument {
                             given: Cons::new(k, v).into(),
                             expected: "Association cons".into()
                         }

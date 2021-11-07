@@ -1,5 +1,5 @@
 use crate::agent::agent_state::AgentState;
-use crate::agent::lang_error::ExpectedCount;
+use crate::agent::lang_error::{ExpectedCount, LangError};
 use crate::error::Error;
 use crate::primitive::{Node, Primitive, Symbol};
 use crate::sexp::cons_list::ConsList;
@@ -19,7 +19,7 @@ pub fn make_lambda_wrapper(
     if args.is_none() {
         return err!(
             state,
-            WrongArgumentCount {
+            LangError::WrongArgumentCount {
                 given: 0,
                 expected: ExpectedCount::AtLeast(2),
             }
@@ -31,14 +31,14 @@ pub fn make_lambda_wrapper(
     let mut params = Vec::<Symbol>::with_capacity(param_sexp.iter().count());
     for (param, proper) in param_sexp {
         if !proper {
-            return err!(state, InvalidSexp(*param));
+            return err!(state, LangError::InvalidSexp(*param));
         }
         let name = match *param {
             Sexp::Primitive(Primitive::Symbol(symbol)) => symbol,
             _ => {
                 return err!(
                     state,
-                    InvalidArgument {
+                    LangError::InvalidArgument {
                         given: param.clone().into(),
                         expected: "symbol".into(),
                     }
@@ -53,7 +53,7 @@ pub fn make_lambda_wrapper(
             Sexp::Cons(_) => Ok((params, hsexp)),
             Sexp::Primitive(primitive) => err!(
                 state,
-                InvalidArgument {
+                LangError::InvalidArgument {
                     given: primitive.into(),
                     expected: "procedure body".into(),
                 }
@@ -61,7 +61,7 @@ pub fn make_lambda_wrapper(
         },
         None => err!(
             state,
-            WrongArgumentCount {
+            LangError::WrongArgumentCount {
                 given: 1,
                 expected: ExpectedCount::AtLeast(2),
             }
@@ -76,7 +76,7 @@ pub fn let_wrapper(
     if args.is_none() {
         return err!(
             state,
-            WrongArgumentCount {
+            LangError::WrongArgumentCount {
                 given: 0,
                 expected: ExpectedCount::AtLeast(2),
             }
@@ -89,7 +89,7 @@ pub fn let_wrapper(
     let mut exprs = ConsList::new();
     for (binding, proper) in bindings {
         if !proper {
-            return err!(state, InvalidSexp(*binding));
+            return err!(state, LangError::InvalidSexp(*binding));
         }
         let (name, expr) = break_sexp!(binding => (Symbol, HeapSexp), state)?;
         params.push(name);
@@ -101,7 +101,7 @@ pub fn let_wrapper(
             Sexp::Cons(_) => Ok((params, HeapSexp::new(exprs.release()), hsexp)),
             Sexp::Primitive(primitive) => err!(
                 state,
-                InvalidArgument {
+                LangError::InvalidArgument {
                     given: primitive.into(),
                     expected: "procedure body".into(),
                 }
@@ -109,7 +109,7 @@ pub fn let_wrapper(
         },
         None => err!(
             state,
-            WrongArgumentCount {
+            LangError::WrongArgumentCount {
                 given: 1,
                 expected: ExpectedCount::AtLeast(2),
             }
@@ -121,7 +121,7 @@ pub fn tell_wrapper(args: &Vec<Node>, state: &AgentState) -> Result<(Node, Node,
     if args.len() != 3 {
         return err!(
             state,
-            WrongArgumentCount {
+            LangError::WrongArgumentCount {
                 given: args.len(),
                 expected: ExpectedCount::Exactly(3),
             }
@@ -138,7 +138,7 @@ pub fn def_wrapper(args: &Vec<Node>, state: &AgentState) -> Result<(Node, Option
     if args.len() < 1 {
         return err!(
             state,
-            WrongArgumentCount {
+            LangError::WrongArgumentCount {
                 given: args.len(),
                 expected: ExpectedCount::AtLeast(1),
             }
@@ -146,7 +146,7 @@ pub fn def_wrapper(args: &Vec<Node>, state: &AgentState) -> Result<(Node, Option
     } else if args.len() > 2 {
         return err!(
             state,
-            WrongArgumentCount {
+            LangError::WrongArgumentCount {
                 given: args.len(),
                 expected: ExpectedCount::AtMost(2),
             }
@@ -162,7 +162,7 @@ pub fn apply_wrapper(args: &Vec<Node>, state: &AgentState) -> Result<(Node, Node
     if args.len() != 2 {
         return err!(
             state,
-            WrongArgumentCount {
+            LangError::WrongArgumentCount {
                 given: args.len(),
                 expected: ExpectedCount::Exactly(2),
             }

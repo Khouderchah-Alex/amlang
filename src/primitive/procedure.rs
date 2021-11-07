@@ -2,7 +2,7 @@ use std::convert::TryFrom;
 
 use super::{Node, Primitive};
 use crate::agent::agent_state::AgentState;
-use crate::agent::lang_error::ExpectedCount;
+use crate::agent::lang_error::{ExpectedCount, LangError};
 use crate::error::Error;
 use crate::model::Reflective;
 use crate::sexp::{Cons, HeapSexp, Sexp};
@@ -63,7 +63,7 @@ impl Reflective for Procedure {
         if !Self::valid_discriminator(node, state) {
             return err!(
                 state,
-                InvalidArgument {
+                LangError::InvalidArgument {
                     given: command.into(),
                     expected: "Procedure variant".into()
                 }
@@ -74,7 +74,7 @@ impl Reflective for Procedure {
             if cdr.is_none() {
                 return err!(
                     state,
-                    WrongArgumentCount {
+                    LangError::WrongArgumentCount {
                         given: 0,
                         expected: ExpectedCount::Exactly(2),
                     }
@@ -86,12 +86,12 @@ impl Reflective for Procedure {
             let mut arg_nodes = Vec::with_capacity(args.iter().count());
             for (arg, proper) in args {
                 if !proper {
-                    return err!(state, InvalidSexp(*arg));
+                    return err!(state, LangError::InvalidSexp(*arg));
                 }
                 if let Ok(p) = <&Primitive>::try_from(&*arg) {
                     arg_nodes.push(process_primitive(state, &p)?);
                 } else {
-                    return err!(state, InvalidSexp(*arg));
+                    return err!(state, LangError::InvalidSexp(*arg));
                 }
             }
             Ok(Procedure::Application(fnode, arg_nodes).into())
@@ -99,7 +99,7 @@ impl Reflective for Procedure {
             if cdr.is_none() {
                 return err!(
                     state,
-                    WrongArgumentCount {
+                    LangError::WrongArgumentCount {
                         given: 0,
                         expected: ExpectedCount::AtLeast(2),
                     }
@@ -111,12 +111,12 @@ impl Reflective for Procedure {
             let mut param_nodes = Vec::with_capacity(params.iter().count());
             for (param, proper) in params {
                 if !proper {
-                    return err!(state, InvalidSexp(*param));
+                    return err!(state, LangError::InvalidSexp(*param));
                 }
                 if let Ok(p) = <&Primitive>::try_from(&*param) {
                     param_nodes.push(process_primitive(state, &p)?);
                 } else {
-                    return err!(state, InvalidSexp(*param));
+                    return err!(state, LangError::InvalidSexp(*param));
                 }
             }
             let body_node = process_primitive(state, &body)?;
@@ -128,7 +128,7 @@ impl Reflective for Procedure {
                     if !proper {
                         return err!(
                             state,
-                            InvalidArgument {
+                            LangError::InvalidArgument {
                                 given: *sexp,
                                 expected: "list of Procedure nodes".into()
                             }
@@ -136,7 +136,7 @@ impl Reflective for Procedure {
                     }
                     match *sexp {
                         Sexp::Primitive(p) => seq.push(process_primitive(state, &p)?),
-                        Sexp::Cons(c) => return err!(state, InvalidSexp(c.into())),
+                        Sexp::Cons(c) => return err!(state, LangError::InvalidSexp(c.into())),
                     }
                 }
             }
@@ -145,7 +145,7 @@ impl Reflective for Procedure {
             if cdr.is_none() {
                 return err!(
                     state,
-                    WrongArgumentCount {
+                    LangError::WrongArgumentCount {
                         given: 0,
                         expected: ExpectedCount::Exactly(3),
                     }
