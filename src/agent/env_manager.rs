@@ -68,7 +68,8 @@ macro_rules! bootstrap_context {
                 if let Some(node) = table.lookup(s) {
                     Ok(node.local())
                 } else {
-                    err_nost!(LangError::UnboundSymbol(s.to_symbol_or_panic(policy_admin)))?
+                    Err(Error::empty_state(
+                        Box::new(LangError::UnboundSymbol(s.to_symbol_or_panic(policy_admin)))))?
                 }
             };
             (

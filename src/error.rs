@@ -10,8 +10,7 @@ use crate::agent::agent_state::AgentState;
 use crate::sexp::Sexp;
 
 
-/// Creates a stateful Error.
-/// Stateful errors should always be used when possible.
+/// Creates a stateful Error wrapped in Err.
 #[macro_export]
 macro_rules! err {
     ($state:expr, $($kind:tt)+) => {
@@ -21,17 +20,6 @@ macro_rules! err {
         ))
     };
 }
-/// Creates a stateless Error.
-/// Stateful errors are always preferred when possible.
-#[macro_export]
-macro_rules! err_nost {
-    ($($kind:tt)+) => {
-        Err($crate::error::Error::empty_state(
-            Box::new($($kind)+),
-        ))
-    };
-}
-
 
 #[derive(Debug)]
 pub struct Error {
@@ -46,17 +34,17 @@ pub trait ErrorKind: fmt::Display + fmt::Debug {
 
 
 impl Error {
-    // Prefer using err_nost! for convenience.
-    pub fn empty_state(kind: Box<dyn ErrorKind>) -> Self {
-        Self { state: None, kind }
-    }
-
-    // Prefer using err! for convenience.
+    /// Prefer using err! for convenience.
     pub fn with_state(state: AgentState, kind: Box<dyn ErrorKind>) -> Self {
         Self {
             state: Some(Box::new(state)),
             kind,
         }
+    }
+
+    /// Prefer using stateful Error when possible.
+    pub fn empty_state(kind: Box<dyn ErrorKind>) -> Self {
+        Self { state: None, kind }
     }
 
     pub fn kind(&self) -> &dyn ErrorKind {
