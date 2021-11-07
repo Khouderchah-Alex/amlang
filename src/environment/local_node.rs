@@ -6,8 +6,9 @@ use std::fmt;
 
 use crate::agent::agent_state::AgentState;
 use crate::agent::amlang_context::EnvPrelude;
+use crate::error::Error;
 use crate::model::Reflective;
-use crate::primitive::{Error, Node};
+use crate::primitive::Node;
 use crate::sexp::Sexp;
 
 

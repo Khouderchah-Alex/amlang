@@ -3,8 +3,8 @@ use std::convert::TryFrom;
 use super::{Node, Primitive};
 use crate::agent::agent_state::AgentState;
 use crate::agent::lang_error::ExpectedCount;
+use crate::error::Error;
 use crate::model::Reflective;
-use crate::primitive::Error;
 use crate::sexp::{Cons, HeapSexp, Sexp};
 
 

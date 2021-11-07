@@ -1,5 +1,6 @@
 use crate::agent::agent_state::AgentState;
-use crate::primitive::{Error, Node, Primitive};
+use crate::error::Error;
+use crate::primitive::{Node, Primitive};
 use crate::sexp::Sexp;
 
 

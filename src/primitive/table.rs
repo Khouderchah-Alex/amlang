@@ -5,9 +5,10 @@ use std::collections::btree_map::Entry;
 use std::collections::BTreeMap;
 use std::convert::TryFrom;
 
-use super::{Error, Node, Primitive, Symbol};
+use super::{Node, Primitive, Symbol};
 use crate::agent::AgentState;
 use crate::environment::LocalNode;
+use crate::error::Error;
 use crate::model::Reflective;
 use crate::sexp::{Cons, HeapSexp, Sexp, SexpIntoIter};
 

@@ -18,13 +18,13 @@ macro_rules! break_sexp {
             // Generate stateful or stateless error depending on existence of $state.
             let err = |kind| {
                 $(
-                    return Err($crate::primitive::error::Error::with_state(
+                    return Err($crate::error::Error::with_state(
                         $state.clone(),
                         Box::new(kind)
                     ));
                 )*
                 #[allow(unreachable_code)]
-                Err($crate::primitive::error::Error::empty_state(Box::new(kind)))
+                Err($crate::error::Error::empty_state(Box::new(kind)))
             };
             let mut iter = $sexp.into_iter();
             let tuple = || {

@@ -7,7 +7,6 @@ use std::mem;
 mod try_from_helper;
 
 pub mod builtin;
-pub mod error;
 pub mod node;
 pub mod number;
 pub mod path;
@@ -23,7 +22,6 @@ pub mod prelude {
     pub use super::Primitive;
 
     pub use super::builtin::BuiltIn;
-    pub use super::error::Error;
     pub use super::node::Node;
     pub use super::number::Number;
     pub use super::path::Path;
@@ -50,14 +48,6 @@ pub enum Primitive {
     LocalNodeTable(LocalNodeTable),
     Procedure(Procedure),
 
-    // There is no plan to return errors as Sexp rather than Result<Sexp, Error>
-    // *within* the core amlang implementation; Result is simply too useful WRT
-    // compilation & error handling. However, providing Error as a Primitive
-    // variant allows library clients to pass Errors back into their system.
-    // Implementing Reflective will also enable clients to model errors in amlang.
-    //
-    // TODO(func) Impl Reflective.
-    Error(Error),
     // Presumably only present in meta env Nodes, but this comes down
     // to how base Agents are implemented.
     //
@@ -79,7 +69,6 @@ impl fmt::Display for Primitive {
             Primitive::SymbolTable(table) => write!(f, "{:?}", table),
             Primitive::LocalNodeTable(table) => write!(f, "{:?}", table),
             Primitive::Procedure(proc) => write!(f, "{:?}", proc),
-            Primitive::Error(error) => write!(f, "{}", error),
             Primitive::Env(env) => write!(f, "{:?}", env),
         }
     }
@@ -119,9 +108,6 @@ impl PartialEq for Primitive {
                     (&Primitive::Procedure(ref this), &Primitive::Procedure(ref that)) => {
                         (*this) == (*that)
                     }
-                    (&Primitive::Error(ref this), &Primitive::Error(ref that)) => {
-                        (*this) == (*that)
-                    }
                     // Consider all envs to be different a priori.
                     (&Primitive::Env(_), &Primitive::Env(_)) => false,
                     _ => {
@@ -159,5 +145,4 @@ primitive_from!(
     SymbolTable,
     LocalNodeTable,
     Procedure,
-    Error,
 );

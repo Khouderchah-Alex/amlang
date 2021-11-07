@@ -14,6 +14,7 @@ use crate::builtins::generate_builtin_map;
 use crate::environment::entry::EntryMutKind;
 use crate::environment::environment::Environment;
 use crate::environment::local_node::{LocalId, LocalNode};
+use crate::error::Error;
 use crate::model::{Interpretation, Reflective};
 use crate::parser::{self, parse_sexp};
 use crate::primitive::prelude::*;

@@ -5,7 +5,7 @@ use std::path::PathBuf;
 #[macro_use]
 pub mod amlang_helpers;
 #[macro_use]
-pub mod error_helpers;
+pub mod error;
 #[macro_use]
 pub mod sexp;
 

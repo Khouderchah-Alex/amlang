@@ -4,7 +4,8 @@ use std::convert::TryFrom;
 use std::fmt;
 
 use crate::agent::agent_state::AgentState;
-use crate::primitive::{Error, Primitive};
+use crate::error::Error;
+use crate::primitive::Primitive;
 use crate::sexp::{HeapSexp, Sexp};
 
 

@@ -37,7 +37,6 @@ use super::cons_list::ConsList;
 use super::fmt_io_adapter::FmtIoAdapter;
 use crate::environment::Environment;
 use crate::parser::{parse_sexp, ParseError};
-use crate::primitive::error::Error;
 use crate::primitive::prelude::*;
 use crate::primitive::symbol_policies::policy_base;
 use crate::token::string_stream::StringStream;
@@ -473,7 +472,6 @@ sexp_from!(
     SymbolTable,
     LocalNodeTable,
     Procedure,
-    Error,
 );
 
 impl<T: 'static + Environment> From<Box<T>> for Sexp {

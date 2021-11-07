@@ -9,6 +9,7 @@ use super::amlang_context::{AmlangContext, EnvPrelude};
 use super::continuation::Continuation;
 use crate::environment::environment::{EnvObject, TripleSet};
 use crate::environment::LocalNode;
+use crate::error::Error;
 use crate::model::Reflective;
 use crate::primitive::prelude::*;
 use crate::primitive::symbol_policies::policy_admin;
