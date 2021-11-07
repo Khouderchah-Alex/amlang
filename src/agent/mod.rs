@@ -14,3 +14,4 @@ pub mod lang_error;
 // Private mods.
 mod amlang_wrappers;
 mod continuation;
+mod deserialize_error;

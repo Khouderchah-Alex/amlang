@@ -1,3 +1,4 @@
+use std::fmt;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
@@ -56,5 +57,15 @@ impl From<std::io::Error> for FileStreamError {
 impl From<TokenizeError> for FileStreamError {
     fn from(err: TokenizeError) -> Self {
         Self::TokenizeError(err)
+    }
+}
+
+impl fmt::Display for FileStreamError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "[FileStreamError] ")?;
+        match self {
+            Self::IoError(err) => write!(f, "[IoError] {}", err),
+            Self::TokenizeError(err) => write!(f, "[TokenizeError] {}", err),
+        }
     }
 }

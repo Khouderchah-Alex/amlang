@@ -9,6 +9,7 @@ use super::agent::Agent;
 use super::agent_state::AgentState;
 use super::amlang_context::{AmlangContext, EnvPrelude};
 use super::amlang_wrappers::quote_wrapper;
+use super::deserialize_error::DeserializeError::*;
 use super::env_policy::EnvPolicy;
 use crate::agent::lang_error::LangError;
 use crate::builtins::generate_builtin_map;
@@ -17,34 +18,17 @@ use crate::environment::environment::Environment;
 use crate::environment::local_node::{LocalId, LocalNode};
 use crate::error::Error;
 use crate::model::{Interpretation, Reflective};
-use crate::parser::{self, parse_sexp};
+use crate::parser::parse_sexp;
 use crate::primitive::prelude::*;
 use crate::primitive::symbol_policies::{policy_admin, AdminSymbolInfo};
 use crate::primitive::table::Table;
 use crate::sexp::{HeapSexp, Sexp, SexpIntoIter};
-use crate::token::file_stream::{self, FileStream, FileStreamError};
-
-use DeserializeError::*;
+use crate::token::file_stream::{FileStream, FileStreamError};
 
 
 pub struct EnvManager<Policy: EnvPolicy> {
     state: AgentState,
     policy: Policy,
-}
-
-// TODO(func) impl Error.
-#[derive(Debug)]
-pub enum DeserializeError {
-    FileStreamError(file_stream::FileStreamError),
-    ParseError(parser::ParseError),
-    MissingNodeSection,
-    MissingTripleSection,
-    ExtraneousSection,
-    UnexpectedCommand(Sexp),
-    ExpectedSymbol,
-    UnrecognizedBuiltIn(Symbol),
-    InvalidNodeEntry(Sexp),
-    AmlError(Error),
 }
 
 /// Replace placeholder'd context nodes through AmlangDesignation lookups.
@@ -64,7 +48,7 @@ macro_rules! bootstrap_context {
                     panic!("Env designation isn't a symbol table");
                 };
 
-            let lookup = |s: &str| -> Result<LocalNode, DeserializeError> {
+            let lookup = |s: &str| -> Result<LocalNode, Error> {
                 if let Some(node) = table.lookup(s) {
                     Ok(node.local())
                 } else {
@@ -84,7 +68,7 @@ macro_rules! bootstrap_context {
 }
 
 impl<Policy: EnvPolicy> EnvManager<Policy> {
-    pub fn bootstrap<P: AsRef<StdPath>>(meta_path: P) -> Result<Self, DeserializeError> {
+    pub fn bootstrap<P: AsRef<StdPath>>(meta_path: P) -> Result<Self, Error> {
         let mut policy = Policy::default();
         let meta = EnvManager::create_env(&mut policy, LocalNode::default());
 
@@ -354,10 +338,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         Ok(())
     }
 
-    pub fn deserialize_curr_env<P: AsRef<StdPath>>(
-        &mut self,
-        in_path: P,
-    ) -> Result<(), DeserializeError> {
+    pub fn deserialize_curr_env<P: AsRef<StdPath>>(&mut self, in_path: P) -> Result<(), Error> {
         let stream = match FileStream::new(in_path.as_ref(), policy_admin) {
             Ok(stream) => stream,
             Err(FileStreamError::IoError(ref e)) if e.kind() == std::io::ErrorKind::NotFound => {
@@ -368,21 +349,25 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
                 );
                 return Ok(());
             }
-            Err(err) => return Err(FileStreamError(err)),
+            Err(err) => return err!(self.state(), FileStreamError(err)),
         };
         let mut peekable = stream.peekable();
 
-        match parse_sexp(&mut peekable, 0)? {
-            Some(parsed) => self.deserialize_nodes(parsed)?,
-            None => return Err(MissingNodeSection),
+        match parse_sexp(&mut peekable, 0) {
+            Ok(Some(parsed)) => self.deserialize_nodes(parsed)?,
+            Ok(None) => return err!(self.state(), MissingNodeSection),
+            Err(err) => return err!(self.state(), ParseError(err)),
         };
-        match parse_sexp(&mut peekable, 0)? {
-            Some(parsed) => self.deserialize_triples(parsed)?,
-            None => return Err(MissingTripleSection),
+        match parse_sexp(&mut peekable, 0) {
+            Ok(Some(parsed)) => self.deserialize_triples(parsed)?,
+            Ok(None) => return err!(self.state(), MissingTripleSection),
+            Err(err) => return err!(self.state(), ParseError(err)),
         };
-        if let Some(_) = parse_sexp(&mut peekable, 0)? {
-            return Err(ExtraneousSection);
-        }
+        match parse_sexp(&mut peekable, 0) {
+            Ok(Some(_)) => return err!(self.state(), ExtraneousSection),
+            Ok(None) => {}
+            Err(err) => return err!(self.state(), ParseError(err)),
+        };
 
         info!(
             "Loaded env {} from \"{}\".",
@@ -465,11 +450,11 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         }
     }
 
-    fn deserialize_nodes(&mut self, structure: Sexp) -> Result<(), DeserializeError> {
+    fn deserialize_nodes(&mut self, structure: Sexp) -> Result<(), Error> {
         let builtins = generate_builtin_map();
         let (command, remainder) = break_sexp!(structure => (Symbol; remainder), self.state())?;
         if command.as_str() != "nodes" {
-            return Err(UnexpectedCommand(command.into()));
+            return err!(self.state(), UnexpectedCommand(command.into()));
         }
 
         // Ensure prelude nodes are as expected.
@@ -490,13 +475,13 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         if self.parse_node(&self_node_id)?.local() != self_id
             || self.parse_node(&self_val_node)? != Node::new(self_id, self.state().pos().env())
         {
-            return Err(InvalidNodeEntry(self_val_node.into()));
+            return err!(self.state(), InvalidNodeEntry(self_val_node.into()));
         }
         if self.parse_node(&second)?.local() != EnvPrelude::Designation.local() {
-            return Err(InvalidNodeEntry(second.into()));
+            return err!(self.state(), InvalidNodeEntry(second.into()));
         }
         if self.parse_node(&third)?.local() != EnvPrelude::TellHandler.local() {
-            return Err(InvalidNodeEntry(third.into()));
+            return err!(self.state(), InvalidNodeEntry(third.into()));
         }
 
         for (entry, proper) in SexpIntoIter::from(remainder) {
@@ -508,7 +493,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
                     if let Primitive::Symbol(_sym) = primitive {
                         self.state_mut().env().insert_atom();
                     } else {
-                        return Err(ExpectedSymbol);
+                        return err!(self.state(), ExpectedSymbol);
                     }
                 }
                 Sexp::Cons(_) => {
@@ -521,13 +506,15 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         Ok(())
     }
 
-    fn parse_node(&mut self, sym: &Symbol) -> Result<Node, DeserializeError> {
-        EnvManager::<Policy>::parse_node_inner(self.state_mut(), sym).map_err(|e| AmlError(e))
+    fn parse_node(&mut self, sym: &Symbol) -> Result<Node, Error> {
+        EnvManager::<Policy>::parse_node_inner(self.state_mut(), sym)
     }
 
     fn parse_node_inner(state: &mut AgentState, sym: &Symbol) -> Result<Node, Error> {
         match policy_admin(sym.as_str()).unwrap() {
-            AdminSymbolInfo::Identifier => err!(state, LangError::UnboundSymbol(sym.clone())),
+            AdminSymbolInfo::Identifier => {
+                err!(state, LangError::UnboundSymbol(sym.clone()))
+            }
             AdminSymbolInfo::LocalNode(node) => Ok(node.globalize(state)),
             AdminSymbolInfo::LocalTriple(idx) => {
                 let triple = state.env().triple_from_index(idx);
@@ -544,7 +531,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         &mut self,
         hsexp: HeapSexp,
         builtins: &HashMap<&'static str, BuiltIn>,
-    ) -> Result<Sexp, DeserializeError> {
+    ) -> Result<Sexp, Error> {
         match *hsexp {
             Sexp::Primitive(Primitive::Symbol(sym)) => return Ok(self.parse_node(&sym)?.into()),
             Sexp::Primitive(Primitive::AmString(s)) => return Ok(s.into()),
@@ -558,7 +545,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         if let Ok(node) = self.parse_node(&command) {
             let process_primitive = |state: &mut AgentState, p: &Primitive| match p {
                 Primitive::Node(n) => Ok(*n),
-                Primitive::Symbol(s) => Ok(EnvManager::<Policy>::parse_node_inner(state, &s)?),
+                Primitive::Symbol(s) => EnvManager::<Policy>::parse_node_inner(state, &s),
                 _ => panic!(),
             };
 
@@ -583,10 +570,10 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
                     if let Some(builtin) = builtins.get(sym.as_str()) {
                         Ok(builtin.clone().into())
                     } else {
-                        Err(UnrecognizedBuiltIn(sym.clone()))
+                        err!(self.state(), UnrecognizedBuiltIn(sym.clone()))
                     }
                 } else {
-                    Err(ExpectedSymbol)
+                    err!(self.state(), ExpectedSymbol)
                 }
             }
             "__path" => {
@@ -597,10 +584,10 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         }
     }
 
-    fn deserialize_triples(&mut self, structure: Sexp) -> Result<(), DeserializeError> {
+    fn deserialize_triples(&mut self, structure: Sexp) -> Result<(), Error> {
         let (command, remainder) = break_sexp!(structure => (Symbol; remainder), self.state())?;
         if command.as_str() != "triples" {
-            return Err(UnexpectedCommand(command.into()));
+            return err!(self.state(), UnexpectedCommand(command.into()));
         }
 
         for (entry, proper) in SexpIntoIter::from(remainder) {
@@ -632,7 +619,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
                         object,
                         self.state_mut().designate(object.into()).unwrap()
                     );
-                    return Err(ExpectedSymbol);
+                    return err!(self.state(), ExpectedSymbol);
                 };
 
                 if let Ok(table) = <&mut SymbolTable>::try_from(
@@ -661,36 +648,5 @@ impl<Policy: EnvPolicy> Agent for EnvManager<Policy> {
 impl<Policy: EnvPolicy> Interpretation for EnvManager<Policy> {
     fn contemplate(&mut self, _structure: Sexp) -> Result<Sexp, Error> {
         Ok(Sexp::default())
-    }
-}
-
-
-impl From<Error> for DeserializeError {
-    fn from(err: Error) -> Self {
-        AmlError(err)
-    }
-}
-
-impl From<parser::ParseError> for DeserializeError {
-    fn from(err: parser::ParseError) -> Self {
-        ParseError(err)
-    }
-}
-
-impl std::fmt::Display for DeserializeError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "[Deserialize Error] ")?;
-        match self {
-            FileStreamError(err) => write!(f, "FileStream error: {:?}", err),
-            ParseError(err) => write!(f, "Parse error: {}", err),
-            MissingNodeSection => write!(f, "Expected node section"),
-            MissingTripleSection => write!(f, "Expected triple section"),
-            ExtraneousSection => write!(f, "Extraneous section"),
-            UnexpectedCommand(cmd) => write!(f, "Unexpected command: {}", cmd),
-            ExpectedSymbol => write!(f, "Expected a symbol"),
-            UnrecognizedBuiltIn(name) => write!(f, "Unrecognized builtin: {}", name),
-            InvalidNodeEntry(sexp) => write!(f, "Invalid node entry: {}", sexp),
-            AmlError(err) => write!(f, "{}", err),
-        }
     }
 }
