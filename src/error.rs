@@ -27,7 +27,7 @@ pub struct Error {
     kind: Box<dyn ErrorKind>,
 }
 
-pub trait ErrorKind: fmt::Display + fmt::Debug {
+pub trait ErrorKind: fmt::Debug /* fmt::Display auto-impled below */ {
     // Cannot use Reflective since we use ErrorKind as a trait object.
     fn reify(&self) -> Sexp;
 }
@@ -60,6 +60,12 @@ impl PartialEq for Error {
     /// Compare kind.
     fn eq(&self, other: &Self) -> bool {
         self.kind().reify() == other.kind().reify()
+    }
+}
+
+impl fmt::Display for dyn ErrorKind + '_ {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.reify())
     }
 }
 

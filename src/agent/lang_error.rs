@@ -73,12 +73,6 @@ impl ErrorKind for LangError {
     }
 }
 
-impl fmt::Display for LangError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.reify())
-    }
-}
-
 impl fmt::Display for ExpectedCount {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         return match self {
