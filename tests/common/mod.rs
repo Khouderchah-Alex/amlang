@@ -1,6 +1,5 @@
 use std::path::Path;
 
-use amlang::agent::agent::Agent;
 use amlang::agent::amlang_agent::{AmlangAgent, RunError};
 use amlang::agent::env_policy::SimplePolicy;
 use amlang::primitive::symbol_policies::policy_base;

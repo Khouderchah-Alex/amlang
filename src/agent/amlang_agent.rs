@@ -2,7 +2,6 @@ use log::debug;
 use std::convert::TryFrom;
 use std::iter::Peekable;
 
-use super::agent::Agent;
 use super::agent_state::{AgentState, ExecFrame};
 use super::amlang_wrappers::*;
 use super::continuation::Continuation;
@@ -67,6 +66,13 @@ impl AmlangAgent {
             stream: stream.peekable(),
             handler,
         }
+    }
+
+    pub fn state(&self) -> &AgentState {
+        &self.state
+    }
+    pub fn state_mut(&mut self) -> &mut AgentState {
+        &mut self.state
     }
 
 
@@ -503,16 +509,6 @@ impl AmlangAgent {
             self.state_mut().print_sexp(&structure);
             println!("");
         }
-    }
-}
-
-
-impl Agent for AmlangAgent {
-    fn state(&self) -> &AgentState {
-        &self.state
-    }
-    fn state_mut(&mut self) -> &mut AgentState {
-        &mut self.state
     }
 }
 

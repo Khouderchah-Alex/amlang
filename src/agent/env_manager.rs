@@ -5,7 +5,6 @@ use std::fs::File;
 use std::io::{BufWriter, Write};
 use std::path::Path as StdPath;
 
-use super::agent::Agent;
 use super::agent_state::AgentState;
 use super::amlang_context::{AmlangContext, EnvPrelude};
 use super::amlang_wrappers::quote_wrapper;
@@ -175,6 +174,13 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
 
         manager.state_mut().jump_env(lang_env);
         Ok(manager)
+    }
+
+    pub fn state(&self) -> &AgentState {
+        &self.state
+    }
+    pub fn state_mut(&mut self) -> &mut AgentState {
+        &mut self.state
     }
 
     pub fn insert_new_env<P: AsRef<StdPath>>(&mut self, path: P) -> LocalNode {
@@ -635,17 +641,8 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
     }
 }
 
-
-impl<Policy: EnvPolicy> Agent for EnvManager<Policy> {
-    fn state(&self) -> &AgentState {
-        &self.state
-    }
-    fn state_mut(&mut self) -> &mut AgentState {
-        &mut self.state
-    }
-}
-
 impl<Policy: EnvPolicy> Interpretation for EnvManager<Policy> {
+    // TODO(func) Implement as an actual Interpretation.
     fn contemplate(&mut self, _structure: Sexp) -> Result<Sexp, Error> {
         Ok(Sexp::default())
     }

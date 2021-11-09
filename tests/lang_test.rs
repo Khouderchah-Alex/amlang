@@ -3,7 +3,6 @@ mod common;
 use std::convert::TryFrom;
 
 use amlang::agent::amlang_agent::RunError;
-use amlang::agent::Agent;
 use amlang::primitive::{AmString, Number, Primitive};
 use amlang::sexp::Cons;
 use amlang::{amlang_node, break_sexp};
