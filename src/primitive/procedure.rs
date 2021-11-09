@@ -1,8 +1,8 @@
 use std::convert::TryFrom;
 
 use super::{Node, Primitive};
-use crate::agent::agent_state::AgentState;
 use crate::agent::lang_error::{ExpectedCount, LangError};
+use crate::agent::Agent;
 use crate::error::Error;
 use crate::model::Reflective;
 use crate::sexp::{Cons, HeapSexp, Sexp};
@@ -18,8 +18,8 @@ pub enum Procedure {
 
 
 impl Reflective for Procedure {
-    fn reify(&self, state: &mut AgentState) -> Sexp {
-        let context = state.context();
+    fn reify(&self, agent: &mut Agent) -> Sexp {
+        let context = agent.context();
         match self {
             Procedure::Application(func, args) => {
                 let apply_node = amlang_node!(context, apply);
@@ -51,18 +51,18 @@ impl Reflective for Procedure {
 
     fn reflect<F>(
         structure: Sexp,
-        state: &mut AgentState,
+        agent: &mut Agent,
         mut process_primitive: F,
     ) -> Result<Self, Error>
     where
-        F: FnMut(&mut AgentState, &Primitive) -> Result<Node, Error>,
+        F: FnMut(&mut Agent, &Primitive) -> Result<Node, Error>,
     {
-        let (command, cdr) = break_sexp!(structure => (Primitive; remainder), state)?;
-        let node = process_primitive(state, &command)?;
-        let context = state.context();
-        if !Self::valid_discriminator(node, state) {
+        let (command, cdr) = break_sexp!(structure => (Primitive; remainder), agent)?;
+        let node = process_primitive(agent, &command)?;
+        let context = agent.context();
+        if !Self::valid_discriminator(node, agent) {
             return err!(
-                state,
+                agent,
                 LangError::InvalidArgument {
                     given: command.into(),
                     expected: "Procedure variant".into()
@@ -73,7 +73,7 @@ impl Reflective for Procedure {
         if node.local() == context.apply {
             if cdr.is_none() {
                 return err!(
-                    state,
+                    agent,
                     LangError::WrongArgumentCount {
                         given: 0,
                         expected: ExpectedCount::Exactly(2),
@@ -81,24 +81,24 @@ impl Reflective for Procedure {
                 );
             }
 
-            let (func, args) = break_sexp!(cdr.unwrap() => (Primitive, HeapSexp), state)?;
-            let fnode = process_primitive(state, &func)?;
+            let (func, args) = break_sexp!(cdr.unwrap() => (Primitive, HeapSexp), agent)?;
+            let fnode = process_primitive(agent, &func)?;
             let mut arg_nodes = Vec::with_capacity(args.iter().count());
             for (arg, proper) in args {
                 if !proper {
-                    return err!(state, LangError::InvalidSexp(*arg));
+                    return err!(agent, LangError::InvalidSexp(*arg));
                 }
                 if let Ok(p) = <&Primitive>::try_from(&*arg) {
-                    arg_nodes.push(process_primitive(state, &p)?);
+                    arg_nodes.push(process_primitive(agent, &p)?);
                 } else {
-                    return err!(state, LangError::InvalidSexp(*arg));
+                    return err!(agent, LangError::InvalidSexp(*arg));
                 }
             }
             Ok(Procedure::Application(fnode, arg_nodes).into())
         } else if node.local() == context.lambda || node.local() == context.fexpr {
             if cdr.is_none() {
                 return err!(
-                    state,
+                    agent,
                     LangError::WrongArgumentCount {
                         given: 0,
                         expected: ExpectedCount::AtLeast(2),
@@ -107,19 +107,19 @@ impl Reflective for Procedure {
             }
 
             let reflect = node.local() == context.fexpr;
-            let (params, body) = break_sexp!(cdr.unwrap() => (HeapSexp, Primitive), state)?;
+            let (params, body) = break_sexp!(cdr.unwrap() => (HeapSexp, Primitive), agent)?;
             let mut param_nodes = Vec::with_capacity(params.iter().count());
             for (param, proper) in params {
                 if !proper {
-                    return err!(state, LangError::InvalidSexp(*param));
+                    return err!(agent, LangError::InvalidSexp(*param));
                 }
                 if let Ok(p) = <&Primitive>::try_from(&*param) {
-                    param_nodes.push(process_primitive(state, &p)?);
+                    param_nodes.push(process_primitive(agent, &p)?);
                 } else {
-                    return err!(state, LangError::InvalidSexp(*param));
+                    return err!(agent, LangError::InvalidSexp(*param));
                 }
             }
-            let body_node = process_primitive(state, &body)?;
+            let body_node = process_primitive(agent, &body)?;
             Ok(Procedure::Abstraction(param_nodes, body_node, reflect).into())
         } else if node.local() == context.progn {
             let mut seq = vec![];
@@ -127,7 +127,7 @@ impl Reflective for Procedure {
                 for (sexp, proper) in cdr.unwrap().into_iter() {
                     if !proper {
                         return err!(
-                            state,
+                            agent,
                             LangError::InvalidArgument {
                                 given: *sexp,
                                 expected: "list of Procedure nodes".into()
@@ -135,8 +135,8 @@ impl Reflective for Procedure {
                         );
                     }
                     match *sexp {
-                        Sexp::Primitive(p) => seq.push(process_primitive(state, &p)?),
-                        Sexp::Cons(c) => return err!(state, LangError::InvalidSexp(c.into())),
+                        Sexp::Primitive(p) => seq.push(process_primitive(agent, &p)?),
+                        Sexp::Cons(c) => return err!(agent, LangError::InvalidSexp(c.into())),
                     }
                 }
             }
@@ -144,7 +144,7 @@ impl Reflective for Procedure {
         } else if node.local() == context.branch {
             if cdr.is_none() {
                 return err!(
-                    state,
+                    agent,
                     LangError::WrongArgumentCount {
                         given: 0,
                         expected: ExpectedCount::Exactly(3),
@@ -153,11 +153,11 @@ impl Reflective for Procedure {
             }
 
             let (pred, a, b) =
-                break_sexp!(cdr.unwrap() => (Primitive, Primitive, Primitive), state)?;
+                break_sexp!(cdr.unwrap() => (Primitive, Primitive, Primitive), agent)?;
             Ok(Procedure::Branch(Box::new((
-                process_primitive(state, &pred)?,
-                process_primitive(state, &a)?,
-                process_primitive(state, &b)?,
+                process_primitive(agent, &pred)?,
+                process_primitive(agent, &a)?,
+                process_primitive(agent, &b)?,
             )))
             .into())
         } else {
@@ -165,8 +165,8 @@ impl Reflective for Procedure {
         }
     }
 
-    fn valid_discriminator(node: Node, state: &AgentState) -> bool {
-        let context = state.context();
+    fn valid_discriminator(node: Node, agent: &Agent) -> bool {
+        let context = agent.context();
         if node.env() != context.lang_env() {
             return false;
         }

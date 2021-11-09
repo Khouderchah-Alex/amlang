@@ -5,11 +5,11 @@ use std::fs::File;
 use std::io::{BufWriter, Write};
 use std::path::Path as StdPath;
 
-use super::agent_state::AgentState;
 use super::amlang_context::{AmlangContext, EnvPrelude};
 use super::amlang_wrappers::quote_wrapper;
 use super::deserialize_error::DeserializeError::*;
 use super::env_policy::EnvPolicy;
+use super::Agent;
 use crate::agent::lang_error::LangError;
 use crate::builtins::generate_builtin_map;
 use crate::environment::entry::EntryMutKind;
@@ -26,7 +26,7 @@ use crate::token::file_stream::{FileStream, FileStreamError};
 
 
 pub struct EnvManager<Policy: EnvPolicy> {
-    state: AgentState,
+    agent: Agent,
     policy: Policy,
 }
 
@@ -38,8 +38,8 @@ macro_rules! bootstrap_context {
         $(,)?
     ) => {
         let ($($node,)+) = {
-            let desig_node = $manager.state().context().designation();
-            let entry = $manager.state_mut().env().entry(desig_node);
+            let desig_node = $manager.agent().context().designation();
+            let entry = $manager.agent_mut().env().entry(desig_node);
             let table = if let Ok(table) =
                 <&SymbolTable>::try_from(entry.as_option()) {
                     table
@@ -51,7 +51,7 @@ macro_rules! bootstrap_context {
                 if let Some(node) = table.lookup(s) {
                     Ok(node.local())
                 } else {
-                    Err(Error::empty_state(
+                    Err(Error::no_agent(
                         Box::new(LangError::UnboundSymbol(s.to_symbol_or_panic(policy_admin)))))?
                 }
             };
@@ -61,7 +61,7 @@ macro_rules! bootstrap_context {
         };
 
         // Fill in placeholder'd context nodes.
-        let context = $manager.state_mut().context_mut();
+        let context = $manager.agent_mut().context_mut();
         $(context.$node = $node;)+
     };
 }
@@ -87,12 +87,12 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         context.local_node_table = LocalNode::new(67);
 
         // Bootstrap meta env.
-        let meta_state = AgentState::new(
+        let meta_state = Agent::new(
             Node::new(LocalNode::default(), context.self_node()),
             context,
         );
         let mut manager = Self {
-            state: meta_state,
+            agent: meta_state,
             policy: policy,
         };
         manager.deserialize_curr_env(meta_path)?;
@@ -104,12 +104,12 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         info!("Meta env bootstrapping complete.");
 
         // Bootstrap lang env.
-        let lang_env = manager.state().context().lang_env();
+        let lang_env = manager.agent().context().lang_env();
         manager.initialize_env_node(lang_env);
-        let serialize_path = manager.state().context().serialize_path;
-        manager.state_mut().jump_env(lang_env);
+        let serialize_path = manager.agent().context().serialize_path;
+        manager.agent_mut().jump_env(lang_env);
         let lang_path = {
-            let meta = manager.state().context().meta();
+            let meta = manager.agent().context().meta();
             let lang_path_triple = meta
                 .match_but_object(lang_env, serialize_path)
                 .iter()
@@ -151,7 +151,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
 
         // Since we've bootstrapped the lang by here, we can clone the context
         // without worrying about using stale/placeholder values.
-        let context = manager.state().context().clone();
+        let context = manager.agent().context().clone();
         let env_triples = context.meta().match_predicate(serialize_path);
         // TODO(func) Allow for delayed loading of environments.
         for triple in env_triples {
@@ -167,32 +167,32 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
 
             manager.initialize_env_node(subject_node);
             manager
-                .state_mut()
+                .agent_mut()
                 .jump(Node::new(subject_node, LocalNode::default()));
             manager.deserialize_curr_env(env_path.as_std_path())?;
         }
 
-        manager.state_mut().jump_env(lang_env);
+        manager.agent_mut().jump_env(lang_env);
         Ok(manager)
     }
 
-    pub fn state(&self) -> &AgentState {
-        &self.state
+    pub fn agent(&self) -> &Agent {
+        &self.agent
     }
-    pub fn state_mut(&mut self) -> &mut AgentState {
-        &mut self.state
+    pub fn agent_mut(&mut self) -> &mut Agent {
+        &mut self.agent
     }
 
     pub fn insert_new_env<P: AsRef<StdPath>>(&mut self, path: P) -> LocalNode {
-        let serialize_path = self.state().context().serialize_path;
+        let serialize_path = self.agent().context().serialize_path;
         let env_node = self
-            .state_mut()
+            .agent_mut()
             .context_mut()
             .meta_mut()
             .insert_structure(Sexp::default());
         self.initialize_env_node(env_node);
 
-        let meta = self.state_mut().context_mut().meta_mut();
+        let meta = self.agent_mut().context_mut().meta_mut();
         let path_node = meta.insert_structure(Path::new(path.as_ref().to_path_buf()).into());
         meta.insert_triple(env_node, serialize_path, path_node);
 
@@ -247,7 +247,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
 
     fn initialize_env_node(&mut self, env_node: LocalNode) {
         let env = EnvManager::create_env(&mut self.policy, env_node);
-        let meta = self.state_mut().context_mut().meta_mut();
+        let meta = self.agent_mut().context_mut().meta_mut();
         *meta.entry_mut(env_node).kind_mut() = EntryMutKind::Owned(env.into());
     }
 }
@@ -256,32 +256,32 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
 // {,De}serialization functionality.
 impl<Policy: EnvPolicy> EnvManager<Policy> {
     pub fn serialize_full<P: AsRef<StdPath>>(&mut self, out_path: P) -> std::io::Result<()> {
-        let original_pos = self.state().pos();
+        let original_pos = self.agent().pos();
 
-        self.state_mut()
+        self.agent_mut()
             .jump(Node::new(LocalNode::default(), LocalNode::default()));
         self.serialize_curr_env(out_path)?;
 
         // Serialize recursively.
-        let serialize_path = self.state().context().serialize_path;
+        let serialize_path = self.agent().context().serialize_path;
         let env_triples = self
-            .state()
+            .agent()
             .context()
             .meta()
             .match_predicate(serialize_path);
         for triple in env_triples {
-            let subject_node = self.state().context().meta().triple_subject(triple);
+            let subject_node = self.agent().context().meta().triple_subject(triple);
             let path = {
-                let object_node = self.state().context().meta().triple_object(triple);
-                let entry = self.state().context().meta().entry(object_node);
+                let object_node = self.agent().context().meta().triple_object(triple);
+                let entry = self.agent().context().meta().entry(object_node);
                 Path::try_from(entry.owned()).unwrap()
             };
 
-            self.state_mut().jump_env(subject_node);
+            self.agent_mut().jump_env(subject_node);
             self.serialize_curr_env(path.as_std_path())?;
         }
 
-        self.state_mut().jump(original_pos);
+        self.agent_mut().jump(original_pos);
         Ok(())
     }
 
@@ -290,10 +290,10 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         let mut w = BufWriter::new(file);
 
         write!(&mut w, "(nodes")?;
-        for (i, node) in self.state_mut().env().all_nodes().into_iter().enumerate() {
+        for (i, node) in self.agent_mut().env().all_nodes().into_iter().enumerate() {
             write!(&mut w, "\n    ")?;
 
-            let s = self.state_mut().env().entry(node).owned();
+            let s = self.agent_mut().env().entry(node).owned();
             let (write_structure, add_quote) = match &s {
                 // Serialize self_des as ^1 since it can be reconstructed.
                 _ if i == 1 => (false, false),
@@ -317,7 +317,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
             } else {
                 write!(&mut w, " ")?;
             }
-            self.serialize_list_internal(&mut w, &node.globalize(self.state()).into(), 0)?;
+            self.serialize_list_internal(&mut w, &node.globalize(self.agent()).into(), 0)?;
             if write_structure {
                 write!(&mut w, "  ")?;
                 if add_quote {
@@ -330,15 +330,15 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         write!(&mut w, "\n)\n\n")?;
 
         write!(&mut w, "(triples")?;
-        for triple in self.state_mut().env().match_all() {
+        for triple in self.agent_mut().env().match_all() {
             write!(&mut w, "\n    ")?;
-            let s = triple.reify(self.state_mut());
+            let s = triple.reify(self.agent_mut());
             self.serialize_list_internal(&mut w, &s, 1)?;
         }
         writeln!(&mut w, "\n)")?;
         info!(
             "Serialized env {} @ \"{}\".",
-            self.state().pos().env(),
+            self.agent().pos().env(),
             out_path.as_ref().to_string_lossy()
         );
         Ok(())
@@ -351,42 +351,42 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
                 warn!("Env file not found: {}", in_path.as_ref().to_string_lossy());
                 warn!(
                     "Leaving env {} unchanged. If this is intended, then all is well.",
-                    self.state().pos().env()
+                    self.agent().pos().env()
                 );
                 return Ok(());
             }
-            Err(err) => return err!(self.state(), FileStreamError(err)),
+            Err(err) => return err!(self.agent(), FileStreamError(err)),
         };
         let mut peekable = stream.peekable();
 
         match parse_sexp(&mut peekable, 0) {
             Ok(Some(parsed)) => self.deserialize_nodes(parsed)?,
-            Ok(None) => return err!(self.state(), MissingNodeSection),
-            Err(err) => return err!(self.state(), ParseError(err)),
+            Ok(None) => return err!(self.agent(), MissingNodeSection),
+            Err(err) => return err!(self.agent(), ParseError(err)),
         };
         match parse_sexp(&mut peekable, 0) {
             Ok(Some(parsed)) => self.deserialize_triples(parsed)?,
-            Ok(None) => return err!(self.state(), MissingTripleSection),
-            Err(err) => return err!(self.state(), ParseError(err)),
+            Ok(None) => return err!(self.agent(), MissingTripleSection),
+            Err(err) => return err!(self.agent(), ParseError(err)),
         };
         match parse_sexp(&mut peekable, 0) {
-            Ok(Some(_)) => return err!(self.state(), ExtraneousSection),
+            Ok(Some(_)) => return err!(self.agent(), ExtraneousSection),
             Ok(None) => {}
-            Err(err) => return err!(self.state(), ParseError(err)),
+            Err(err) => return err!(self.agent(), ParseError(err)),
         };
 
         info!(
             "Loaded env {} from \"{}\".",
-            self.state().pos().env(),
+            self.agent().pos().env(),
             in_path.as_ref().to_string_lossy()
         );
         debug!(
             "  Node count:    {}",
-            self.state_mut().env().all_nodes().len()
+            self.agent_mut().env().all_nodes().len()
         );
         debug!(
             "  Triple count:  {}",
-            self.state_mut().env().match_all().len()
+            self.agent_mut().env().match_all().len()
         );
         Ok(())
     }
@@ -422,31 +422,31 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
             }
             Primitive::BuiltIn(builtin) => write!(w, "(__builtin {})", builtin.name()),
             Primitive::Procedure(proc) => {
-                let proc_sexp = proc.reify(self.state_mut());
+                let proc_sexp = proc.reify(self.agent_mut());
                 self.serialize_list_internal(w, &proc_sexp, depth + 1)
             }
             Primitive::SymbolTable(table) => {
-                let sexp = table.reify(self.state_mut());
+                let sexp = table.reify(self.agent_mut());
                 self.serialize_list_internal(w, &sexp, depth + 1)
             }
             Primitive::LocalNodeTable(table) => {
-                let sexp = table.reify(self.state_mut());
+                let sexp = table.reify(self.agent_mut());
                 self.serialize_list_internal(w, &sexp, depth + 1)
             }
             Primitive::Node(node) => {
                 if let Some(triple) = self
-                    .state_mut()
+                    .agent_mut()
                     .access_env(node.env())
                     .unwrap()
                     .node_as_triple(node.local())
                 {
-                    if node.env() != self.state().pos().env() {
+                    if node.env() != self.agent().pos().env() {
                         write!(w, "^{}", node.env().id())?;
                     }
-                    return write!(w, "^t{}", self.state_mut().env().triple_index(triple));
+                    return write!(w, "^t{}", self.agent_mut().env().triple_index(triple));
                 }
 
-                if node.env() != self.state().pos().env() {
+                if node.env() != self.agent().pos().env() {
                     write!(w, "^{}", node.env().id())?;
                 }
                 write!(w, "^{}", node.local().id())
@@ -458,9 +458,9 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
 
     fn deserialize_nodes(&mut self, structure: Sexp) -> Result<(), Error> {
         let builtins = generate_builtin_map();
-        let (command, remainder) = break_sexp!(structure => (Symbol; remainder), self.state())?;
+        let (command, remainder) = break_sexp!(structure => (Symbol; remainder), self.agent())?;
         if command.as_str() != "nodes" {
-            return err!(self.state(), UnexpectedCommand(command.into()));
+            return err!(self.agent(), UnexpectedCommand(command.into()));
         }
 
         // Ensure prelude nodes are as expected.
@@ -475,37 +475,37 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
                      HeapSexp,
                      HeapSexp,
                      HeapSexp,
-                     HeapSexp; remainder), self.state())?;
-        let (self_node_id, self_val_node) = break_sexp!(first => (Symbol, Symbol), self.state())?;
+                     HeapSexp; remainder), self.agent())?;
+        let (self_node_id, self_val_node) = break_sexp!(first => (Symbol, Symbol), self.agent())?;
         let self_id = EnvPrelude::SelfEnv.local();
         if self.parse_node(&self_node_id)?.local() != self_id
-            || self.parse_node(&self_val_node)? != Node::new(self_id, self.state().pos().env())
+            || self.parse_node(&self_val_node)? != Node::new(self_id, self.agent().pos().env())
         {
-            return err!(self.state(), InvalidNodeEntry(self_val_node.into()));
+            return err!(self.agent(), InvalidNodeEntry(self_val_node.into()));
         }
         if self.parse_node(&second)?.local() != EnvPrelude::Designation.local() {
-            return err!(self.state(), InvalidNodeEntry(second.into()));
+            return err!(self.agent(), InvalidNodeEntry(second.into()));
         }
         if self.parse_node(&third)?.local() != EnvPrelude::TellHandler.local() {
-            return err!(self.state(), InvalidNodeEntry(third.into()));
+            return err!(self.agent(), InvalidNodeEntry(third.into()));
         }
 
         for (entry, proper) in SexpIntoIter::from(remainder) {
             if !proper {
-                return err!(self.state(), LangError::InvalidSexp(*entry))?;
+                return err!(self.agent(), LangError::InvalidSexp(*entry))?;
             }
             match *entry {
                 Sexp::Primitive(primitive) => {
                     if let Primitive::Symbol(_sym) = primitive {
-                        self.state_mut().env().insert_atom();
+                        self.agent_mut().env().insert_atom();
                     } else {
-                        return err!(self.state(), ExpectedSymbol);
+                        return err!(self.agent(), ExpectedSymbol);
                     }
                 }
                 Sexp::Cons(_) => {
-                    let (_name, command) = break_sexp!(entry => (Symbol, HeapSexp), self.state())?;
+                    let (_name, command) = break_sexp!(entry => (Symbol, HeapSexp), self.agent())?;
                     let structure = self.eval_structure(command, &builtins)?;
-                    self.state_mut().env().insert_structure(structure);
+                    self.agent_mut().env().insert_structure(structure);
                 }
             }
         }
@@ -513,22 +513,22 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
     }
 
     fn parse_node(&mut self, sym: &Symbol) -> Result<Node, Error> {
-        EnvManager::<Policy>::parse_node_inner(self.state_mut(), sym)
+        EnvManager::<Policy>::parse_node_inner(self.agent_mut(), sym)
     }
 
-    fn parse_node_inner(state: &mut AgentState, sym: &Symbol) -> Result<Node, Error> {
+    fn parse_node_inner(agent: &mut Agent, sym: &Symbol) -> Result<Node, Error> {
         match policy_admin(sym.as_str()).unwrap() {
             AdminSymbolInfo::Identifier => {
-                err!(state, LangError::UnboundSymbol(sym.clone()))
+                err!(agent, LangError::UnboundSymbol(sym.clone()))
             }
-            AdminSymbolInfo::LocalNode(node) => Ok(node.globalize(state)),
+            AdminSymbolInfo::LocalNode(node) => Ok(node.globalize(agent)),
             AdminSymbolInfo::LocalTriple(idx) => {
-                let triple = state.env().triple_from_index(idx);
-                Ok(triple.node().globalize(state))
+                let triple = agent.env().triple_from_index(idx);
+                Ok(triple.node().globalize(agent))
             }
             AdminSymbolInfo::GlobalNode(env, node) => Ok(Node::new(env, node)),
             AdminSymbolInfo::GlobalTriple(env, idx) => {
-                Ok(Node::new(env, state.env().triple_from_index(idx).node()))
+                Ok(Node::new(env, agent.env().triple_from_index(idx).node()))
             }
         }
     }
@@ -544,46 +544,46 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
             _ => {}
         }
 
-        let (command, _) = break_sexp!(hsexp.iter() => (&Symbol; remainder), self.state())?;
+        let (command, _) = break_sexp!(hsexp.iter() => (&Symbol; remainder), self.agent())?;
         // Note(subtle): during the initial deserialization of the meta & lang
         // envs, Reflective context nodes are only valid because they're specially
         // set before actual context bootstrapping occurs.
         if let Ok(node) = self.parse_node(&command) {
-            let process_primitive = |state: &mut AgentState, p: &Primitive| match p {
+            let process_primitive = |agent: &mut Agent, p: &Primitive| match p {
                 Primitive::Node(n) => Ok(*n),
-                Primitive::Symbol(s) => EnvManager::<Policy>::parse_node_inner(state, &s),
+                Primitive::Symbol(s) => EnvManager::<Policy>::parse_node_inner(agent, &s),
                 _ => panic!(),
             };
 
-            if Procedure::valid_discriminator(node, self.state()) {
-                return Ok(Procedure::reflect(*hsexp, self.state_mut(), process_primitive)?.into());
-            } else if LocalNodeTable::valid_discriminator(node, self.state()) {
+            if Procedure::valid_discriminator(node, self.agent()) {
+                return Ok(Procedure::reflect(*hsexp, self.agent_mut(), process_primitive)?.into());
+            } else if LocalNodeTable::valid_discriminator(node, self.agent()) {
                 return Ok(
-                    LocalNodeTable::reflect(*hsexp, self.state_mut(), process_primitive)?.into(),
+                    LocalNodeTable::reflect(*hsexp, self.agent_mut(), process_primitive)?.into(),
                 );
-            } else if SymbolTable::valid_discriminator(node, self.state()) {
+            } else if SymbolTable::valid_discriminator(node, self.agent()) {
                 return Ok(
-                    SymbolTable::reflect(*hsexp, self.state_mut(), process_primitive)?.into(),
+                    SymbolTable::reflect(*hsexp, self.agent_mut(), process_primitive)?.into(),
                 );
             }
         }
 
-        let (command, cdr) = break_sexp!(hsexp => (Symbol; remainder), self.state())?;
+        let (command, cdr) = break_sexp!(hsexp => (Symbol; remainder), self.agent())?;
         match command.as_str() {
-            "quote" => Ok(*quote_wrapper(cdr, self.state())?),
+            "quote" => Ok(*quote_wrapper(cdr, self.agent())?),
             "__builtin" => {
-                if let Ok(sym) = <Symbol>::try_from(*quote_wrapper(cdr, self.state())?) {
+                if let Ok(sym) = <Symbol>::try_from(*quote_wrapper(cdr, self.agent())?) {
                     if let Some(builtin) = builtins.get(sym.as_str()) {
                         Ok(builtin.clone().into())
                     } else {
-                        err!(self.state(), UnrecognizedBuiltIn(sym.clone()))
+                        err!(self.agent(), UnrecognizedBuiltIn(sym.clone()))
                     }
                 } else {
-                    err!(self.state(), ExpectedSymbol)
+                    err!(self.agent(), ExpectedSymbol)
                 }
             }
             "__path" => {
-                let (path,) = break_sexp!(cdr.unwrap() => (AmString), self.state())?;
+                let (path,) = break_sexp!(cdr.unwrap() => (AmString), self.agent())?;
                 Ok(Path::new(path.as_str().into()).into())
             }
             _ => panic!("{}", command),
@@ -591,31 +591,31 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
     }
 
     fn deserialize_triples(&mut self, structure: Sexp) -> Result<(), Error> {
-        let (command, remainder) = break_sexp!(structure => (Symbol; remainder), self.state())?;
+        let (command, remainder) = break_sexp!(structure => (Symbol; remainder), self.agent())?;
         if command.as_str() != "triples" {
-            return err!(self.state(), UnexpectedCommand(command.into()));
+            return err!(self.agent(), UnexpectedCommand(command.into()));
         }
 
         for (entry, proper) in SexpIntoIter::from(remainder) {
             if !proper {
-                return err!(self.state(), LangError::InvalidSexp(*entry))?;
+                return err!(self.agent(), LangError::InvalidSexp(*entry))?;
             }
-            let (s, p, o) = break_sexp!(entry => (Symbol, Symbol, Symbol), self.state())?;
+            let (s, p, o) = break_sexp!(entry => (Symbol, Symbol, Symbol), self.agent())?;
 
             let subject = self.parse_node(&s)?;
             let predicate = self.parse_node(&p)?;
             let object = self.parse_node(&o)?;
 
-            self.state_mut().env().insert_triple(
+            self.agent_mut().env().insert_triple(
                 subject.local(),
                 predicate.local(),
                 object.local(),
             );
 
-            let designation = self.state().context().designation();
+            let designation = self.agent().context().designation();
             if predicate.local() == designation && object.local() != designation {
                 let name = if let Ok(sym) =
-                    <Symbol>::try_from(self.state_mut().designate(object.into()))
+                    <Symbol>::try_from(self.agent_mut().designate(object.into()))
                 {
                     sym
                 } else {
@@ -623,13 +623,13 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
                         "{} {} {:?}",
                         subject,
                         object,
-                        self.state_mut().designate(object.into()).unwrap()
+                        self.agent_mut().designate(object.into()).unwrap()
                     );
-                    return err!(self.state(), ExpectedSymbol);
+                    return err!(self.agent(), ExpectedSymbol);
                 };
 
                 if let Ok(table) = <&mut SymbolTable>::try_from(
-                    self.state_mut().env().entry_mut(designation).as_option(),
+                    self.agent_mut().env().entry_mut(designation).as_option(),
                 ) {
                     table.insert(name, subject);
                 } else {

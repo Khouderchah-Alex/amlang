@@ -5,26 +5,26 @@
 /// Optional remainder accepts an arbitrary identifier and append an
 /// Option<HeapSexp> to the end of the result tuple.
 ///
-/// If available, state can be passed to make errors stateful.
+/// If available, agent can be passed to make errors stateful.
 ///
 /// Example:
-///  let (a, b, tail) = break_sexp!(original => (Symbol, HeapSexp; remainder), self.state())?;
+///  let (a, b, tail) = break_sexp!(original => (Symbol, HeapSexp; remainder), self.agent())?;
 // TODO(func) Have remainder return iter so that other Iterators can be used.
 #[macro_export]
 macro_rules! break_sexp {
     (@ignore $_ignored:ty) => {};
-    ($sexp:expr => ($($type:ty),+ $(;$remainder:tt)?) $(,$state:expr)?) => {
+    ($sexp:expr => ($($type:ty),+ $(;$remainder:tt)?) $(,$agent:expr)?) => {
         {
-            // Generate stateful or stateless error depending on existence of $state.
+            // Generate stateful or stateless error depending on existence of $agent.
             let err = |kind| {
                 $(
-                    return Err($crate::error::Error::with_state(
-                        $state.clone(),
+                    return Err($crate::error::Error::with_agent(
+                        $agent.clone(),
                         Box::new(kind)
                     ));
                 )*
                 #[allow(unreachable_code)]
-                Err($crate::error::Error::empty_state(Box::new(kind)))
+                Err($crate::error::Error::no_agent(Box::new(kind)))
             };
             let mut iter = $sexp.into_iter();
             let tuple = || {

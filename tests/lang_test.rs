@@ -64,7 +64,7 @@ fn lambda_seq_body() {
     let results = common::results(&mut lang_agent, "((lambda (a) (jump a) (curr)) lambda)");
     assert_eq!(
         results,
-        vec![amlang_node!(lang_agent.state().context(), lambda).into()]
+        vec![amlang_node!(lang_agent.agent().context(), lambda).into()]
     );
 }
 
@@ -159,11 +159,11 @@ fn let_rec_lambdas() {
     let cons = Cons::try_from(results[0].clone()).unwrap();
     assert_eq!(
         *cons.car().unwrap(),
-        amlang_node!(lang_agent.state().context(), f).into()
+        amlang_node!(lang_agent.agent().context(), f).into()
     );
     assert_eq!(
         *cons.cdr().unwrap(),
-        amlang_node!(lang_agent.state().context(), t).into()
+        amlang_node!(lang_agent.agent().context(), t).into()
     );
 }
 
@@ -191,7 +191,7 @@ fn def_atom() {
     // Atom should designate to itself.
     assert_eq!(
         lang_agent
-            .state_mut()
+            .agent_mut()
             .designate(Primitive::try_from(results[0].clone()).unwrap())
             .unwrap(),
         results[0],
@@ -205,7 +205,7 @@ fn def_number() {
     let results = common::results(&mut lang_agent, "(def a 2)");
     assert_eq!(
         lang_agent
-            .state_mut()
+            .agent_mut()
             .designate(Primitive::try_from(results[0].clone()).unwrap())
             .unwrap(),
         Number::Integer(2).into()
@@ -247,7 +247,7 @@ fn reify_apply() {
     );
     assert_eq!(
         results[0],
-        amlang_node!(lang_agent.state().context(), apply).into()
+        amlang_node!(lang_agent.agent().context(), apply).into()
     );
 }
 
@@ -258,7 +258,7 @@ fn improper_list() {
     let results = common::results(&mut lang_agent, "(eq '(1 2 . 3) (cons 1 (cons 2 3)))");
     assert_eq!(
         results[0],
-        amlang_node!(lang_agent.state().context(), t).into()
+        amlang_node!(lang_agent.agent().context(), t).into()
     );
 }
 
@@ -303,7 +303,7 @@ fn import() {
          (eq lambda (import lambda))",
     );
 
-    let context = lang_agent.state().context();
+    let context = lang_agent.agent().context();
     assert_eq!(results[1], amlang_node!(context, t).into());
     assert_eq!(results[2], amlang_node!(context, t).into());
     assert_eq!(results[3], amlang_node!(context, f).into());

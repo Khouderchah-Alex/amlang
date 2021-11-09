@@ -4,8 +4,8 @@
 
 use std::fmt;
 
-use crate::agent::agent_state::AgentState;
 use crate::agent::amlang_context::EnvPrelude;
+use crate::agent::Agent;
 use crate::error::Error;
 use crate::model::Reflective;
 use crate::primitive::Node;
@@ -30,9 +30,9 @@ impl LocalNode {
         self.0
     }
 
-    /// Globalize relative to current env of state.
-    pub fn globalize(self, state: &AgentState) -> Node {
-        state.globalize(self)
+    /// Globalize relative to current env of agent.
+    pub fn globalize(self, agent: &Agent) -> Node {
+        agent.globalize(self)
     }
 
     pub const fn as_prelude(&self) -> Option<EnvPrelude> {
@@ -64,9 +64,9 @@ impl LocalTriple {
 
 
 impl Reflective for LocalTriple {
-    fn reify(&self, state: &mut AgentState) -> Sexp {
-        let e = state.pos().env();
-        let env = state.env();
+    fn reify(&self, agent: &mut Agent) -> Sexp {
+        let e = agent.pos().env();
+        let env = agent.env();
         let s = Node::new(e, env.triple_subject(*self));
         let p = Node::new(e, env.triple_predicate(*self));
         let o = Node::new(e, env.triple_object(*self));
@@ -75,13 +75,13 @@ impl Reflective for LocalTriple {
 
     fn reflect<F>(
         _structure: Sexp,
-        _state: &mut AgentState,
+        _agent: &mut Agent,
         _process_primitive: F,
     ) -> Result<Self, Error> {
         unimplemented!();
     }
 
-    fn valid_discriminator(_node: Node, _state: &AgentState) -> bool {
+    fn valid_discriminator(_node: Node, _agent: &Agent) -> bool {
         return false;
     }
 }

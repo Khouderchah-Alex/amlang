@@ -6,16 +6,16 @@
 
 use std::fmt;
 
-use crate::agent::agent_state::AgentState;
+use crate::agent::Agent;
 use crate::sexp::Sexp;
 
 
 /// Creates a stateful Error wrapped in Err.
 #[macro_export]
 macro_rules! err {
-    ($state:expr, $($kind:tt)+) => {
-        Err($crate::error::Error::with_state(
-            $state.clone(),
+    ($agent:expr, $($kind:tt)+) => {
+        Err($crate::error::Error::with_agent(
+            $agent.clone(),
             Box::new($($kind)+),
         ))
     };
@@ -23,7 +23,7 @@ macro_rules! err {
 
 #[derive(Debug)]
 pub struct Error {
-    state: Option<Box<AgentState>>,
+    agent: Option<Box<Agent>>,
     kind: Box<dyn ErrorKind>,
 }
 
@@ -35,24 +35,24 @@ pub trait ErrorKind: fmt::Debug /* fmt::Display auto-impled below */ {
 
 impl Error {
     /// Prefer using err! for convenience.
-    pub fn with_state(state: AgentState, kind: Box<dyn ErrorKind>) -> Self {
+    pub fn with_agent(agent: Agent, kind: Box<dyn ErrorKind>) -> Self {
         Self {
-            state: Some(Box::new(state)),
+            agent: Some(Box::new(agent)),
             kind,
         }
     }
 
     /// Prefer using stateful Error when possible.
-    pub fn empty_state(kind: Box<dyn ErrorKind>) -> Self {
-        Self { state: None, kind }
+    pub fn no_agent(kind: Box<dyn ErrorKind>) -> Self {
+        Self { agent: None, kind }
     }
 
     pub fn kind(&self) -> &dyn ErrorKind {
         &*self.kind
     }
 
-    pub fn state(&self) -> Option<&AgentState> {
-        self.state.as_ref().map(|e| &**e)
+    pub fn agent(&self) -> Option<&Agent> {
+        self.agent.as_ref().map(|a| &**a)
     }
 }
 

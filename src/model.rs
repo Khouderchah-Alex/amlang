@@ -1,4 +1,4 @@
-use crate::agent::agent_state::AgentState;
+use crate::agent::Agent;
 use crate::error::Error;
 use crate::primitive::{Node, Primitive};
 use crate::sexp::Sexp;
@@ -41,25 +41,21 @@ pub trait Interpretation {
 /// Structure of compiled meaning, according to (possibly implicit) metamodel.
 pub trait Reflective {
     /// Compiled meaning -> Structure.
-    fn reify(&self, state: &mut AgentState) -> Sexp;
+    fn reify(&self, agent: &mut Agent) -> Sexp;
 
     /// Structure -> compiled meaning.
     ///
     /// |process_primitive| is used so that reflect code can be written
     /// uniformly in the face of, say, a Structure made of unresolved Symbols
     /// vs one made of resolved Nodes.
-    fn reflect<F>(
-        structure: Sexp,
-        state: &mut AgentState,
-        process_primitive: F,
-    ) -> Result<Self, Error>
+    fn reflect<F>(structure: Sexp, agent: &mut Agent, process_primitive: F) -> Result<Self, Error>
     where
         Self: Sized,
-        F: FnMut(&mut AgentState, &Primitive) -> Result<Node, Error>;
+        F: FnMut(&mut Agent, &Primitive) -> Result<Node, Error>;
 
     /// Whether the Structure's discriminator corresponds to this impl.
     ///
     /// If this returns false, calling reflect should return an Error for sane
     /// impls.
-    fn valid_discriminator(node: Node, state: &AgentState) -> bool;
+    fn valid_discriminator(node: Node, agent: &Agent) -> bool;
 }

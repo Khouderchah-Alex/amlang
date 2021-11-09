@@ -7,7 +7,7 @@ use std::convert::TryFrom;
 
 use super::{Node, Primitive, Symbol};
 use crate::agent::lang_error::LangError;
-use crate::agent::AgentState;
+use crate::agent::Agent;
 use crate::environment::LocalNode;
 use crate::error::Error;
 use crate::model::Reflective;
@@ -75,7 +75,7 @@ impl<K: Ord, V> Default for AmlangTable<K, V> {
 
 // TODO (flex) Would rather impl Reflective once. Maybe use macro.
 impl Reflective for AmlangTable<Symbol, Node> {
-    fn reify(&self, state: &mut AgentState) -> Sexp {
+    fn reify(&self, agent: &mut Agent) -> Sexp {
         let mut alist = None;
         for (k, v) in self.as_map() {
             alist = Some(
@@ -86,24 +86,24 @@ impl Reflective for AmlangTable<Symbol, Node> {
                 .into(),
             );
         }
-        let node = amlang_node!(state.context(), symbol_table);
+        let node = amlang_node!(agent.context(), symbol_table);
         Cons::new(Some(node.into()), alist).into()
     }
 
     fn reflect<F>(
         structure: Sexp,
-        state: &mut AgentState,
+        agent: &mut Agent,
         mut process_primitive: F,
     ) -> Result<Self, Error>
     where
         Self: Sized,
-        F: FnMut(&mut AgentState, &Primitive) -> Result<Node, Error>,
+        F: FnMut(&mut Agent, &Primitive) -> Result<Node, Error>,
     {
-        let (command, cdr) = break_sexp!(structure => (Primitive; remainder), state)?;
-        let node = process_primitive(state, &command)?;
-        if !Self::valid_discriminator(node, state) {
+        let (command, cdr) = break_sexp!(structure => (Primitive; remainder), agent)?;
+        let node = process_primitive(agent, &command)?;
+        if !Self::valid_discriminator(node, agent) {
             return err!(
-                state,
+                agent,
                 LangError::InvalidArgument {
                     given: command.into(),
                     expected: "Symbol table node".into()
@@ -117,7 +117,7 @@ impl Reflective for AmlangTable<Symbol, Node> {
                 Ok(cons) => cons,
                 Err(err) => {
                     return err!(
-                        state,
+                        agent,
                         LangError::InvalidArgument {
                             given: *err,
                             expected: "Association Cons".into()
@@ -129,12 +129,12 @@ impl Reflective for AmlangTable<Symbol, Node> {
                 (Some(k), Some(v)) => {
                     if let Ok(kk) = <&Symbol>::try_from(&*k) {
                         if let Ok(vp) = <&Primitive>::try_from(&*v) {
-                            table.insert(kk.clone(), process_primitive(state, &vp)?);
+                            table.insert(kk.clone(), process_primitive(agent, &vp)?);
                             continue;
                         }
                     }
                     return err!(
-                        state,
+                        agent,
                         LangError::InvalidArgument {
                             given: Cons::new(Some(k), Some(v)).into(),
                             expected: "(Symbol . Node) association".into()
@@ -143,7 +143,7 @@ impl Reflective for AmlangTable<Symbol, Node> {
                 }
                 (k, v) => {
                     return err!(
-                        state,
+                        agent,
                         LangError::InvalidArgument {
                             given: Cons::new(k, v).into(),
                             expected: "Association cons".into()
@@ -155,8 +155,8 @@ impl Reflective for AmlangTable<Symbol, Node> {
         Ok(table)
     }
 
-    fn valid_discriminator(node: Node, state: &AgentState) -> bool {
-        let context = state.context();
+    fn valid_discriminator(node: Node, agent: &Agent) -> bool {
+        let context = agent.context();
         if node.env() != context.lang_env() {
             return false;
         }
@@ -166,15 +166,15 @@ impl Reflective for AmlangTable<Symbol, Node> {
 }
 
 impl Reflective for AmlangTable<LocalNode, LocalNode> {
-    fn reify(&self, state: &mut AgentState) -> Sexp {
+    fn reify(&self, agent: &mut Agent) -> Sexp {
         let mut alist = None;
         for (k, v) in self.as_map() {
             alist = Some(
                 Cons::new(
                     Some(
                         Cons::new(
-                            Some(k.globalize(state).into()),
-                            Some(v.globalize(state).into()),
+                            Some(k.globalize(agent).into()),
+                            Some(v.globalize(agent).into()),
                         )
                         .into(),
                     ),
@@ -183,24 +183,24 @@ impl Reflective for AmlangTable<LocalNode, LocalNode> {
                 .into(),
             );
         }
-        let node = amlang_node!(state.context(), local_node_table);
+        let node = amlang_node!(agent.context(), local_node_table);
         Cons::new(Some(node.into()), alist).into()
     }
 
     fn reflect<F>(
         structure: Sexp,
-        state: &mut AgentState,
+        agent: &mut Agent,
         mut process_primitive: F,
     ) -> Result<Self, Error>
     where
         Self: Sized,
-        F: FnMut(&mut AgentState, &Primitive) -> Result<Node, Error>,
+        F: FnMut(&mut Agent, &Primitive) -> Result<Node, Error>,
     {
-        let (command, cdr) = break_sexp!(structure => (Primitive; remainder), state)?;
-        let node = process_primitive(state, &command)?;
-        if !Self::valid_discriminator(node, state) {
+        let (command, cdr) = break_sexp!(structure => (Primitive; remainder), agent)?;
+        let node = process_primitive(agent, &command)?;
+        if !Self::valid_discriminator(node, agent) {
             return err!(
-                state,
+                agent,
                 LangError::InvalidArgument {
                     given: command.into(),
                     expected: "Lnode table node".into()
@@ -214,7 +214,7 @@ impl Reflective for AmlangTable<LocalNode, LocalNode> {
                 Ok(cons) => cons,
                 Err(err) => {
                     return err!(
-                        state,
+                        agent,
                         LangError::InvalidArgument {
                             given: *err,
                             expected: "Association Cons".into()
@@ -225,8 +225,8 @@ impl Reflective for AmlangTable<LocalNode, LocalNode> {
             match cons.consume() {
                 (Some(k), Some(v)) => match (*k, *v) {
                     (Sexp::Primitive(kp), Sexp::Primitive(vp)) => {
-                        let key = process_primitive(state, &kp)?;
-                        let val = process_primitive(state, &vp)?;
+                        let key = process_primitive(agent, &kp)?;
+                        let val = process_primitive(agent, &vp)?;
                         if let Ok(kk) = Node::try_from(key) {
                             if let Ok(vv) = Node::try_from(val) {
                                 table.insert(kk.local(), vv.local());
@@ -236,7 +236,7 @@ impl Reflective for AmlangTable<LocalNode, LocalNode> {
                     }
                     (k, v) => {
                         return err!(
-                            state,
+                            agent,
                             LangError::InvalidArgument {
                                 given: Cons::new(Some(k.into()), Some(v.into())).into(),
                                 expected: "(Node . Node) association".into()
@@ -246,7 +246,7 @@ impl Reflective for AmlangTable<LocalNode, LocalNode> {
                 },
                 (k, v) => {
                     return err!(
-                        state,
+                        agent,
                         LangError::InvalidArgument {
                             given: Cons::new(k, v).into(),
                             expected: "Association cons".into()
@@ -258,8 +258,8 @@ impl Reflective for AmlangTable<LocalNode, LocalNode> {
         Ok(table)
     }
 
-    fn valid_discriminator(node: Node, state: &AgentState) -> bool {
-        let context = state.context();
+    fn valid_discriminator(node: Node, agent: &Agent) -> bool {
+        let context = agent.context();
         if node.env() != context.lang_env() {
             return false;
         }

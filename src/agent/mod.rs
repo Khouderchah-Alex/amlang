@@ -1,8 +1,8 @@
 // Public exports.
-pub use agent_state::AgentState;
+pub use agent::Agent;
 
 // Public mods.
-pub mod agent_state;
+pub mod agent;
 pub mod amlang_agent;
 pub mod amlang_context;
 pub mod env_manager;

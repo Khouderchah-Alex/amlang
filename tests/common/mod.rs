@@ -27,13 +27,13 @@ pub fn setup() -> Result<AmlangAgent, String> {
         };
 
     // Prep agent.
-    let mut agent_state = manager.state().clone();
-    let working_env = agent_state.find_env("working.env").unwrap();
-    agent_state.jump_env(working_env);
-    agent_state.designation_chain_mut().push_back(working_env);
+    let mut agent = manager.agent().clone();
+    let working_env = agent.find_env("working.env").unwrap();
+    agent.jump_env(working_env);
+    agent.designation_chain_mut().push_back(working_env);
 
-    let history_env = agent_state.find_env("history.env").unwrap();
-    Ok(AmlangAgent::from_state(agent_state, history_env))
+    let history_env = agent.find_env("history.env").unwrap();
+    Ok(AmlangAgent::from_agent(agent, history_env))
 }
 
 pub fn results<S: AsRef<str>>(lang_agent: &mut AmlangAgent, s: S) -> Vec<Sexp> {

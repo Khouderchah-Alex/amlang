@@ -13,7 +13,7 @@ pub trait EnvPolicy: Default {
     //
     // Ideally, this would be set to something that will clone sanely
     // (like an overlay), such that structure clones from e.g.
-    // AgentState::designate() work as expected even for env nodes.
+    // Agent::designate() work as expected even for env nodes.
     // However, certain deployments may be able to side-step this
     // matter without needing this to clone nicely.
     //

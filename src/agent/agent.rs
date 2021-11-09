@@ -19,7 +19,7 @@ use crate::sexp::Sexp;
 
 
 #[derive(Clone, Debug)]
-pub struct AgentState {
+pub struct Agent {
     env_state: Continuation<EnvFrame>,
     exec_state: Continuation<ExecFrame>,
     designation_chain: VecDeque<LocalNode>,
@@ -39,8 +39,7 @@ struct EnvFrame {
     pos: Node,
 }
 
-
-impl AgentState {
+impl Agent {
     pub fn new(pos: Node, context: AmlangContext) -> Self {
         let env_state = Continuation::new(EnvFrame { pos });
         // TODO(func) Provide better root node.
@@ -62,7 +61,7 @@ impl AgentState {
 }
 
 // Env-state-only functionality.
-impl AgentState {
+impl Agent {
     pub fn globalize(&self, local: LocalNode) -> Node {
         Node::new(self.pos().env(), local)
     }
@@ -88,11 +87,11 @@ impl AgentState {
 }
 
 // Designation-state-only functionality.
-impl AgentState {
+impl Agent {
     pub fn designation_chain(&self) -> &VecDeque<LocalNode> {
         &self.designation_chain
     }
-    // AgentState does not currently contain any policy; Agents populate this as
+    // Agent does not currently contain any policy; Clients populate this as
     // needed.
     // TODO(func, sec) Provide dedicated interface for d-chain mutations.
     pub fn designation_chain_mut(&mut self) -> &mut VecDeque<LocalNode> {
@@ -101,7 +100,7 @@ impl AgentState {
 }
 
 // Exec-state-only functionality.
-impl AgentState {
+impl Agent {
     pub fn exec_state(&self) -> &Continuation<ExecFrame> {
         &self.exec_state
     }
@@ -124,7 +123,7 @@ impl AgentState {
 
 
 // Core functionality.
-impl AgentState {
+impl Agent {
     pub fn access_env(&mut self, meta_node: LocalNode) -> Option<&mut Box<EnvObject>> {
         let meta = self.context.meta_mut();
         if meta_node == LocalNode::default() {
@@ -498,14 +497,14 @@ impl AgentState {
 
 
 // Print functionality.
-impl AgentState {
+impl Agent {
     pub fn trace_error(&mut self, err: &Error) {
-        if let Some(state) = err.state() {
-            let mut original_state = std::mem::replace(self, state.clone());
+        if let Some(agent) = err.agent() {
+            let mut original_agent = std::mem::replace(self, agent.clone());
             println!("");
             println!("  --TRACE--");
-            let end = state.exec_state().depth() - 1;
-            for (i, frame) in state.exec_state().iter().enumerate() {
+            let end = agent.exec_state().depth() - 1;
+            for (i, frame) in agent.exec_state().iter().enumerate() {
                 if i == end {
                     break;
                 }
@@ -514,7 +513,7 @@ impl AgentState {
                 self.print_sexp(&frame.context().into());
                 println!("");
             }
-            std::mem::swap(self, &mut original_state);
+            std::mem::swap(self, &mut original_agent);
         }
     }
 

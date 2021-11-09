@@ -2,7 +2,7 @@ use log::debug;
 use std::convert::TryFrom;
 use std::iter::Peekable;
 
-use super::agent_state::{AgentState, ExecFrame};
+use super::agent::{Agent, ExecFrame};
 use super::amlang_wrappers::*;
 use super::continuation::Continuation;
 use crate::agent::lang_error::{ExpectedCount, LangError};
@@ -19,7 +19,7 @@ use crate::token::TokenInfo;
 
 #[derive(Clone)]
 pub struct AmlangAgent {
-    state: AgentState,
+    agent: Agent,
     eval_state: Continuation<SymbolTable>,
 
     history_env: LocalNode,
@@ -43,13 +43,14 @@ pub enum RunError {
 }
 
 impl AmlangAgent {
-    pub fn from_state(mut state: AgentState, history_env: LocalNode) -> Self {
-        // Ensure agent state designates amlang nodes first.
-        let lang_env = state.context().lang_env();
-        state.designation_chain_mut().push_front(lang_env);
+    pub fn from_agent(mut agent: Agent, history_env: LocalNode) -> Self {
+        // Ensure agent designates amlang nodes first.
+        // TODO(func) Make idempotent.
+        let lang_env = agent.context().lang_env();
+        agent.designation_chain_mut().push_front(lang_env);
 
         Self {
-            state,
+            agent,
             // TODO(sec) Verify as env node.
             history_env,
             eval_state: Continuation::new(SymbolTable::default()),
@@ -68,11 +69,11 @@ impl AmlangAgent {
         }
     }
 
-    pub fn state(&self) -> &AgentState {
-        &self.state
+    pub fn agent(&self) -> &Agent {
+        &self.agent
     }
-    pub fn state_mut(&mut self) -> &mut AgentState {
-        &mut self.state
+    pub fn agent_mut(&mut self) -> &mut Agent {
+        &mut self.agent
     }
 
 
@@ -85,10 +86,10 @@ impl AmlangAgent {
         let mut surface = Vec::new();
         let mut frame = SymbolTable::default();
         for symbol in params {
-            let node = self.state_mut().env().insert_atom().globalize(self.state());
+            let node = self.agent_mut().env().insert_atom().globalize(self.agent());
             if frame.contains_key(&symbol) {
                 return err!(
-                    self.state(),
+                    self.agent(),
                     LangError::InvalidArgument {
                         given: symbol.into(),
                         expected: "unique name within argument list".into()
@@ -98,14 +99,14 @@ impl AmlangAgent {
             frame.insert(symbol.clone(), node);
             surface.push(node);
             let name = self
-                .state_mut()
+                .agent_mut()
                 .env()
                 .insert_structure(symbol.into())
-                .globalize(self.state());
+                .globalize(self.agent());
             // Unlike amlang designation, label predicate must be imported.
-            let raw_predicate = amlang_node!(self.state().context(), label);
-            let label_predicate = self.state_mut().import(raw_predicate)?;
-            self.state_mut().tell(node, label_predicate, name)?;
+            let raw_predicate = amlang_node!(self.agent().context(), label);
+            let label_predicate = self.agent_mut().import(raw_predicate)?;
+            self.agent_mut().tell(node, label_predicate, name)?;
         }
 
         self.eval_state.push(frame);
@@ -113,7 +114,7 @@ impl AmlangAgent {
             let mut body_nodes = vec![];
             for (elem, proper) in body.into_iter() {
                 if !proper {
-                    return err!(self.state(), LangError::InvalidSexp(*elem));
+                    return err!(self.agent(), LangError::InvalidSexp(*elem));
                 }
                 let eval = self.construe(*elem)?;
                 let node = self.node_or_insert(eval)?;
@@ -124,10 +125,10 @@ impl AmlangAgent {
                 Ok(Procedure::Abstraction(surface, body_nodes[0], reflect))
             } else {
                 let seq_node = self
-                    .state_mut()
+                    .agent_mut()
                     .env()
                     .insert_structure(Procedure::Sequence(body_nodes).into())
-                    .globalize(self.state());
+                    .globalize(self.agent());
                 Ok(Procedure::Abstraction(surface, seq_node, reflect))
             }
         })();
@@ -136,19 +137,19 @@ impl AmlangAgent {
     }
 
     fn exec(&mut self, meaning_node: Node) -> Result<Sexp, Error> {
-        let meaning = self.state_mut().concretize(meaning_node)?;
+        let meaning = self.agent_mut().concretize(meaning_node)?;
         match meaning {
             Sexp::Primitive(Primitive::Procedure(proc)) => {
                 match proc {
                     Procedure::Application(proc_node, arg_nodes) => {
                         let frame = ExecFrame::new(meaning_node);
                         debug!("exec_state push: {}", meaning_node);
-                        self.state_mut().exec_state_mut().push(frame);
+                        self.agent_mut().exec_state_mut().push(frame);
 
                         let res = self.apply(proc_node, arg_nodes);
 
                         debug!("exec_state pop: {}", meaning_node);
-                        self.state_mut().exec_state_mut().pop();
+                        self.agent_mut().exec_state_mut().pop();
                         res
                     }
                     Procedure::Branch(t) => {
@@ -156,14 +157,14 @@ impl AmlangAgent {
                         let cond = self.exec(pred)?;
 
                         // TODO(func) Integrate actual boolean type.
-                        let context = self.state().context();
+                        let context = self.agent().context();
                         if cond == amlang_node!(context, t).into() {
                             Ok(self.exec(a)?)
                         } else if cond == amlang_node!(context, f).into() {
                             Ok(self.exec(b)?)
                         } else {
                             err!(
-                                self.state(),
+                                self.agent(),
                                 LangError::InvalidArgument {
                                     given: cond,
                                     expected: "true or false Node".into(),
@@ -186,13 +187,13 @@ impl AmlangAgent {
     }
 
     fn apply(&mut self, proc_node: Node, arg_nodes: Vec<Node>) -> Result<Sexp, Error> {
-        match self.state_mut().concretize(proc_node)? {
+        match self.agent_mut().concretize(proc_node)? {
             Sexp::Primitive(Primitive::Node(node)) => {
-                if node.env() == self.state().context().lang_env() {
+                if node.env() == self.agent().context().lang_env() {
                     self.apply_special(node.local(), arg_nodes)
                 } else {
                     err!(
-                        self.state(),
+                        self.agent(),
                         LangError::InvalidArgument {
                             given: node.into(),
                             expected: "Procedure or special Amlang Node".into(),
@@ -205,12 +206,12 @@ impl AmlangAgent {
                 for node in arg_nodes {
                     args.push(self.exec(node)?);
                 }
-                builtin.call(args, self.state_mut())
+                builtin.call(args, self.agent_mut())
             }
             Sexp::Primitive(Primitive::Procedure(Procedure::Abstraction(params, body_node, _))) => {
                 if arg_nodes.len() != params.len() {
                     return err!(
-                        self.state(),
+                        self.agent(),
                         LangError::WrongArgumentCount {
                             given: arg_nodes.len(),
                             // TODO(func) support variable arity.
@@ -221,7 +222,7 @@ impl AmlangAgent {
 
                 for (i, node) in arg_nodes.into_iter().enumerate() {
                     let val = self.exec(node)?;
-                    let frame = self.state_mut().exec_state_mut().top_mut();
+                    let frame = self.agent_mut().exec_state_mut().top_mut();
                     frame.insert(params[i], val);
                     debug!("exec_state insert: {} -> {}", params[i], node);
                 }
@@ -229,7 +230,7 @@ impl AmlangAgent {
                 self.exec(body_node)
             }
             not_proc @ _ => err!(
-                self.state(),
+                self.agent(),
                 LangError::InvalidArgument {
                     given: not_proc.clone(),
                     expected: "Procedure".into(),
@@ -252,11 +253,11 @@ impl AmlangAgent {
         special_node: LocalNode,
         arg_nodes: Vec<Node>,
     ) -> Result<Sexp, Error> {
-        let context = self.state().context();
+        let context = self.agent().context();
         match special_node {
             _ if context.tell == special_node || context.ask == special_node => {
                 let is_tell = context.tell == special_node;
-                let (ss, pp, oo) = tell_wrapper(&arg_nodes, &self.state())?;
+                let (ss, pp, oo) = tell_wrapper(&arg_nodes, &self.agent())?;
                 let (s, p, o) = (
                     self.exec_to_node(ss)?,
                     self.exec_to_node(pp)?,
@@ -270,30 +271,30 @@ impl AmlangAgent {
                     o
                 );
                 if is_tell {
-                    self.state_mut().tell(s, p, o)
+                    self.agent_mut().tell(s, p, o)
                 } else {
-                    self.state_mut().ask(s, p, o)
+                    self.agent_mut().ask(s, p, o)
                 }
             }
             _ if context.def == special_node => {
-                let (name, val) = def_wrapper(&arg_nodes, &self.state())?;
-                self.state_mut().designate(name.into())?;
-                if name.env() != self.state().pos().env() {
+                let (name, val) = def_wrapper(&arg_nodes, &self.agent())?;
+                self.agent_mut().designate(name.into())?;
+                if name.env() != self.agent().pos().env() {
                     panic!("Cross-env triples are not yet supported");
                 }
 
                 let val_node = if let Some(s) = val {
                     // Ensure construe maps name to this node.
-                    let val_node = self.state_mut().env().insert_atom();
+                    let val_node = self.agent_mut().env().insert_atom();
                     let mut frame = SymbolTable::default();
                     if let Ok(sym) =
-                        Symbol::try_from(self.state_mut().designate(Primitive::Node(name))?)
+                        Symbol::try_from(self.agent_mut().designate(Primitive::Node(name))?)
                     {
-                        frame.insert(sym, val_node.globalize(self.state()));
+                        frame.insert(sym, val_node.globalize(self.agent()));
                     }
 
                     // Construe, relying on self-evaluation of val_node.
-                    let original = self.state_mut().designate(Primitive::Node(s))?;
+                    let original = self.agent_mut().designate(Primitive::Node(s))?;
                     self.eval_state.push(frame);
                     let meaning = self.construe(original.into());
                     self.eval_state.pop();
@@ -309,19 +310,19 @@ impl AmlangAgent {
                     if let Ok(node) = <Node>::try_from(&final_sexp) {
                         node
                     } else {
-                        *self.state_mut().env().entry_mut(val_node).kind_mut() =
+                        *self.agent_mut().env().entry_mut(val_node).kind_mut() =
                             EntryMutKind::Owned(final_sexp);
-                        val_node.globalize(self.state())
+                        val_node.globalize(self.agent())
                     }
                 } else {
-                    self.state_mut().env().insert_atom().globalize(self.state())
+                    self.agent_mut().env().insert_atom().globalize(self.agent())
                 };
-                Ok(self.state_mut().name_node(name, val_node)?.into())
+                Ok(self.agent_mut().name_node(name, val_node)?.into())
             }
             _ if context.curr == special_node => {
                 if arg_nodes.len() > 0 {
                     return err!(
-                        self.state(),
+                        self.agent(),
                         LangError::WrongArgumentCount {
                             given: arg_nodes.len(),
                             expected: ExpectedCount::Exactly(0),
@@ -329,12 +330,12 @@ impl AmlangAgent {
                     );
                 }
                 self.print_curr_triples();
-                Ok(self.state().pos().into())
+                Ok(self.agent().pos().into())
             }
             _ if context.jump == special_node => {
                 if arg_nodes.len() != 1 {
                     return err!(
-                        self.state(),
+                        self.agent(),
                         LangError::WrongArgumentCount {
                             given: arg_nodes.len(),
                             expected: ExpectedCount::Exactly(1),
@@ -344,14 +345,14 @@ impl AmlangAgent {
 
                 // If original expr construe + exec -> Node, use that.
                 let dest = self.exec_to_node(arg_nodes[0])?;
-                self.state_mut().jump(dest);
+                self.agent_mut().jump(dest);
                 self.print_curr_triples();
-                Ok(self.state().pos().into())
+                Ok(self.agent().pos().into())
             }
             _ if context.import == special_node => {
                 if arg_nodes.len() != 1 {
                     return err!(
-                        self.state(),
+                        self.agent(),
                         LangError::WrongArgumentCount {
                             given: arg_nodes.len(),
                             expected: ExpectedCount::Exactly(1),
@@ -361,13 +362,13 @@ impl AmlangAgent {
 
                 // If original expr construe + exec -> Node, use that.
                 let original = self.exec_to_node(arg_nodes[0])?;
-                let imported = self.state_mut().import(original)?;
+                let imported = self.agent_mut().import(original)?;
                 Ok(imported.into())
             }
             _ if context.env_find == special_node => {
                 if arg_nodes.len() != 1 {
                     return err!(
-                        self.state(),
+                        self.agent(),
                         LangError::WrongArgumentCount {
                             given: arg_nodes.len(),
                             expected: ExpectedCount::Exactly(1),
@@ -375,12 +376,12 @@ impl AmlangAgent {
                     );
                 }
 
-                let des = self.state_mut().designate(arg_nodes[0].into())?;
+                let des = self.agent_mut().designate(arg_nodes[0].into())?;
                 let path = match <&AmString>::try_from(&des) {
                     Ok(path) => path,
                     _ => {
                         return err!(
-                            self.state(),
+                            self.agent(),
                             LangError::InvalidArgument {
                                 given: des.into(),
                                 expected: "Node containing string".into(),
@@ -389,7 +390,7 @@ impl AmlangAgent {
                     }
                 };
 
-                let res = if let Some(lnode) = self.state().find_env(path.as_str()) {
+                let res = if let Some(lnode) = self.agent().find_env(path.as_str()) {
                     Node::new(LocalNode::default(), lnode).into()
                 } else {
                     Sexp::default()
@@ -397,16 +398,16 @@ impl AmlangAgent {
                 Ok(res)
             }
             _ if context.apply == special_node => {
-                let (proc_node, args_node) = apply_wrapper(&arg_nodes, &self.state())?;
-                let proc_sexp = self.state_mut().designate(proc_node.into())?;
-                let args_sexp = self.state_mut().designate(args_node.into())?;
+                let (proc_node, args_node) = apply_wrapper(&arg_nodes, &self.agent())?;
+                let proc_sexp = self.agent_mut().designate(proc_node.into())?;
+                let args_sexp = self.agent_mut().designate(args_node.into())?;
                 debug!("applying (apply {} '{})", proc_sexp, args_sexp);
 
                 let proc = self.node_or_insert(proc_sexp)?;
                 let mut args = Vec::new();
                 for (arg, proper) in HeapSexp::new(args_sexp).into_iter() {
                     if !proper {
-                        return err!(self.state(), LangError::InvalidSexp(*arg));
+                        return err!(self.agent(), LangError::InvalidSexp(*arg));
                     }
                     args.push(self.node_or_insert(*arg)?);
                 }
@@ -416,7 +417,7 @@ impl AmlangAgent {
             _ if context.eval == special_node || context.exec == special_node => {
                 if arg_nodes.len() != 1 {
                     return err!(
-                        self.state(),
+                        self.agent(),
                         LangError::WrongArgumentCount {
                             given: arg_nodes.len(),
                             expected: ExpectedCount::Exactly(1),
@@ -424,7 +425,7 @@ impl AmlangAgent {
                     );
                 }
                 let is_eval = context.eval == special_node;
-                let arg = self.state_mut().designate(arg_nodes[0].into())?;
+                let arg = self.agent_mut().designate(arg_nodes[0].into())?;
                 if is_eval {
                     debug!("applying (eval {})", arg);
                     self.construe(arg)
@@ -435,9 +436,9 @@ impl AmlangAgent {
                 }
             }
             _ => err!(
-                self.state(),
+                self.agent(),
                 LangError::InvalidArgument {
-                    given: Node::new(self.state().context().lang_env(), special_node).into(),
+                    given: Node::new(self.agent().context().lang_env(), special_node).into(),
                     expected: "special Amlang Node".into(),
                 }
             ),
@@ -452,10 +453,10 @@ impl AmlangAgent {
             Ok(node)
         } else {
             Ok(self
-                .state_mut()
+                .agent_mut()
                 .env()
                 .insert_structure(sexp)
-                .globalize(self.state()))
+                .globalize(self.agent()))
         }
     }
 
@@ -473,17 +474,17 @@ impl AmlangAgent {
         let mut args = Vec::<Node>::with_capacity(s.iter().count());
         for (structure, proper) in s.into_iter() {
             if !proper {
-                return err!(self.state(), LangError::InvalidSexp(*structure));
+                return err!(self.agent(), LangError::InvalidSexp(*structure));
             }
 
             let arg_node = if should_construe {
                 let val = self.construe(*structure)?;
                 self.node_or_insert(val)?
             } else {
-                self.state_mut()
+                self.agent_mut()
                     .env()
                     .insert_structure(*structure)
-                    .globalize(self.state())
+                    .globalize(self.agent())
             };
             args.push(arg_node);
         }
@@ -493,7 +494,7 @@ impl AmlangAgent {
     fn history_insert(&mut self, structure: Sexp) -> Node {
         let env = self.history_env;
         let node = self
-            .state_mut()
+            .agent_mut()
             .access_env(env)
             .unwrap()
             .insert_structure(structure);
@@ -501,12 +502,12 @@ impl AmlangAgent {
     }
 
     fn print_curr_triples(&mut self) {
-        let local = self.state().pos().local();
-        let triples = self.state_mut().env().match_any(local);
+        let local = self.agent().pos().local();
+        let triples = self.agent_mut().env().match_any(local);
         for triple in triples {
             print!("    ");
-            let structure = triple.reify(self.state_mut());
-            self.state_mut().print_sexp(&structure);
+            let structure = triple.reify(self.agent_mut());
+            self.agent_mut().print_sexp(&structure);
             println!("");
         }
     }
@@ -523,7 +524,7 @@ impl Interpretation for AmlangAgent {
                         }
                     }
                 }
-                return self.state_mut().designate(primitive);
+                return self.agent_mut().designate(primitive);
             }
 
             Sexp::Cons(cons) => {
@@ -532,7 +533,7 @@ impl Interpretation for AmlangAgent {
                     Some(car) => car,
                     None => {
                         return err!(
-                            self.state(),
+                            self.agent(),
                             LangError::InvalidSexp(Cons::new(car, cdr).into())
                         );
                     }
@@ -544,7 +545,7 @@ impl Interpretation for AmlangAgent {
                     | Sexp::Primitive(Primitive::Node(_)) => self.node_or_insert(eval_car)?,
                     _ => {
                         return err!(
-                            self.state(),
+                            self.agent(),
                             LangError::InvalidArgument {
                                 given: Cons::new(Some(eval_car.into()), cdr).into(),
                                 expected: "special form or Procedure application".into(),
@@ -552,15 +553,15 @@ impl Interpretation for AmlangAgent {
                         );
                     }
                 };
-                let context = self.state().context();
+                let context = self.agent().context();
                 match node {
                     _ if amlang_node!(context, quote) == node => {
-                        return Ok(*quote_wrapper(cdr, self.state())?);
+                        return Ok(*quote_wrapper(cdr, self.agent())?);
                     }
                     _ if amlang_node!(context, lambda) == node
                         || amlang_node!(context, fexpr) == node =>
                     {
-                        let (params, body) = make_lambda_wrapper(cdr, &self.state())?;
+                        let (params, body) = make_lambda_wrapper(cdr, &self.agent())?;
                         let reflect = node.local() == context.fexpr;
                         let (proc, _) = self.make_lambda(params, body, reflect)?;
                         return Ok(proc.into());
@@ -568,7 +569,7 @@ impl Interpretation for AmlangAgent {
                     _ if amlang_node!(context, let_basic) == node
                         || amlang_node!(context, let_rec) == node =>
                     {
-                        let (params, exprs, body) = let_wrapper(cdr, &self.state())?;
+                        let (params, exprs, body) = let_wrapper(cdr, &self.agent())?;
                         let recursive = node.local() == context.let_rec;
                         let (proc, frame) = self.make_lambda(params, body, false)?;
                         let proc_node = self.node_or_insert(proc.into())?;
@@ -587,7 +588,7 @@ impl Interpretation for AmlangAgent {
                         let args = self.evlis(cdr, true)?;
                         if args.len() != 3 {
                             return err!(
-                                self.state(),
+                                self.agent(),
                                 LangError::WrongArgumentCount {
                                     given: args.len(),
                                     expected: ExpectedCount::Exactly(3),
@@ -603,7 +604,7 @@ impl Interpretation for AmlangAgent {
                     }
                     _ => {
                         let def_node = amlang_node!(context, def);
-                        let should_construe = match self.state_mut().designate(node.into())? {
+                        let should_construe = match self.agent_mut().designate(node.into())? {
                             // Don't evaluate args of reflective Abstractions.
                             Sexp::Primitive(Primitive::Procedure(Procedure::Abstraction(
                                 _,
