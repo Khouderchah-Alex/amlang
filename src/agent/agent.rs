@@ -4,18 +4,22 @@ use std::collections::btree_map::Entry;
 use std::collections::VecDeque;
 use std::convert::TryFrom;
 use std::io::{self, stdout, BufWriter};
+use std::iter::Peekable;
 
+use super::amlang_agent::AmlangAgent;
 use super::amlang_context::{AmlangContext, EnvPrelude};
 use super::continuation::Continuation;
 use crate::agent::lang_error::LangError;
 use crate::environment::environment::{EnvObject, TripleSet};
 use crate::environment::LocalNode;
 use crate::error::Error;
-use crate::model::Reflective;
+use crate::model::{Interpretation, Reflective};
+use crate::parser::{parse_sexp, ParseError};
 use crate::primitive::prelude::*;
 use crate::primitive::symbol_policies::policy_admin;
 use crate::primitive::table::{AmlangTable, Table};
 use crate::sexp::Sexp;
+use crate::token::TokenInfo;
 
 
 #[derive(Clone, Debug)]
@@ -24,7 +28,27 @@ pub struct Agent {
     exec_state: Continuation<ExecFrame>,
     designation_chain: VecDeque<LocalNode>,
 
+    history_env: LocalNode,
+
     context: AmlangContext,
+}
+
+pub struct RunIter<'a, S, F>
+where
+    S: Iterator<Item = TokenInfo>,
+    F: FnMut(&mut Agent, &Result<Sexp, RunError>),
+{
+    agent: &'a mut Agent,
+    stream: Peekable<S>,
+    handler: F,
+}
+
+// TODO(flex) Just use Error.
+#[derive(Debug)]
+pub enum RunError {
+    ParseError(ParseError),
+    CompileError(Error),
+    ExecError(Error),
 }
 
 // TODO(func) Allow for more than dynamic Node lookups (e.g. static tables).
@@ -40,7 +64,7 @@ struct EnvFrame {
 }
 
 impl Agent {
-    pub fn new(pos: Node, context: AmlangContext) -> Self {
+    pub fn new(pos: Node, context: AmlangContext, history_env: LocalNode) -> Self {
         let env_state = Continuation::new(EnvFrame { pos });
         // TODO(func) Provide better root node.
         let exec_state = Continuation::new(ExecFrame::new(pos));
@@ -48,7 +72,21 @@ impl Agent {
             env_state,
             exec_state,
             designation_chain: VecDeque::new(),
+            // TODO(sec) Verify as env node.
+            history_env,
             context,
+        }
+    }
+
+    pub fn run<'a, S, F>(&'a mut self, stream: S, handler: F) -> RunIter<'a, S, F>
+    where
+        S: Iterator<Item = TokenInfo>,
+        F: FnMut(&mut Agent, &Result<Sexp, RunError>),
+    {
+        RunIter {
+            agent: self,
+            stream: stream.peekable(),
+            handler,
         }
     }
 
@@ -57,6 +95,19 @@ impl Agent {
     }
     pub fn context_mut(&mut self) -> &mut AmlangContext {
         &mut self.context
+    }
+
+    pub(super) fn set_history_env(&mut self, history_env: LocalNode) {
+        // TODO(sec) Verify as env node.
+        self.history_env = history_env;
+    }
+
+    pub fn history_insert(&mut self, structure: Sexp) -> Node {
+        let local = self
+            .access_env(self.history_env)
+            .unwrap()
+            .insert_structure(structure);
+        Node::new(self.history_env, local)
     }
 }
 
@@ -622,6 +673,44 @@ impl Agent {
             }
             _ => write!(w, "{}", primitive),
         }
+    }
+}
+
+impl<'a, S, F> Iterator for RunIter<'a, S, F>
+where
+    S: Iterator<Item = TokenInfo>,
+    F: FnMut(&mut Agent, &Result<Sexp, RunError>),
+{
+    type Item = Result<Sexp, RunError>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let sexp = match parse_sexp(&mut self.stream, 0) {
+            Ok(Some(parsed)) => parsed,
+            Ok(None) => return None,
+            Err(err) => {
+                let res = Err(RunError::ParseError(err));
+                (self.handler)(&mut self.agent, &res);
+                return Some(res);
+            }
+        };
+
+        // TODO(func) Generalize over Interpretations.
+        let mut interpretation = AmlangAgent::from_agent(self.agent);
+        let meaning = match interpretation.construe(sexp) {
+            Ok(meaning) => meaning,
+            Err(err) => {
+                let res = Err(RunError::CompileError(err));
+                (self.handler)(&mut self.agent, &res);
+                return Some(res);
+            }
+        };
+
+        let res = match interpretation.contemplate(meaning) {
+            Ok(val) => Ok(val),
+            Err(err) => Err(RunError::ExecError(err)),
+        };
+        (self.handler)(&mut self.agent, &res);
+        Some(res)
     }
 }
 

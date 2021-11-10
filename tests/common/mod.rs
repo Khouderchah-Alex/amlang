@@ -1,13 +1,13 @@
 use std::path::Path;
 
-use amlang::agent::amlang_agent::{AmlangAgent, RunError};
+use amlang::agent::agent::{Agent, RunError};
 use amlang::agent::env_policy::SimplePolicy;
 use amlang::primitive::symbol_policies::policy_base;
 use amlang::sexp::Sexp;
 use amlang::token::string_stream::StringStream;
 
 
-pub fn setup() -> Result<AmlangAgent, String> {
+pub fn setup() -> Result<Agent, String> {
     const META_ENV_PATH: &str = "meta.env";
 
     // Start in this dir.
@@ -31,12 +31,10 @@ pub fn setup() -> Result<AmlangAgent, String> {
     let working_env = agent.find_env("working.env").unwrap();
     agent.jump_env(working_env);
     agent.designation_chain_mut().push_back(working_env);
-
-    let history_env = agent.find_env("history.env").unwrap();
-    Ok(AmlangAgent::from_agent(agent, history_env))
+    Ok(agent)
 }
 
-pub fn results<S: AsRef<str>>(lang_agent: &mut AmlangAgent, s: S) -> Vec<Sexp> {
+pub fn results<S: AsRef<str>>(lang_agent: &mut Agent, s: S) -> Vec<Sexp> {
     let stream = StringStream::new(s, policy_base).unwrap();
     lang_agent
         .run(stream, |_, _| {})
@@ -45,7 +43,7 @@ pub fn results<S: AsRef<str>>(lang_agent: &mut AmlangAgent, s: S) -> Vec<Sexp> {
 }
 
 pub fn results_with_errors<S: AsRef<str>>(
-    lang_agent: &mut AmlangAgent,
+    lang_agent: &mut Agent,
     s: S,
 ) -> Vec<Result<Sexp, RunError>> {
     let stream = StringStream::new(s, policy_base).unwrap();

@@ -16,6 +16,7 @@ pub struct InteractiveStream {
 }
 
 impl InteractiveStream {
+    // TODO(func) Integrate this with RunIter to keep state up-to-date.
     pub fn new(agent: Agent) -> InteractiveStream {
         let mut editor = Editor::<InteractiveHelper>::new();
         editor.set_helper(Some(InteractiveHelper::new(agent)));

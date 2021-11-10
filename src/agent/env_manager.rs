@@ -16,7 +16,7 @@ use crate::environment::entry::EntryMutKind;
 use crate::environment::environment::Environment;
 use crate::environment::local_node::{LocalId, LocalNode};
 use crate::error::Error;
-use crate::model::{Interpretation, Reflective};
+use crate::model::Reflective;
 use crate::parser::parse_sexp;
 use crate::primitive::prelude::*;
 use crate::primitive::symbol_policies::{policy_admin, AdminSymbolInfo};
@@ -90,6 +90,8 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         let meta_state = Agent::new(
             Node::new(LocalNode::default(), context.self_node()),
             context,
+            // Subtle: Can't use history_env until meta env has been bootstrapped.
+            LocalNode::default(),
         );
         let mut manager = Self {
             agent: meta_state,
@@ -101,6 +103,8 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
                            import_table: "__import_table",
                            serialize_path: "__serialize_path",
         );
+        let history_env = manager.agent().find_env("history.env").unwrap();
+        manager.agent_mut().set_history_env(history_env);
         info!("Meta env bootstrapping complete.");
 
         // Bootstrap lang env.
@@ -638,12 +642,5 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
             }
         }
         Ok(())
-    }
-}
-
-impl<Policy: EnvPolicy> Interpretation for EnvManager<Policy> {
-    // TODO(func) Implement as an actual Interpretation.
-    fn contemplate(&mut self, _structure: Sexp) -> Result<Sexp, Error> {
-        Ok(Sexp::default())
     }
 }

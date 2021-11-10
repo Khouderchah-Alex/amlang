@@ -1,6 +1,5 @@
 use log::debug;
 use std::convert::TryFrom;
-use std::iter::Peekable;
 
 use super::agent::{Agent, ExecFrame};
 use super::amlang_wrappers::*;
@@ -10,40 +9,18 @@ use crate::environment::entry::EntryMutKind;
 use crate::environment::LocalNode;
 use crate::error::Error;
 use crate::model::{Interpretation, Reflective};
-use crate::parser::{parse_sexp, ParseError};
 use crate::primitive::prelude::*;
 use crate::primitive::table::Table;
 use crate::sexp::{Cons, HeapSexp, Sexp};
-use crate::token::TokenInfo;
 
 
-#[derive(Clone)]
-pub struct AmlangAgent {
-    agent: Agent,
+pub struct AmlangAgent<'a> {
+    agent: &'a mut Agent,
     eval_state: Continuation<SymbolTable>,
-
-    history_env: LocalNode,
 }
 
-pub struct RunIter<'a, S, F>
-where
-    S: Iterator<Item = TokenInfo>,
-    F: FnMut(&mut AmlangAgent, &Result<Sexp, RunError>),
-{
-    agent: &'a mut AmlangAgent,
-    stream: Peekable<S>,
-    handler: F,
-}
-
-#[derive(Debug)]
-pub enum RunError {
-    ParseError(ParseError),
-    CompileError(Error),
-    ExecError(Error),
-}
-
-impl AmlangAgent {
-    pub fn from_agent(mut agent: Agent, history_env: LocalNode) -> Self {
+impl<'a> AmlangAgent<'a> {
+    pub fn from_agent(agent: &'a mut Agent) -> Self {
         // Ensure agent designates amlang nodes first.
         // TODO(func) Make idempotent.
         let lang_env = agent.context().lang_env();
@@ -51,21 +28,7 @@ impl AmlangAgent {
 
         Self {
             agent,
-            // TODO(sec) Verify as env node.
-            history_env,
             eval_state: Continuation::new(SymbolTable::default()),
-        }
-    }
-
-    pub fn run<'a, S, F>(&'a mut self, stream: S, handler: F) -> RunIter<'a, S, F>
-    where
-        S: Iterator<Item = TokenInfo>,
-        F: FnMut(&mut AmlangAgent, &Result<Sexp, RunError>),
-    {
-        RunIter {
-            agent: self,
-            stream: stream.peekable(),
-            handler,
         }
     }
 
@@ -299,8 +262,7 @@ impl AmlangAgent {
                     let meaning = self.construe(original.into());
                     self.eval_state.pop();
 
-                    let meaning_node = self.history_insert(meaning?);
-                    let final_sexp = self.exec(meaning_node)?;
+                    let final_sexp = self.contemplate(meaning?)?;
                     // If final result is a Node, we name that rather
                     // than nesting abstractions. Perhaps nested
                     // abstraction is right here?
@@ -431,8 +393,7 @@ impl AmlangAgent {
                     self.construe(arg)
                 } else {
                     debug!("applying (exec {})", arg);
-                    let meaning_node = self.history_insert(arg.into());
-                    self.exec(meaning_node)
+                    self.contemplate(arg)
                 }
             }
             _ => err!(
@@ -491,16 +452,6 @@ impl AmlangAgent {
         Ok(args)
     }
 
-    fn history_insert(&mut self, structure: Sexp) -> Node {
-        let env = self.history_env;
-        let node = self
-            .agent_mut()
-            .access_env(env)
-            .unwrap()
-            .insert_structure(structure);
-        Node::new(env, node)
-    }
-
     fn print_curr_triples(&mut self) {
         let local = self.agent().pos().local();
         let triples = self.agent_mut().env().match_any(local);
@@ -513,8 +464,17 @@ impl AmlangAgent {
     }
 }
 
-impl Interpretation for AmlangAgent {
+impl<'a> Interpretation for AmlangAgent<'a> {
     fn contemplate(&mut self, structure: Sexp) -> Result<Sexp, Error> {
+        let node = if let Ok(node) = <Node>::try_from(&structure) {
+            node
+        } else {
+            self.agent_mut().history_insert(structure)
+        };
+        self.exec(node)
+    }
+
+    fn construe(&mut self, structure: Sexp) -> Result<Sexp, Error> {
         match structure {
             Sexp::Primitive(primitive) => {
                 if let Primitive::Symbol(symbol) = &primitive {
@@ -619,42 +579,5 @@ impl Interpretation for AmlangAgent {
                 }
             }
         }
-    }
-}
-
-impl<'a, S, F> Iterator for RunIter<'a, S, F>
-where
-    S: Iterator<Item = TokenInfo>,
-    F: FnMut(&mut AmlangAgent, &Result<Sexp, RunError>),
-{
-    type Item = Result<Sexp, RunError>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let sexp = match parse_sexp(&mut self.stream, 0) {
-            Ok(Some(parsed)) => parsed,
-            Ok(None) => return None,
-            Err(err) => {
-                let res = Err(RunError::ParseError(err));
-                (self.handler)(&mut self.agent, &res);
-                return Some(res);
-            }
-        };
-
-        let meaning = match self.agent.construe(sexp) {
-            Ok(meaning) => meaning,
-            Err(err) => {
-                let res = Err(RunError::CompileError(err));
-                (self.handler)(&mut self.agent, &res);
-                return Some(res);
-            }
-        };
-
-        let meaning_node = self.agent.history_insert(meaning);
-        let res = match self.agent.exec(meaning_node) {
-            Ok(val) => Ok(val),
-            Err(err) => Err(RunError::ExecError(err)),
-        };
-        (self.handler)(&mut self.agent, &res);
-        Some(res)
     }
 }

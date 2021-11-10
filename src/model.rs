@@ -17,25 +17,14 @@ use crate::sexp::Sexp;
 /// encapsulation in traditional programming languages (e.g. WRT objects,
 /// modules, etc) as implicitly embodying a similar notion.
 ///
-/// In a sense, adding contemplate() allows for what would normally just be some
-/// form of construe (or eval/call/etc) to reify some form of internal theory.
+/// In a sense, adding construe() allows for what would normally just be some
+/// form of contemplate (or eval/call/etc) to reify some form of internal theory.
 pub trait Interpretation {
+    /// Meaning of external Structure as internal Structure.
+    fn construe(&mut self, structure: Sexp) -> Result<Sexp, Error>;
+
     /// Meaning of internal Structure.
     fn contemplate(&mut self, structure: Sexp) -> Result<Sexp, Error>;
-
-    /// Meaning of external Structure.
-    ///
-    /// While the notion of abstraction means there will likely be some
-    /// connection to |contemplate| (i.e. that there is some direct connection
-    /// between external and internal Structures), implementations are not
-    /// constrained to comply with this.
-    ///
-    /// The default implementation directly passing to |contemplate| represents
-    /// an abstractive base case, where external and internal Structures are the
-    /// same.
-    fn construe(&mut self, structure: Sexp) -> Result<Sexp, Error> {
-        self.contemplate(structure)
-    }
 }
 
 /// Structure of compiled meaning, according to (possibly implicit) metamodel.
