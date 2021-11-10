@@ -6,14 +6,14 @@ use std::convert::TryFrom;
 use std::io::{self, stdout, BufWriter};
 use std::iter::Peekable;
 
-use super::amlang_agent::AmlangAgent;
 use super::amlang_context::{AmlangContext, EnvPrelude};
+use super::amlang_interpreter::AmlangInterpreter;
 use super::continuation::Continuation;
 use crate::agent::lang_error::LangError;
 use crate::environment::environment::{EnvObject, TripleSet};
 use crate::environment::LocalNode;
 use crate::error::Error;
-use crate::model::{Interpretation, Reflective};
+use crate::model::{Interpreter, Reflective};
 use crate::parser::parse_sexp;
 use crate::primitive::prelude::*;
 use crate::primitive::symbol_policies::policy_admin;
@@ -686,9 +686,9 @@ where
             }
         };
 
-        // TODO(func) Generalize over Interpretations.
-        let mut interpretation = AmlangAgent::from_agent(self.agent);
-        let meaning = match interpretation.construe(sexp) {
+        // TODO(func) Generalize over Interpreters.
+        let mut interpreter = AmlangInterpreter::from_agent(self.agent);
+        let meaning = match interpreter.construe(sexp) {
             Ok(meaning) => meaning,
             Err(err) => {
                 let res = Err(err);
@@ -697,7 +697,7 @@ where
             }
         };
 
-        let res = match interpretation.contemplate(meaning) {
+        let res = match interpreter.contemplate(meaning) {
             Ok(val) => Ok(val),
             Err(err) => Err(err),
         };

@@ -8,18 +8,18 @@ use crate::agent::lang_error::{ExpectedCount, LangError};
 use crate::environment::entry::EntryMutKind;
 use crate::environment::LocalNode;
 use crate::error::Error;
-use crate::model::{Interpretation, Reflective};
+use crate::model::{Interpreter, Reflective};
 use crate::primitive::prelude::*;
 use crate::primitive::table::Table;
 use crate::sexp::{Cons, HeapSexp, Sexp};
 
 
-pub struct AmlangAgent<'a> {
+pub struct AmlangInterpreter<'a> {
     agent: &'a mut Agent,
     eval_state: Continuation<SymbolTable>,
 }
 
-impl<'a> AmlangAgent<'a> {
+impl<'a> AmlangInterpreter<'a> {
     pub fn from_agent(agent: &'a mut Agent) -> Self {
         // Ensure agent designates amlang nodes first.
         let lang_env = agent.context().lang_env();
@@ -465,7 +465,7 @@ impl<'a> AmlangAgent<'a> {
     }
 }
 
-impl<'a> Interpretation for AmlangAgent<'a> {
+impl<'a> Interpreter for AmlangInterpreter<'a> {
     fn contemplate(&mut self, structure: Sexp) -> Result<Sexp, Error> {
         let node = if let Ok(node) = <Node>::try_from(&structure) {
             node

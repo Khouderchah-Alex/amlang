@@ -7,10 +7,10 @@ use crate::sexp::Sexp;
 /// Meaning of Structure, according to (possibly implicit) metamodel.
 ///
 /// The meaning of Structures in the methods below can be represented by the
-/// Structures returned, the state of the Interpretation itself, and possibly
+/// Structures returned, the state of the Interpreter itself, and possibly
 /// how it modifies the state of its Environment.
 ///
-/// Note the distinction between "internal" Structures the Interpretation uses
+/// Note the distinction between "internal" Structures the Interpreter uses
 /// to communicate with itself and "external" Structures it uses to communicate
 /// broadly. This inherently recursible notion represents abstraction in the
 /// process of metamodelling. In some sense, we can look at the idea of
@@ -19,7 +19,7 @@ use crate::sexp::Sexp;
 ///
 /// In a sense, adding construe() allows for what would normally just be some
 /// form of contemplate (or eval/call/etc) to reify some form of internal theory.
-pub trait Interpretation {
+pub trait Interpreter {
     /// Meaning of external Structure as internal Structure.
     fn construe(&mut self, structure: Sexp) -> Result<Sexp, Error>;
 
