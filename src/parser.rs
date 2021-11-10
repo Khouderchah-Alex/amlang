@@ -1,10 +1,11 @@
 //! Module for parsing Amlang tokens into an AST.
 
-use std::fmt;
 use std::iter::Peekable;
 
+use crate::error::ErrorKind;
 use crate::primitive::symbol::ToSymbol;
 use crate::primitive::symbol_policies::policy_base;
+use crate::primitive::AmString;
 use crate::sexp::cons_list::ConsList;
 use crate::sexp::{HeapSexp, Sexp};
 use crate::token::{Token, TokenInfo};
@@ -30,6 +31,10 @@ pub struct ParseError {
 }
 
 /// Returns None when finished parsing, otherwise returns Some(sexp).
+///
+/// This returns a ParseError rather than Error so that clients can
+/// determine what state, if any, to include; this module is too
+/// low-level to make such decisions.
 pub fn parse_sexp<I: Iterator<Item = TokenInfo>>(
     tokens: &mut Peekable<I>,
     depth: usize,
@@ -144,8 +149,13 @@ pub fn parse_sexp<I: Iterator<Item = TokenInfo>>(
     }
 }
 
-impl fmt::Display for ParseError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "[Parse Error] {:?}: {}", self.reason, self.token)
+impl ErrorKind for ParseError {
+    // TODO(func) Model within env rather than fall back on strings.
+    fn reify(&self) -> Sexp {
+        list!(
+            AmString::new("ParseError"),
+            AmString::new(format!("{:?}", self.reason)),
+            AmString::new(self.token.to_string()),
+        )
     }
 }

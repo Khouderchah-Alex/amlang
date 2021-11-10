@@ -27,9 +27,7 @@ impl ErrorKind for DeserializeError {
                     AmString::new(err.to_string()),
                 )
             }
-            Self::ParseError(err) => {
-                list!(AmString::new("ParseError"), AmString::new(err.to_string()),)
-            }
+            Self::ParseError(err) => err.reify(),
             Self::MissingNodeSection => {
                 list!(AmString::new("MissingNodeSection"),)
             }
