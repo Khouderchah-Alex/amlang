@@ -22,9 +22,10 @@ pub struct AmlangAgent<'a> {
 impl<'a> AmlangAgent<'a> {
     pub fn from_agent(agent: &'a mut Agent) -> Self {
         // Ensure agent designates amlang nodes first.
-        // TODO(func) Make idempotent.
         let lang_env = agent.context().lang_env();
-        agent.designation_chain_mut().push_front(lang_env);
+        if agent.designation_chain().front().cloned() != Some(lang_env) {
+            agent.designation_chain_mut().push_front(lang_env);
+        }
 
         Self {
             agent,
