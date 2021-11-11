@@ -698,10 +698,7 @@ where
         let mut state = AmlangState::default();
         let mut interpreter = state.borrow_agent(self.agent);
         let res = match interpreter.construe(sexp) {
-            Ok(meaning) => match interpreter.contemplate(meaning) {
-                Ok(val) => Ok(val),
-                Err(err) => Err(err),
-            },
+            Ok(meaning) => interpreter.contemplate(meaning),
             err @ _ => err,
         };
 
