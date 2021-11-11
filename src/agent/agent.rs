@@ -467,6 +467,17 @@ impl Agent {
         None
     }
 
+    /// Execute |structure| as internal Amlang structure.
+    ///
+    /// Allows Agents broadly to leverage previous construe() execution of
+    /// AmlangInterpreters.
+    pub fn amlang_exec(&mut self, structure: Sexp) -> Result<Sexp, Error> {
+        // TODO(func) Push & pop on interpreter_state?
+        let mut state = AmlangState::default();
+        let mut amlang = state.borrow_agent(self);
+        amlang.contemplate(structure)
+    }
+
     fn get_or_create_import_table(&mut self, from_env: LocalNode) -> LocalNode {
         let imports_node = self.context.imports;
         let import_table_node = self.context.import_table;
