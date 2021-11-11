@@ -7,7 +7,7 @@ use std::io::{self, stdout, BufWriter};
 use std::iter::Peekable;
 
 use super::amlang_context::{AmlangContext, EnvPrelude};
-use super::amlang_interpreter::AmlangInterpreter;
+use super::amlang_interpreter::AmlangState;
 use super::continuation::Continuation;
 use crate::agent::lang_error::LangError;
 use crate::environment::environment::{EnvObject, TripleSet};
@@ -21,6 +21,14 @@ use crate::primitive::table::{AmlangTable, Table};
 use crate::sexp::Sexp;
 use crate::token::TokenInfo;
 
+
+/// State which Agent can use to create an Interpreter.
+///
+/// Can be stored in Env/Continuation and facilitates reifying
+/// metacontinuations.
+pub trait InterpreterState {
+    fn borrow_agent<'a>(&'a mut self, agent: &'a mut Agent) -> Box<dyn Interpreter + 'a>;
+}
 
 #[derive(Clone, Debug)]
 pub struct Agent {
@@ -687,20 +695,23 @@ where
         };
 
         // TODO(func) Generalize over Interpreters.
-        let mut interpreter = AmlangInterpreter::from_agent(self.agent);
-        let meaning = match interpreter.construe(sexp) {
-            Ok(meaning) => meaning,
-            Err(err) => {
-                let res = Err(err);
-                (self.handler)(&mut self.agent, &res);
-                return Some(res);
-            }
+        let mut state = AmlangState::default();
+        let mut interpreter = state.borrow_agent(self.agent);
+        let res = match interpreter.construe(sexp) {
+            Ok(meaning) => match interpreter.contemplate(meaning) {
+                Ok(val) => Ok(val),
+                Err(err) => Err(err),
+            },
+            err @ _ => err,
         };
 
-        let res = match interpreter.contemplate(meaning) {
-            Ok(val) => Ok(val),
-            Err(err) => Err(err),
-        };
+        // Normally, rustc is happy reasoning that |interpreter| should be
+        // dropped here to allow for another mut borrow on self to happen below.
+        // IIUC, this isn't happening here because the Interpreter impl may impl
+        // Drop as well, which prevents the compiler from dropping anywhere it
+        // likes. Without negative trait bounds, we either need to explicitly
+        // drop or scope |interpreter|.
+        std::mem::drop(interpreter);
         (self.handler)(&mut self.agent, &res);
         Some(res)
     }

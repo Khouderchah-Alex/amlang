@@ -1,7 +1,7 @@
 use log::debug;
 use std::convert::TryFrom;
 
-use super::agent::{Agent, ExecFrame};
+use super::agent::{Agent, ExecFrame, InterpreterState};
 use super::amlang_wrappers::*;
 use super::continuation::Continuation;
 use crate::agent::lang_error::{ExpectedCount, LangError};
@@ -14,13 +14,33 @@ use crate::primitive::table::Table;
 use crate::sexp::{Cons, HeapSexp, Sexp};
 
 
-pub struct AmlangInterpreter<'a> {
-    agent: &'a mut Agent,
+#[derive(Clone, Debug)]
+pub struct AmlangState {
     eval_state: Continuation<SymbolTable>,
 }
 
+impl Default for AmlangState {
+    fn default() -> Self {
+        Self {
+            eval_state: Continuation::new(SymbolTable::default()),
+        }
+    }
+}
+
+impl InterpreterState for AmlangState {
+    fn borrow_agent<'a>(&'a mut self, agent: &'a mut Agent) -> Box<dyn Interpreter + 'a> {
+        Box::new(AmlangInterpreter::from_state(self, agent))
+    }
+}
+
+
+pub struct AmlangInterpreter<'a> {
+    eval_state: &'a mut Continuation<SymbolTable>,
+    agent: &'a mut Agent,
+}
+
 impl<'a> AmlangInterpreter<'a> {
-    pub fn from_agent(agent: &'a mut Agent) -> Self {
+    fn from_state(state: &'a mut AmlangState, agent: &'a mut Agent) -> Self {
         // Ensure agent designates amlang nodes first.
         let lang_env = agent.context().lang_env();
         if agent.designation_chain().front().cloned() != Some(lang_env) {
@@ -28,8 +48,8 @@ impl<'a> AmlangInterpreter<'a> {
         }
 
         Self {
+            eval_state: &mut state.eval_state,
             agent,
-            eval_state: Continuation::new(SymbolTable::default()),
         }
     }
 
