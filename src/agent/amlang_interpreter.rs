@@ -1,7 +1,8 @@
 use log::debug;
 use std::convert::TryFrom;
 
-use super::agent::{Agent, ExecFrame, InterpreterState};
+use super::agent::Agent;
+use super::agent_frames::{ExecFrame, InterpreterState};
 use super::amlang_wrappers::*;
 use super::continuation::Continuation;
 use crate::agent::lang_error::{ExpectedCount, LangError};

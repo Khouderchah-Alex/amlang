@@ -3,6 +3,7 @@ pub use agent::Agent;
 
 // Public mods.
 pub mod agent;
+pub mod agent_frames;
 pub mod amlang_context;
 pub mod env_manager;
 pub mod env_policy;

@@ -1,11 +1,11 @@
 use colored::*;
 use log::debug;
-use std::collections::btree_map::Entry;
 use std::collections::VecDeque;
 use std::convert::TryFrom;
 use std::io::{self, stdout, BufWriter};
 use std::iter::Peekable;
 
+use super::agent_frames::{EnvFrame, ExecFrame, InterpreterState};
 use super::amlang_context::{AmlangContext, EnvPrelude};
 use super::amlang_interpreter::AmlangState;
 use super::continuation::Continuation;
@@ -13,27 +13,20 @@ use crate::agent::lang_error::LangError;
 use crate::environment::environment::{EnvObject, TripleSet};
 use crate::environment::LocalNode;
 use crate::error::Error;
-use crate::model::{Interpreter, Reflective};
+use crate::model::Reflective;
 use crate::parser::parse_sexp;
 use crate::primitive::prelude::*;
 use crate::primitive::symbol_policies::policy_admin;
-use crate::primitive::table::{AmlangTable, Table};
+use crate::primitive::table::Table;
 use crate::sexp::Sexp;
 use crate::token::TokenInfo;
 
-
-/// State which Agent can use to create an Interpreter.
-///
-/// Can be stored in Env/Continuation and facilitates reifying
-/// metacontinuations.
-pub trait InterpreterState {
-    fn borrow_agent<'a>(&'a mut self, agent: &'a mut Agent) -> Box<dyn Interpreter + 'a>;
-}
 
 #[derive(Clone, Debug)]
 pub struct Agent {
     env_state: Continuation<EnvFrame>,
     exec_state: Continuation<ExecFrame>,
+    interpreter_state: Continuation<Box<dyn InterpreterState>>,
     designation_chain: VecDeque<LocalNode>,
 
     history_env: LocalNode,
@@ -51,26 +44,18 @@ where
     handler: F,
 }
 
-// TODO(func) Allow for more than dynamic Node lookups (e.g. static tables).
-#[derive(Clone, Debug, PartialEq)]
-pub struct ExecFrame {
-    context: Node,
-    map: AmlangTable<Node, Sexp>,
-}
-
-#[derive(Clone, Debug)]
-struct EnvFrame {
-    pos: Node,
-}
-
 impl Agent {
     pub fn new(pos: Node, context: AmlangContext, history_env: LocalNode) -> Self {
         let env_state = Continuation::new(EnvFrame { pos });
         // TODO(func) Provide better root node.
         let exec_state = Continuation::new(ExecFrame::new(pos));
+        // Base interpretation as amlang.
+        let interpreter_state: Continuation<Box<dyn InterpreterState>> =
+            Continuation::new(Box::new(AmlangState::default()));
         Self {
             env_state,
             exec_state,
+            interpreter_state,
             designation_chain: VecDeque::new(),
             // TODO(sec) Verify as env node.
             history_env,
@@ -111,7 +96,7 @@ impl Agent {
     }
 }
 
-// Env-state-only functionality.
+// Basic frame functionality.
 impl Agent {
     pub fn globalize(&self, local: LocalNode) -> Node {
         Node::new(self.pos().env(), local)
@@ -135,10 +120,7 @@ impl Agent {
         let node = Node::new(env_node, self.context.self_node());
         *self.pos_mut() = node;
     }
-}
 
-// Designation-state-only functionality.
-impl Agent {
     pub fn designation_chain(&self) -> &VecDeque<LocalNode> {
         &self.designation_chain
     }
@@ -148,10 +130,7 @@ impl Agent {
     pub fn designation_chain_mut(&mut self) -> &mut VecDeque<LocalNode> {
         &mut self.designation_chain
     }
-}
 
-// Exec-state-only functionality.
-impl Agent {
     pub fn exec_state(&self) -> &Continuation<ExecFrame> {
         &self.exec_state
     }
@@ -169,6 +148,13 @@ impl Agent {
             }
         }
         self.designate(node.into())
+    }
+
+    pub fn interpreter_state(&self) -> &Continuation<Box<dyn InterpreterState>> {
+        &self.interpreter_state
+    }
+    pub fn interpreter_state_mut(&mut self) -> &mut Continuation<Box<dyn InterpreterState>> {
+        &mut self.interpreter_state
     }
 }
 
@@ -694,8 +680,9 @@ where
             }
         };
 
-        // TODO(func) Generalize over Interpreters.
-        let mut state = AmlangState::default();
+        // Clone InterpreterState to reborrow the Agent. Modifying
+        // |interpreter_state| is left to Interpreter impls.
+        let mut state = self.agent.interpreter_state.top().clone();
         let mut interpreter = state.borrow_agent(self.agent);
         let res = match interpreter.construe(sexp) {
             Ok(meaning) => interpreter.contemplate(meaning),
@@ -711,33 +698,5 @@ where
         std::mem::drop(interpreter);
         (self.handler)(&mut self.agent, &res);
         Some(res)
-    }
-}
-
-
-impl ExecFrame {
-    pub fn new(context: Node) -> Self {
-        Self {
-            context,
-            map: Default::default(),
-        }
-    }
-
-    pub fn insert(&mut self, from: Node, to: Sexp) -> bool {
-        let entry = self.map.entry(from);
-        if let Entry::Occupied(..) = entry {
-            false
-        } else {
-            entry.or_insert(to);
-            true
-        }
-    }
-
-    pub fn lookup(&self, key: Node) -> Option<&Sexp> {
-        self.map.as_map().get(&key)
-    }
-
-    pub fn context(&self) -> Node {
-        self.context
     }
 }
