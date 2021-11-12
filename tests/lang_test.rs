@@ -2,8 +2,8 @@ mod common;
 
 use std::convert::TryFrom;
 
-use amlang::primitive::{AmString, Number, Primitive};
-use amlang::sexp::Cons;
+use amlang::primitive::{AmString, Node, Number, Primitive};
+use amlang::sexp::{Cons, Sexp};
 use amlang::{amlang_node, break_sexp};
 
 
@@ -299,4 +299,77 @@ fn import() {
     assert_eq!(results[2], amlang_node!(context, t).into());
     assert_eq!(results[3], amlang_node!(context, f).into());
     assert_eq!(results[5], amlang_node!(context, t).into());
+}
+
+#[test]
+fn tell_dupe() {
+    let mut lang_agent = common::setup().unwrap();
+
+    let results = common::results_with_errors(
+        &mut lang_agent,
+        "(def a)
+
+         (def related_to)
+         (tell a related_to a)
+         (tell a related_to a)
+
+         (def is)
+         (tell is tell_handler (lambda (s p o) true))
+         (tell a is a)
+         ;; Dupes rejected prior to reaching handler.
+         (tell a is a)",
+    );
+
+    let err = results[3].as_ref().unwrap_err().kind().reify();
+    let (_, kind, _triple) = break_sexp!(err => (AmString, AmString, Sexp)).unwrap();
+    assert_eq!(kind, AmString::new("Duplicate triple"));
+
+    let err = results[7].as_ref().unwrap_err().kind().reify();
+    let (_, kind, _triple) = break_sexp!(err => (AmString, AmString, Sexp)).unwrap();
+    assert_eq!(kind, AmString::new("Duplicate triple"));
+}
+
+#[test]
+fn tell_handler_reject() {
+    let mut lang_agent = common::setup().unwrap();
+
+    let results = common::results_with_errors(
+        &mut lang_agent,
+        "(def is)
+         (tell is tell_handler (lambda (s p o) false))
+
+         (def a)
+         (tell a is a)",
+    );
+
+    let err = results[3].as_ref().unwrap_err().kind().reify();
+    let (_, kind, _triple, ret) = break_sexp!(err => (AmString, AmString, Sexp, Node)).unwrap();
+    assert_eq!(kind, AmString::new("Rejected triple"));
+    assert_eq!(ret, amlang_node!(lang_agent.context(), f).into());
+}
+
+#[test]
+fn tell_handler_as_eq() {
+    let mut lang_agent = common::setup().unwrap();
+
+    let results = common::results_with_errors(
+        &mut lang_agent,
+        "(def is)
+         (def a)
+         (def b)
+
+         (tell is tell_handler (lambda (s p o) (eq s o)))
+
+         ;; This should succeed.
+         (tell a is a)
+         ;; But this shouldn't.
+         (tell a is b)",
+    );
+
+    assert!(matches!(results[3], Ok(..)));
+
+    let err = results[5].as_ref().unwrap_err().kind().reify();
+    let (_, kind, _triple, ret) = break_sexp!(err => (AmString, AmString, Sexp, Node)).unwrap();
+    assert_eq!(kind, AmString::new("Rejected triple"));
+    assert_eq!(ret, amlang_node!(lang_agent.context(), f).into());
 }

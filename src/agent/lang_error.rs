@@ -24,6 +24,7 @@ pub enum LangError {
     UnboundSymbol(Symbol),
     AlreadyBoundSymbol(Symbol),
     DuplicateTriple(Sexp),
+    RejectedTriple(Sexp, Sexp),
     Unsupported(Cow<'static, str>),
 }
 
@@ -67,6 +68,13 @@ impl ErrorKind for LangError {
                 list!(AmString::new("Already bound symbol"), symbol.clone(),)
             }
             Self::DuplicateTriple(sexp) => list!(AmString::new("Duplicate triple"), sexp.clone(),),
+            Self::RejectedTriple(triple, reason) => {
+                list!(
+                    AmString::new("Rejected triple"),
+                    triple.clone(),
+                    reason.clone(),
+                )
+            }
             Self::Unsupported(msg) => list!(AmString::new("Unsupported"), AmString::new(msg),),
         };
         Cons::new(Some(AmString::new("LangError").into()), inner.into()).into()

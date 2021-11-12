@@ -331,6 +331,26 @@ impl Agent {
             return err!(self, LangError::DuplicateTriple(triple.reify(self)));
         }
 
+        // If a tell_handler exists for the predicate, ensure it passes before adding triple.
+        let tell_handler = self.context().tell_handler();
+        if let Some(&handler_triple) = self.env().match_but_object(p, tell_handler).iter().next() {
+            let handler_lnode = self.env().triple_object(handler_triple);
+            let res = self.amlang_exec(
+                Procedure::Application(
+                    handler_lnode.globalize(self),
+                    vec![subject, predicate, object],
+                )
+                .into(),
+            )?;
+            // Only allow insertion to continue if the handler returns true.
+            if res != amlang_node!(self.context(), t).into() {
+                return err!(
+                    self,
+                    LangError::RejectedTriple(list!(subject, predicate, object,), res)
+                );
+            }
+        }
+
         let triple = self.env().insert_triple(s, p, o);
         Ok(triple.node().globalize(&self).into())
     }
