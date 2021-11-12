@@ -102,13 +102,10 @@ fn lambda_duplicate_argname() {
     let mut lang_agent = common::setup().unwrap();
 
     let results = common::results_with_errors(&mut lang_agent, "(lambda (a a) (+ a a))");
-    if let Err(err) = &results[0] {
-        let (_, kind, _) =
-            break_sexp!(err.kind().reify() => (AmString, AmString; remainder)).unwrap();
-        assert_eq!(kind, AmString::new("Invalid argument"));
-    } else {
-        panic!();
-    }
+
+    let err = results[0].as_ref().unwrap_err().kind().reify();
+    let (_, kind, _) = break_sexp!(err => (AmString, AmString; remainder)).unwrap();
+    assert_eq!(kind, AmString::new("Invalid argument"));
 }
 
 #[test]
