@@ -82,12 +82,13 @@ impl Sexp {
         }
     }
 
-    pub fn write<W, F, P>(
+    pub fn write<W, F, P, S>(
         &self,
         w: &mut W,
         depth: usize,
         write_primitive: &mut F,
         write_paren: &mut P,
+        write_elem_separator: &mut S,
         max_length: Option<usize>,
         max_depth: Option<usize>,
     ) -> std::io::Result<()>
@@ -95,6 +96,7 @@ impl Sexp {
         W: std::io::Write,
         F: FnMut(&mut W, &Primitive, usize) -> std::io::Result<()>,
         P: FnMut(&mut W, &str, usize) -> std::io::Result<()>,
+        S: FnMut(&mut W, usize) -> std::io::Result<()>,
     {
         let mut pos: usize = 0;
         let mut outer_quote = false;
@@ -131,7 +133,7 @@ impl Sexp {
 
             if pos > 0 && !outer_quote {
                 if proper {
-                    write!(w, " ")?;
+                    write_elem_separator(w, depth)?;
                 } else {
                     write!(w, " . ")?;
                 }
@@ -141,6 +143,7 @@ impl Sexp {
                 depth + 1,
                 write_primitive,
                 write_paren,
+                write_elem_separator,
                 max_length,
                 max_depth,
             )?;
@@ -305,6 +308,7 @@ impl fmt::Display for Sexp {
             0,
             &mut |writer, primitive, _depth| write!(writer, "{}", primitive),
             &mut |writer, paren, _depth| write!(writer, "{}", paren),
+            &mut |writer, _depth| write!(writer, " "),
             Some(MAX_LENGTH),
             Some(MAX_DEPTH),
         ) {

@@ -407,6 +407,13 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
             depth,
             &mut |writer, primitive, depth| self.serialize_primitive(writer, primitive, depth),
             &mut |writer, paren, _depth| write!(writer, "{}", paren),
+            &mut |writer, depth| {
+                let s = match depth {
+                    0 => "\n    ",
+                    _ => " ",
+                };
+                write!(writer, "{}", s)
+            },
             None,
             None,
         )

@@ -626,6 +626,7 @@ impl Agent {
                 let (r, g, b) = paren_color(depth);
                 write!(writer, "{}", paren.truecolor(r, g, b))
             },
+            &mut |writer, _depth| write!(writer, " "),
             Some(MAX_LENGTH),
             Some(MAX_DEPTH),
         )
