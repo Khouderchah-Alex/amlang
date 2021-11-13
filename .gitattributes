@@ -1,0 +1,4 @@
+# Tell linguist[0] to treat envs as Scheme.
+#
+# [0] https://github.com/github/linguist
+*.env linguist-language=Scheme
