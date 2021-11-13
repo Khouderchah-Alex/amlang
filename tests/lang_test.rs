@@ -9,7 +9,7 @@ use amlang::{amlang_node, break_sexp};
 
 #[test]
 fn basic_arithmetic() {
-    let mut lang_agent = common::setup().unwrap();
+    let (mut lang_agent, _manager) = common::setup().unwrap();
 
     let results = common::results(&mut lang_agent, "(+ 1 2) (+ 2 2)");
     assert_eq!(
@@ -40,7 +40,7 @@ fn basic_arithmetic() {
 
 #[test]
 fn lambda_param_node_body() {
-    let mut lang_agent = common::setup().unwrap();
+    let (mut lang_agent, _manager) = common::setup().unwrap();
 
     // Requires concretization to work properly to avoid returning the abstract
     // param node itself.
@@ -50,7 +50,7 @@ fn lambda_param_node_body() {
 
 #[test]
 fn lambda_single_body() {
-    let mut lang_agent = common::setup().unwrap();
+    let (mut lang_agent, _manager) = common::setup().unwrap();
 
     let results = common::results(&mut lang_agent, "((lambda (a) (+ a a)) 4)");
     assert_eq!(results, vec![Number::Integer(8).into()]);
@@ -58,7 +58,7 @@ fn lambda_single_body() {
 
 #[test]
 fn lambda_seq_body() {
-    let mut lang_agent = common::setup().unwrap();
+    let (mut lang_agent, _manager) = common::setup().unwrap();
 
     let results = common::results(&mut lang_agent, "((lambda (a) (jump a) (curr)) lambda)");
     assert_eq!(
@@ -69,7 +69,7 @@ fn lambda_seq_body() {
 
 #[test]
 fn lambda_branch_body() {
-    let mut lang_agent = common::setup().unwrap();
+    let (mut lang_agent, _manager) = common::setup().unwrap();
 
     let results = common::results(
         &mut lang_agent,
@@ -83,7 +83,7 @@ fn lambda_branch_body() {
 
 #[test]
 fn lambda_nested_exec() {
-    let mut lang_agent = common::setup().unwrap();
+    let (mut lang_agent, _manager) = common::setup().unwrap();
 
     let results = common::results(&mut lang_agent, "((lambda (a) (+ a a)) (* 4 2))");
     assert_eq!(results, vec![Number::Integer(16).into()]);
@@ -91,7 +91,7 @@ fn lambda_nested_exec() {
 
 #[test]
 fn lambda_proc() {
-    let mut lang_agent = common::setup().unwrap();
+    let (mut lang_agent, _manager) = common::setup().unwrap();
 
     let results = common::results(&mut lang_agent, "((lambda (a b) (a b 4)) + 40)");
     assert_eq!(results, vec![Number::Integer(44).into()]);
@@ -99,7 +99,7 @@ fn lambda_proc() {
 
 #[test]
 fn lambda_duplicate_argname() {
-    let mut lang_agent = common::setup().unwrap();
+    let (mut lang_agent, _manager) = common::setup().unwrap();
 
     let results = common::results_with_errors(&mut lang_agent, "(lambda (a a) (+ a a))");
 
@@ -110,7 +110,7 @@ fn lambda_duplicate_argname() {
 
 #[test]
 fn let_basic() {
-    let mut lang_agent = common::setup().unwrap();
+    let (mut lang_agent, _manager) = common::setup().unwrap();
 
     let results = common::results(
         &mut lang_agent,
@@ -123,7 +123,7 @@ fn let_basic() {
 
 #[test]
 fn let_rec_vals() {
-    let mut lang_agent = common::setup().unwrap();
+    let (mut lang_agent, _manager) = common::setup().unwrap();
 
     let results = common::results(
         &mut lang_agent,
@@ -137,7 +137,7 @@ fn let_rec_vals() {
 
 #[test]
 fn let_rec_lambdas() {
-    let mut lang_agent = common::setup().unwrap();
+    let (mut lang_agent, _manager) = common::setup().unwrap();
 
     let results = common::results(
         &mut lang_agent,
@@ -165,7 +165,7 @@ fn let_rec_lambdas() {
 
 #[test]
 fn basic_apply() {
-    let mut lang_agent = common::setup().unwrap();
+    let (mut lang_agent, _manager) = common::setup().unwrap();
 
     let results = common::results(&mut lang_agent, "(apply + '(1 2))");
     assert_eq!(results, vec![Number::Integer(3).into()]);
@@ -173,7 +173,7 @@ fn basic_apply() {
 
 #[test]
 fn basic_fexpr() {
-    let mut lang_agent = common::setup().unwrap();
+    let (mut lang_agent, _manager) = common::setup().unwrap();
 
     let results = common::results(&mut lang_agent, "((fexpr (a) (car (cdr a))) (+ 1 2))");
     assert_eq!(results, vec![Number::Integer(1).into()]);
@@ -181,7 +181,7 @@ fn basic_fexpr() {
 
 #[test]
 fn def_atom() {
-    let mut lang_agent = common::setup().unwrap();
+    let (mut lang_agent, _manager) = common::setup().unwrap();
 
     let results = common::results(&mut lang_agent, "(def a)");
     // Atom should designate to itself.
@@ -195,7 +195,7 @@ fn def_atom() {
 
 #[test]
 fn def_number() {
-    let mut lang_agent = common::setup().unwrap();
+    let (mut lang_agent, _manager) = common::setup().unwrap();
 
     let results = common::results(&mut lang_agent, "(def a 2)");
     assert_eq!(
@@ -208,7 +208,7 @@ fn def_number() {
 
 #[test]
 fn def_lambda() {
-    let mut lang_agent = common::setup().unwrap();
+    let (mut lang_agent, _manager) = common::setup().unwrap();
 
     let results = common::results(&mut lang_agent, "(def a (lambda (e) (+ e 2))) (a 2)");
     assert_eq!(results[1], Number::Integer(4).into());
@@ -216,7 +216,7 @@ fn def_lambda() {
 
 #[test]
 fn def_recursive_lambda() {
-    let mut lang_agent = common::setup().unwrap();
+    let (mut lang_agent, _manager) = common::setup().unwrap();
 
     let results = common::results(
         &mut lang_agent,
@@ -231,7 +231,7 @@ fn def_recursive_lambda() {
 
 #[test]
 fn reify_apply() {
-    let mut lang_agent = common::setup().unwrap();
+    let (mut lang_agent, _manager) = common::setup().unwrap();
 
     let results = common::results(
         &mut lang_agent,
@@ -244,7 +244,7 @@ fn reify_apply() {
 
 #[test]
 fn improper_list() {
-    let mut lang_agent = common::setup().unwrap();
+    let (mut lang_agent, _manager) = common::setup().unwrap();
 
     let results = common::results(&mut lang_agent, "(eq '(1 2 . 3) (cons 1 (cons 2 3)))");
     assert_eq!(results[0], amlang_node!(lang_agent.context(), t).into());
@@ -252,7 +252,7 @@ fn improper_list() {
 
 #[test]
 fn basic_ask_tell() {
-    let mut lang_agent = common::setup().unwrap();
+    let (mut lang_agent, _manager) = common::setup().unwrap();
 
     let results = common::results(
         &mut lang_agent,
@@ -272,7 +272,7 @@ fn basic_ask_tell() {
 
 #[test]
 fn import() {
-    let mut lang_agent = common::setup().unwrap();
+    let (mut lang_agent, _manager) = common::setup().unwrap();
 
     let results = common::results(
         &mut lang_agent,
@@ -300,7 +300,7 @@ fn import() {
 
 #[test]
 fn tell_dupe() {
-    let mut lang_agent = common::setup().unwrap();
+    let (mut lang_agent, _manager) = common::setup().unwrap();
 
     let results = common::results_with_errors(
         &mut lang_agent,
@@ -328,7 +328,7 @@ fn tell_dupe() {
 
 #[test]
 fn tell_handler_reject() {
-    let mut lang_agent = common::setup().unwrap();
+    let (mut lang_agent, _manager) = common::setup().unwrap();
 
     let results = common::results_with_errors(
         &mut lang_agent,
@@ -347,7 +347,7 @@ fn tell_handler_reject() {
 
 #[test]
 fn tell_handler_as_eq() {
-    let mut lang_agent = common::setup().unwrap();
+    let (mut lang_agent, _manager) = common::setup().unwrap();
 
     let results = common::results_with_errors(
         &mut lang_agent,

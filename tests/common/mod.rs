@@ -1,14 +1,14 @@
 use std::path::Path;
 
-use amlang::agent::env_policy::SimplePolicy;
-use amlang::agent::Agent;
+use amlang::agent::env_policy::{EnvPolicy, SimplePolicy};
+use amlang::agent::{Agent, EnvManager};
 use amlang::error::Error;
 use amlang::primitive::symbol_policies::policy_base;
 use amlang::sexp::Sexp;
 use amlang::token::string_stream::StringStream;
 
 
-pub fn setup() -> Result<Agent, String> {
+pub fn setup() -> Result<(Agent, EnvManager<impl EnvPolicy>), String> {
     const META_ENV_PATH: &str = "meta.env";
 
     // Start in this dir.
@@ -32,7 +32,8 @@ pub fn setup() -> Result<Agent, String> {
     let working_env = agent.find_env("working.env").unwrap();
     agent.jump_env(working_env);
     agent.designation_chain_mut().push_back(working_env);
-    Ok(agent)
+
+    Ok((agent, manager))
 }
 
 pub fn results<S: AsRef<str>>(lang_agent: &mut Agent, s: S) -> Vec<Sexp> {
