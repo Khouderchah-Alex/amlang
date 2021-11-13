@@ -316,20 +316,19 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
                 _ => (false, false),
             };
 
-            if write_structure {
-                write!(&mut w, "(")?;
-            } else {
-                write!(&mut w, " ")?;
-            }
-            self.serialize_list_internal(&mut w, &node.globalize(self.agent()).into(), 0)?;
-            if write_structure {
-                write!(&mut w, "  ")?;
+            let node = node.globalize(self.agent());
+            let line = if write_structure {
+                let structure = s.unwrap();
                 if add_quote {
-                    write!(&mut w, "'")?;
+                    list!(node, ("quote".to_symbol_or_panic(policy_admin), structure,),)
+                } else {
+                    list!(node, structure,)
                 }
-                self.serialize_list_internal(&mut w, &s.unwrap(), 1)?;
-                write!(&mut w, ")")?;
-            }
+            } else {
+                write!(&mut w, " ")?; // Add space to align with structured lines.
+                node.into()
+            };
+            self.serialize_list_internal(&mut w, &line, 1)?;
         }
         write!(&mut w, "\n)\n\n")?;
 
@@ -434,15 +433,15 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
             Primitive::BuiltIn(builtin) => write!(w, "(__builtin {})", builtin.name()),
             Primitive::Procedure(proc) => {
                 let proc_sexp = proc.reify(self.agent_mut());
-                self.serialize_list_internal(w, &proc_sexp, depth + 1)
+                self.serialize_list_internal(w, &proc_sexp, depth)
             }
             Primitive::SymbolTable(table) => {
                 let sexp = table.reify(self.agent_mut());
-                self.serialize_list_internal(w, &sexp, depth + 1)
+                self.serialize_list_internal(w, &sexp, depth)
             }
             Primitive::LocalNodeTable(table) => {
                 let sexp = table.reify(self.agent_mut());
-                self.serialize_list_internal(w, &sexp, depth + 1)
+                self.serialize_list_internal(w, &sexp, depth)
             }
             Primitive::Node(node) => {
                 if let Some(triple) = self
