@@ -4,15 +4,20 @@ version = "0.1.0"
 authors = ["Alex Khouderchah <alex.khouderchah@gmail.com>"]
 edition = "2018"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
+# Core deps.
 colored = "^2.0.0"
 dyn-clone = "^1.0.4"
 lazy_static = "^1.4.0"
 log = "^0.4.14"
-rustyline = "^9.0.0"
 regex = "^1.5.4"
+
+# Feature-gated deps (although may be default-enabled).
+rustyline = { version = "^9.0.0", optional = true }
 
 [dev-dependencies]
 env_logger = "^0.8.4"
+
+[features]
+default = ["interactive"]
+interactive = ["rustyline"]
