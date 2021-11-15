@@ -338,12 +338,11 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
 
             let node = node.globalize(self.agent());
             let line = if write_structure {
-                let structure = s.unwrap();
+                let mut structure = s.unwrap();
                 if add_quote {
-                    list!(node, ("quote".to_symbol_or_panic(policy_admin), structure,),)
-                } else {
-                    list!(node, structure,)
+                    structure = list!("quote".to_symbol_or_panic(policy_admin), structure,);
                 }
+                list!(node, structure,)
             } else {
                 write!(&mut w, " ")?; // Add space to align with structured lines.
                 node.into()
