@@ -1,18 +1,20 @@
 //! Basic REPL in Amlang; no special impls, single-threaded w/SimplePolicy.
 //!
-//! Run as `RUST_LOG=info cargo run --example repl`.
+//! Run with saved state as:       `RUST_LOG=info cargo run --example repl`.
+//! Reset saved state and run as:  `RUST_LOG=info cargo run --example repl -- -r`.
 //!
 //!
 //! Uses envs in the .gitignore'd examples/envs/ directory and {de,}serializes,
-//! so state is maintained between executions. State can be reset simply with
-//! `rm examples/envs/*`; if run without a meta.env, the meta.env used for
-//! integration tests will copied over.
+//! so state is maintained between executions. Lacking a meta.env, the meta.env
+//! used for integration tests will copied over.
 //!
 //! The lang env is actually the one in the top-level envs/ directory, so this
 //! can be used to make changes to the env as part of a commit.
 
+use clap::{App, Arg};
 use log::info;
 use std::convert::TryFrom;
+use std::fs;
 use std::path::Path;
 use std::process::Command;
 
@@ -30,11 +32,37 @@ fn main() -> Result<(), String> {
     // Setup logging.
     env_logger::init();
 
+    // Parse args.
+    let matches = App::new("Interactive Amlang REPL")
+        .version("0.1")
+        .about("Bare-bones single-threaded Amlang REPL with persistence")
+        .arg(
+            Arg::with_name("reset")
+                .short("r")
+                .long("reset")
+                .help("Reset all serialized state"),
+        )
+        .get_matches();
+
     // Start in this dir.
     let crate_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
     let file_dir = Path::new(file!()).parent().unwrap();
     let start_dir = crate_dir.join(file_dir).canonicalize().unwrap();
     amlang::init(start_dir).unwrap();
+
+    // Optionally reset state.
+    if matches.is_present("reset") {
+        for entry in fs::read_dir("envs/").unwrap() {
+            let entry = entry.unwrap();
+            let path = entry.path();
+            // For now, let's just leave subdirs as safe havens.
+            if path.is_dir() || path.file_name() == Some(".gitignore".as_ref()) {
+                continue;
+            }
+
+            fs::remove_file(path).unwrap();
+        }
+    }
 
     // Copy meta.env from tests/ if needed.
     if !Path::new(META_ENV_PATH).exists() {
@@ -42,7 +70,7 @@ fn main() -> Result<(), String> {
         let file_dir = "tests/common/meta.env";
         let test_meta_dir = crate_dir.join(file_dir).canonicalize().unwrap();
 
-        if let Err(err) = std::fs::copy(test_meta_dir, META_ENV_PATH) {
+        if let Err(err) = fs::copy(test_meta_dir, META_ENV_PATH) {
             return Err(format!("Copying meta.env failed: {}", err));
         }
 
@@ -57,7 +85,7 @@ fn main() -> Result<(), String> {
             .status()
             .expect("failed to monkeypatch {working,history}.env path");
         if !a.success() || !b.success() {
-            std::fs::remove_file(META_ENV_PATH).unwrap();
+            fs::remove_file(META_ENV_PATH).unwrap();
             panic!("Failed to monkeypatch paths");
         }
     }
