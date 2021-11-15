@@ -15,11 +15,16 @@ use crate::sexp::{Cons, HeapSexp, Sexp, SexpIntoIter};
 
 
 pub type SymbolTable = AmlangTable<Symbol, Node>;
-pub type LocalNodeTable = AmlangTable<LocalNode, LocalNode>;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct AmlangTable<K, V> {
     map: BTreeMap<K, V>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct LocalNodeTable {
+    map: BTreeMap<LocalNode, LocalNode>,
+    env: LocalNode,
 }
 
 // Using a trait rather than normal impl because LocalNode is a bit of an
@@ -69,6 +74,24 @@ impl<K: Ord, V> Default for AmlangTable<K, V> {
         Self {
             map: Default::default(),
         }
+    }
+}
+
+impl LocalNodeTable {
+    pub fn in_env(env: LocalNode) -> Self {
+        Self {
+            map: Default::default(),
+            env,
+        }
+    }
+}
+
+impl Table<LocalNode, LocalNode> for LocalNodeTable {
+    fn as_map(&self) -> &BTreeMap<LocalNode, LocalNode> {
+        &self.map
+    }
+    fn as_map_mut(&mut self) -> &mut BTreeMap<LocalNode, LocalNode> {
+        &mut self.map
     }
 }
 
@@ -165,7 +188,7 @@ impl Reflective for AmlangTable<Symbol, Node> {
     }
 }
 
-impl Reflective for AmlangTable<LocalNode, LocalNode> {
+impl Reflective for LocalNodeTable {
     fn reify(&self, agent: &mut Agent) -> Sexp {
         let mut alist = None;
         for (k, v) in self.as_map() {
@@ -173,8 +196,8 @@ impl Reflective for AmlangTable<LocalNode, LocalNode> {
                 Cons::new(
                     Some(
                         Cons::new(
-                            Some(k.globalize(agent).into()),
-                            Some(v.globalize(agent).into()),
+                            Some(Node::new(self.env, *k).into()),
+                            Some(Node::new(self.env, *v).into()),
                         )
                         .into(),
                     ),
@@ -183,8 +206,18 @@ impl Reflective for AmlangTable<LocalNode, LocalNode> {
                 .into(),
             );
         }
-        let node = amlang_node!(agent.context(), local_node_table);
-        Cons::new(Some(node.into()), alist).into()
+        let cmd = amlang_node!(agent.context(), local_node_table).into();
+        Cons::new(
+            Some(cmd),
+            Some(
+                Cons::new(
+                    Some(Node::new(LocalNode::default(), self.env).into()),
+                    alist,
+                )
+                .into(),
+            ),
+        )
+        .into()
     }
 
     fn reflect<F>(
@@ -196,9 +229,10 @@ impl Reflective for AmlangTable<LocalNode, LocalNode> {
         Self: Sized,
         F: FnMut(&mut Agent, &Primitive) -> Result<Node, Error>,
     {
-        let (command, cdr) = break_sexp!(structure => (Primitive; remainder), agent)?;
-        let node = process_primitive(agent, &command)?;
-        if !Self::valid_discriminator(node, agent) {
+        let (command, env, cdr) =
+            break_sexp!(structure => (Primitive, Primitive; remainder), agent)?;
+        let cmd = process_primitive(agent, &command)?;
+        if !Self::valid_discriminator(cmd, agent) {
             return err!(
                 agent,
                 LangError::InvalidArgument {
@@ -208,7 +242,8 @@ impl Reflective for AmlangTable<LocalNode, LocalNode> {
             );
         }
 
-        let mut table = Self::default();
+        let env = process_primitive(agent, &env)?;
+        let mut table = Self::in_env(env.local());
         for (assoc, _proper) in SexpIntoIter::from(cdr) {
             let cons = match Cons::try_from(assoc) {
                 Ok(cons) => cons,

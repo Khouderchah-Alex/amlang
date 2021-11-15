@@ -517,7 +517,7 @@ impl Agent {
             .match_but_object(import_triple.node(), import_table_node);
         match matches.len() {
             0 => {
-                let table = LocalNodeTable::default().into();
+                let table = LocalNodeTable::in_env(LocalNode::default()).into();
                 let table_node = self.context.meta_mut().insert_structure(table);
                 self.context.meta_mut().insert_triple(
                     import_triple.node(),
