@@ -15,6 +15,7 @@ use clap::{App, Arg};
 use log::info;
 use std::convert::TryFrom;
 use std::fs;
+use std::io;
 use std::path::Path;
 use std::process::Command;
 
@@ -27,7 +28,10 @@ use amlang::token::interactive_stream::InteractiveStream;
 
 
 fn main() -> Result<(), String> {
-    const META_ENV_PATH: &str = "envs/meta.env";
+    const RELATIVE_META_PATH: &str = "envs/meta.env";
+    let base_dir = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .canonicalize()
+        .unwrap();
 
     // Setup logging.
     env_logger::init();
@@ -44,54 +48,25 @@ fn main() -> Result<(), String> {
         )
         .get_matches();
 
-    // Start in this dir.
-    let crate_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
+    // Start amlang in this file's dir.
     let file_dir = Path::new(file!()).parent().unwrap();
-    let start_dir = crate_dir.join(file_dir).canonicalize().unwrap();
+    let start_dir = base_dir.join(file_dir);
     amlang::init(start_dir).unwrap();
 
-    // Optionally reset state.
+    // Perform any needed state preparation.
     if matches.is_present("reset") {
-        for entry in fs::read_dir("envs/").unwrap() {
-            let entry = entry.unwrap();
-            let path = entry.path();
-            // For now, let's just leave subdirs as safe havens.
-            if path.is_dir() || path.file_name() == Some(".gitignore".as_ref()) {
-                continue;
-            }
-
-            fs::remove_file(path).unwrap();
+        if let Err(err) = reset_state(&base_dir) {
+            return Err(format!("Resetting state failed: {}", err));
         }
     }
-
-    // Copy meta.env from tests/ if needed.
-    if !Path::new(META_ENV_PATH).exists() {
-        info!("No meta env; copying from tests/.");
-        let file_dir = "tests/common/meta.env";
-        let test_meta_dir = crate_dir.join(file_dir).canonicalize().unwrap();
-
-        if let Err(err) = fs::copy(test_meta_dir, META_ENV_PATH) {
+    if !Path::new(RELATIVE_META_PATH).exists() {
+        if let Err(err) = copy_meta(&base_dir) {
             return Err(format!("Copying meta.env failed: {}", err));
-        }
-
-        let a = Command::new("sh")
-            .arg("-c")
-            .arg(r"sed -i 's|../../envs/lang.env|../envs/lang.env|g' envs/meta.env")
-            .status()
-            .expect("failed to monkeypatch lang.env path");
-        let b = Command::new("sh")
-            .arg("-c")
-            .arg(r"sed -E -i 's/(working|history)/envs\/\1/g' envs/meta.env")
-            .status()
-            .expect("failed to monkeypatch {working,history}.env path");
-        if !a.success() || !b.success() {
-            fs::remove_file(META_ENV_PATH).unwrap();
-            panic!("Failed to monkeypatch paths");
         }
     }
 
     // Bootstrap/deserialize.
-    let mut manager = match EnvManager::<SimplePolicy>::bootstrap(META_ENV_PATH) {
+    let mut manager = match EnvManager::<SimplePolicy>::bootstrap(RELATIVE_META_PATH) {
         Ok(val) => val,
         Err(err) => return Err(format!("{}", err)),
     };
@@ -112,13 +87,12 @@ fn main() -> Result<(), String> {
     for _result in agent.run(stream, print_result) {}
 
     // Serialize.
-    if let Err(err) = manager.serialize_full(META_ENV_PATH) {
+    if let Err(err) = manager.serialize_full(RELATIVE_META_PATH) {
         return Err(err.to_string());
     }
 
     Ok(())
 }
-
 
 fn print_result(agent: &mut Agent, result: &Result<Sexp, Error>) {
     match result {
@@ -140,4 +114,46 @@ fn print_result(agent: &mut Agent, result: &Result<Sexp, Error>) {
         }
     };
     println!("");
+}
+
+
+fn reset_state(base_dir: &Path) -> io::Result<()> {
+    let envs_dir = base_dir.join("examples/envs/");
+    for entry in fs::read_dir(envs_dir)? {
+        let entry = entry?;
+        let path = entry.path();
+        // For now, let's just leave subdirs as safe havens.
+        if path.is_dir() || path.file_name() == Some(".gitignore".as_ref()) {
+            continue;
+        }
+
+        fs::remove_file(path)?;
+    }
+    Ok(())
+}
+
+fn copy_meta(base_dir: &Path) -> io::Result<()> {
+    info!("No meta env; copying from tests/.");
+    let test_meta = base_dir.join("tests/common/meta.env");
+    let example_meta = base_dir.join("examples/envs/meta.env");
+    fs::copy(test_meta, example_meta.clone())?;
+
+    let a = Command::new("sh")
+        .arg("-c")
+        .arg(r"sed -i 's|../../envs/lang.env|../envs/lang.env|g' envs/meta.env")
+        .status()
+        .expect("failed to monkeypatch lang.env path");
+    let b = Command::new("sh")
+        .arg("-c")
+        .arg(r"sed -E -i 's/(working|history)/envs\/\1/g' envs/meta.env")
+        .status()
+        .expect("failed to monkeypatch {working,history}.env path");
+    if !a.success() || !b.success() {
+        fs::remove_file(example_meta)?;
+        return Err(io::Error::new(
+            io::ErrorKind::Other,
+            "Failed to monkeypatch paths",
+        ));
+    }
+    Ok(())
 }
