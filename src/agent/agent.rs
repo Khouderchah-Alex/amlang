@@ -326,6 +326,7 @@ impl Agent {
             Ok(node.local())
         };
         let (s, p, o) = (to_local(subject)?, to_local(predicate)?, to_local(object)?);
+        let original_pos = self.pos();
 
         if let Some(triple) = self.env().match_triple(s, p, o).iter().next() {
             return err!(self, LangError::DuplicateTriple(triple.reify(self)));
@@ -351,6 +352,9 @@ impl Agent {
             }
         }
 
+        // Note(sec) If the tell handler jumps to a different environment, the
+        // local nodes will globalize into the wrong Environment.
+        self.jump(original_pos);
         let triple = self.env().insert_triple(s, p, o);
         Ok(triple.node().globalize(&self).into())
     }
