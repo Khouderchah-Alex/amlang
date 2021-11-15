@@ -8,6 +8,7 @@ use crate::token::file_stream;
 pub enum DeserializeError {
     FileStreamError(file_stream::FileStreamError),
     ParseError(parser::ParseError),
+    MissingHeaderSection,
     MissingNodeSection,
     MissingTripleSection,
     ExtraneousSection,
@@ -28,6 +29,9 @@ impl ErrorKind for DeserializeError {
                 )
             }
             Self::ParseError(err) => err.reify(),
+            Self::MissingHeaderSection => {
+                list!(AmString::new("MissingHeaderSection"),)
+            }
             Self::MissingNodeSection => {
                 list!(AmString::new("MissingNodeSection"),)
             }
