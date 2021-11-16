@@ -93,11 +93,12 @@ impl Borrow<str> for Symbol {
 }
 
 
-impl_try_from!(Sexp              ->  Symbol,      Symbol;
-               HeapSexp          ->  Symbol,      Symbol;
-               ref Sexp          ->  ref Symbol,  Symbol;
-               Option<Sexp>      ->  Symbol,      Symbol;
-               Option<ref Sexp>  ->  ref Symbol,  Symbol;
-               Result<Sexp>      ->  Symbol,      Symbol;
-               Result<ref Sexp>  ->  ref Symbol,  Symbol;
+impl_try_from!(Symbol;
+               Sexp              ->  Symbol,
+               HeapSexp          ->  Symbol,
+               ref Sexp          ->  ref Symbol,
+               Option<Sexp>      ->  Symbol,
+               Option<ref Sexp>  ->  ref Symbol,
+               Result<Sexp>      ->  Symbol,
+               Result<ref Sexp>  ->  ref Symbol,
 );

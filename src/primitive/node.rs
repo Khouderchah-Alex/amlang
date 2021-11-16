@@ -37,12 +37,13 @@ impl fmt::Display for Node {
 }
 
 
-impl_try_from!(Sexp          -> Node,       Node;
-               HeapSexp      -> Node,       Node;
+impl_try_from!(Node;
+               Sexp          -> Node,
+               HeapSexp      -> Node,
                // Prefer not to use this but need consistency for sexp_conversion.
-               ref Sexp      ->  ref Node,  Node;
-               Option<Sexp>  ->  Node,      Node;
-               Result<Sexp>  ->  Node,      Node;
+               ref Sexp      ->  ref Node,
+               Option<Sexp>  ->  Node,
+               Result<Sexp>  ->  Node,
 );
 
 impl<'a> TryFrom<&'a Sexp> for Node {

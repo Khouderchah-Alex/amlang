@@ -304,22 +304,24 @@ impl Reflective for LocalNodeTable {
 }
 
 
-impl_try_from!(Sexp                 ->  SymbolTable,          SymbolTable;
-               HeapSexp             ->  SymbolTable,          SymbolTable;
-               ref Sexp             ->  ref SymbolTable,      SymbolTable;
-               Option<Sexp>         ->  SymbolTable,          SymbolTable;
-               Option<ref Sexp>     ->  ref SymbolTable,      SymbolTable;
-               Option<ref mut Sexp> ->  ref mut SymbolTable,  SymbolTable;
-               Result<Sexp>         ->  SymbolTable,          SymbolTable;
-               Result<ref Sexp>     ->  ref SymbolTable,      SymbolTable;
+impl_try_from!(SymbolTable;
+               Sexp                 ->  SymbolTable,
+               HeapSexp             ->  SymbolTable,
+               ref Sexp             ->  ref SymbolTable,
+               Option<Sexp>         ->  SymbolTable,
+               Option<ref Sexp>     ->  ref SymbolTable,
+               Option<ref mut Sexp> ->  ref mut SymbolTable,
+               Result<Sexp>         ->  SymbolTable,
+               Result<ref Sexp>     ->  ref SymbolTable,
 );
 
-impl_try_from!(Sexp                 ->  LocalNodeTable,          LocalNodeTable;
-               HeapSexp             ->  LocalNodeTable,          LocalNodeTable;
-               ref Sexp             ->  ref LocalNodeTable,      LocalNodeTable;
-               Option<Sexp>         ->  LocalNodeTable,          LocalNodeTable;
-               Option<ref Sexp>     ->  ref LocalNodeTable,      LocalNodeTable;
-               Option<ref mut Sexp> ->  ref mut LocalNodeTable,  LocalNodeTable;
-               Result<Sexp>         ->  LocalNodeTable,          LocalNodeTable;
-               Result<ref Sexp>     ->  ref LocalNodeTable,      LocalNodeTable;
+impl_try_from!(LocalNodeTable;
+               Sexp                 ->  LocalNodeTable,
+               HeapSexp             ->  LocalNodeTable,
+               ref Sexp             ->  ref LocalNodeTable,
+               Option<Sexp>         ->  LocalNodeTable,
+               Option<ref Sexp>     ->  ref LocalNodeTable,
+               Option<ref mut Sexp> ->  ref mut LocalNodeTable,
+               Result<Sexp>         ->  LocalNodeTable,
+               Result<ref Sexp>     ->  ref LocalNodeTable,
 );

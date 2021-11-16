@@ -44,11 +44,12 @@ impl fmt::Display for AmString {
 }
 
 
-impl_try_from!(Sexp              ->  AmString,      AmString;
-               HeapSexp          ->  AmString,      AmString;
-               ref Sexp          ->  ref AmString,  AmString;
-               Option<Sexp>      ->  AmString,      AmString;
-               Option<ref Sexp>  ->  ref AmString,  AmString;
-               Result<Sexp>      ->  AmString,      AmString;
-               Result<ref Sexp>  ->  ref AmString,  AmString;
+impl_try_from!(AmString;
+               Sexp              ->  AmString,
+               HeapSexp          ->  AmString,
+               ref Sexp          ->  ref AmString,
+               Option<Sexp>      ->  AmString,
+               Option<ref Sexp>  ->  ref AmString,
+               Result<Sexp>      ->  AmString,
+               Result<ref Sexp>  ->  ref AmString,
 );
