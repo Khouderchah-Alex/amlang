@@ -22,6 +22,7 @@ use std::process::Command;
 use amlang::agent::env_policy::SimplePolicy;
 use amlang::agent::{Agent, EnvManager};
 use amlang::error::Error;
+use amlang::parser::ParseIter;
 use amlang::primitive::{Node, Primitive};
 use amlang::sexp::Sexp;
 use amlang::token::interactive_stream::InteractiveStream;
@@ -83,8 +84,9 @@ fn main() -> Result<(), String> {
     agent.designation_chain_mut().push_front(lang_env);
 
     // Run agent.
-    let stream = InteractiveStream::new(agent.clone());
-    for _result in agent.run(stream, print_result) {}
+    let tokens = InteractiveStream::new(agent.clone());
+    let sexps = ParseIter::from_tokens(tokens);
+    for _result in agent.run(sexps, print_result) {}
 
     // Serialize.
     if let Err(err) = manager.serialize_full(RELATIVE_META_PATH) {

@@ -3,7 +3,6 @@ use log::debug;
 use std::collections::VecDeque;
 use std::convert::TryFrom;
 use std::io::{self, stdout, BufWriter};
-use std::iter::Peekable;
 
 use super::agent_frames::{EnvFrame, ExecFrame, InterpreterState};
 use super::amlang_context::{AmlangContext, EnvPrelude};
@@ -14,12 +13,10 @@ use crate::environment::environment::{EnvObject, TripleSet};
 use crate::environment::LocalNode;
 use crate::error::Error;
 use crate::model::Reflective;
-use crate::parser::parse_sexp;
 use crate::primitive::prelude::*;
 use crate::primitive::symbol_policies::policy_admin;
 use crate::primitive::table::Table;
 use crate::sexp::Sexp;
-use crate::token::TokenInfo;
 
 
 #[derive(Clone, Debug)]
@@ -36,11 +33,10 @@ pub struct Agent {
 
 pub struct RunIter<'a, S, F>
 where
-    S: Iterator<Item = TokenInfo>,
     F: FnMut(&mut Agent, &Result<Sexp, Error>),
 {
     agent: &'a mut Agent,
-    stream: Peekable<S>,
+    stream: S,
     handler: F,
 }
 
@@ -65,12 +61,12 @@ impl Agent {
 
     pub fn run<'a, S, F>(&'a mut self, stream: S, handler: F) -> RunIter<'a, S, F>
     where
-        S: Iterator<Item = TokenInfo>,
+        S: Iterator<Item = Result<Sexp, Error>>,
         F: FnMut(&mut Agent, &Result<Sexp, Error>),
     {
         RunIter {
             agent: self,
-            stream: stream.peekable(),
+            stream,
             handler,
         }
     }
@@ -700,19 +696,18 @@ impl Agent {
 
 impl<'a, S, F> Iterator for RunIter<'a, S, F>
 where
-    S: Iterator<Item = TokenInfo>,
+    S: Iterator<Item = Result<Sexp, Error>>,
     F: FnMut(&mut Agent, &Result<Sexp, Error>),
 {
     type Item = Result<Sexp, Error>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let sexp = match parse_sexp(&mut self.stream, 0) {
-            Ok(Some(parsed)) => parsed,
-            Ok(None) => return None,
-            Err(err) => {
-                let res = Err(Error::no_agent(Box::new(err)));
-                (self.handler)(&mut self.agent, &res);
-                return Some(res);
+        let sexp = match self.stream.next() {
+            None => return None,
+            Some(Ok(sexp)) => sexp,
+            Some(err) => {
+                (self.handler)(&mut self.agent, &err);
+                return Some(err);
             }
         };
 
@@ -732,6 +727,7 @@ where
         // likes. Without negative trait bounds, we either need to explicitly
         // drop or scope |interpreter|.
         std::mem::drop(interpreter);
+
         (self.handler)(&mut self.agent, &res);
         Some(res)
     }

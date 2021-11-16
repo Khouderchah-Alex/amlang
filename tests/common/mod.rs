@@ -3,6 +3,7 @@ use std::path::Path;
 use amlang::agent::env_policy::{EnvPolicy, SimplePolicy};
 use amlang::agent::{Agent, EnvManager};
 use amlang::error::Error;
+use amlang::parser::ParseIter;
 use amlang::primitive::symbol_policies::policy_base;
 use amlang::sexp::Sexp;
 use amlang::token::string_stream::StringStream;
@@ -37,9 +38,10 @@ pub fn setup() -> Result<(Agent, EnvManager<impl EnvPolicy>), String> {
 }
 
 pub fn results<S: AsRef<str>>(lang_agent: &mut Agent, s: S) -> Vec<Sexp> {
-    let stream = StringStream::new(s, policy_base).unwrap();
+    let tokens = StringStream::new(s, policy_base).unwrap();
+    let sexps = ParseIter::from_tokens(tokens);
     lang_agent
-        .run(stream, |_, _| {})
+        .run(sexps, |_, _| {})
         .map(|e| e.unwrap())
         .collect::<Vec<_>>()
 }
@@ -48,6 +50,7 @@ pub fn results_with_errors<S: AsRef<str>>(
     lang_agent: &mut Agent,
     s: S,
 ) -> Vec<Result<Sexp, Error>> {
-    let stream = StringStream::new(s, policy_base).unwrap();
-    lang_agent.run(stream, |_, _| {}).collect::<Vec<_>>()
+    let tokens = StringStream::new(s, policy_base).unwrap();
+    let sexps = ParseIter::from_tokens(tokens);
+    lang_agent.run(sexps, |_, _| {}).collect::<Vec<_>>()
 }

@@ -2,7 +2,7 @@
 
 use std::iter::Peekable;
 
-use crate::error::ErrorKind;
+use crate::error::{Error, ErrorKind};
 use crate::primitive::symbol::ToSymbol;
 use crate::primitive::symbol_policies::policy_base;
 use crate::primitive::AmString;
@@ -11,6 +11,20 @@ use crate::sexp::{HeapSexp, Sexp};
 use crate::token::{Token, TokenInfo};
 
 use self::ParseErrorReason::*;
+
+
+/// Converts stream of TokenInfo into stream of Result<Sexp, Error>.
+pub struct ParseIter<S: Iterator<Item = TokenInfo>> {
+    stream: Peekable<S>,
+}
+
+impl<S: Iterator<Item = TokenInfo>> ParseIter<S> {
+    pub fn from_tokens(stream: S) -> Self {
+        Self {
+            stream: stream.peekable(),
+        }
+    }
+}
 
 const MAX_LIST_DEPTH: usize = 128;
 
@@ -145,6 +159,18 @@ pub fn parse_sexp<I: Iterator<Item = TokenInfo>>(
         }
         Token::Comment(_) => {
             unreachable!();
+        }
+    }
+}
+
+impl<S: Iterator<Item = TokenInfo>> Iterator for ParseIter<S> {
+    type Item = Result<Sexp, Error>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match parse_sexp(&mut self.stream, 0) {
+            Ok(Some(parsed)) => Some(Ok(parsed)),
+            Ok(None) => None,
+            Err(err) => Some(Err(Error::no_agent(Box::new(err)))),
         }
     }
 }
