@@ -2,6 +2,21 @@ macro_rules! impl_try_from {
     ($name:ident; $($tail:tt)*) => {
         impl_try_from!(@inner $name; $($tail)*);
     };
+    (@inner $name:ident; Primitive -> $to:ident, $($tail:tt)*) => {
+        impl TryFrom<Primitive> for $to {
+            type Error = Primitive;
+
+            fn try_from(value: Primitive) -> Result<Self, Self::Error> {
+                let v = value.into();
+                if let Primitive::$name(val) = v {
+                    Ok(val)
+                } else {
+                    Err(v)
+                }
+            }
+        }
+        impl_try_from!(@inner $name; $($tail)*);
+    };
     (@inner $name:ident; $from:ident -> $to:ident, $($tail:tt)*) => {
         impl TryFrom<$from> for $to {
             type Error = $from;

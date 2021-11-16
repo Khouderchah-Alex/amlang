@@ -305,6 +305,7 @@ impl Reflective for LocalNodeTable {
 
 
 impl_try_from!(SymbolTable;
+               Primitive            ->  SymbolTable,
                Sexp                 ->  SymbolTable,
                HeapSexp             ->  SymbolTable,
                ref Sexp             ->  ref SymbolTable,
@@ -316,6 +317,7 @@ impl_try_from!(SymbolTable;
 );
 
 impl_try_from!(LocalNodeTable;
+               Primitive            ->  LocalNodeTable,
                Sexp                 ->  LocalNodeTable,
                HeapSexp             ->  LocalNodeTable,
                ref Sexp             ->  ref LocalNodeTable,

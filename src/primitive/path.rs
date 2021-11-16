@@ -28,6 +28,7 @@ impl fmt::Display for Path {
 
 
 impl_try_from!(Path;
+               Primitive         ->  Path,
                Sexp              ->  Path,
                HeapSexp          ->  Path,
                ref Sexp          ->  ref Path,

@@ -138,6 +138,7 @@ impl ops::DivAssign for Number {
 
 
 impl_try_from!(Number;
+               Primitive         ->  Number,
                Sexp              ->  Number,
                HeapSexp          ->  Number,
                ref Sexp          ->  ref Number,

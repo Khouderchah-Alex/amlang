@@ -38,6 +38,7 @@ impl fmt::Display for Node {
 
 
 impl_try_from!(Node;
+               Primitive     -> Node,
                Sexp          -> Node,
                HeapSexp      -> Node,
                // Prefer not to use this but need consistency for sexp_conversion.

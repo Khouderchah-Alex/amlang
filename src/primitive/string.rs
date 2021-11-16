@@ -45,6 +45,7 @@ impl fmt::Display for AmString {
 
 
 impl_try_from!(AmString;
+               Primitive         ->  AmString,
                Sexp              ->  AmString,
                HeapSexp          ->  AmString,
                ref Sexp          ->  ref AmString,

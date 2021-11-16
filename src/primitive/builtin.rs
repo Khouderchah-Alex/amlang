@@ -51,6 +51,7 @@ impl fmt::Display for BuiltIn {
 
 
 impl_try_from!(BuiltIn;
+               Primitive         ->  BuiltIn,
                Sexp              ->  BuiltIn,
                HeapSexp          ->  BuiltIn,
                ref Sexp          ->  ref BuiltIn,

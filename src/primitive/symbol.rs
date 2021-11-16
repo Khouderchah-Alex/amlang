@@ -94,6 +94,7 @@ impl Borrow<str> for Symbol {
 
 
 impl_try_from!(Symbol;
+               Primitive         ->  Symbol,
                Sexp              ->  Symbol,
                HeapSexp          ->  Symbol,
                ref Sexp          ->  ref Symbol,
