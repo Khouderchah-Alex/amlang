@@ -49,16 +49,12 @@ impl Reflective for Procedure {
         }
     }
 
-    fn reflect<F>(
-        structure: Sexp,
-        agent: &mut Agent,
-        mut process_primitive: F,
-    ) -> Result<Self, Error>
+    fn reflect<F>(structure: Sexp, agent: &mut Agent, mut resolve: F) -> Result<Self, Error>
     where
         F: FnMut(&mut Agent, &Primitive) -> Result<Node, Error>,
     {
         let (command, cdr) = break_sexp!(structure => (Primitive; remainder), agent)?;
-        let node = process_primitive(agent, &command)?;
+        let node = resolve(agent, &command)?;
         let context = agent.context();
         if !Self::valid_discriminator(node, agent) {
             return err!(
@@ -82,14 +78,14 @@ impl Reflective for Procedure {
             }
 
             let (func, args) = break_sexp!(cdr.unwrap() => (Primitive, HeapSexp), agent)?;
-            let fnode = process_primitive(agent, &func)?;
+            let fnode = resolve(agent, &func)?;
             let mut arg_nodes = Vec::with_capacity(args.iter().count());
             for (arg, proper) in args {
                 if !proper {
                     return err!(agent, LangError::InvalidSexp(*arg));
                 }
                 if let Ok(p) = <&Primitive>::try_from(&*arg) {
-                    arg_nodes.push(process_primitive(agent, &p)?);
+                    arg_nodes.push(resolve(agent, &p)?);
                 } else {
                     return err!(agent, LangError::InvalidSexp(*arg));
                 }
@@ -114,12 +110,12 @@ impl Reflective for Procedure {
                     return err!(agent, LangError::InvalidSexp(*param));
                 }
                 if let Ok(p) = <&Primitive>::try_from(&*param) {
-                    param_nodes.push(process_primitive(agent, &p)?);
+                    param_nodes.push(resolve(agent, &p)?);
                 } else {
                     return err!(agent, LangError::InvalidSexp(*param));
                 }
             }
-            let body_node = process_primitive(agent, &body)?;
+            let body_node = resolve(agent, &body)?;
             Ok(Procedure::Abstraction(param_nodes, body_node, reflect).into())
         } else if node.local() == context.progn {
             let mut seq = vec![];
@@ -135,7 +131,7 @@ impl Reflective for Procedure {
                         );
                     }
                     match *sexp {
-                        Sexp::Primitive(p) => seq.push(process_primitive(agent, &p)?),
+                        Sexp::Primitive(p) => seq.push(resolve(agent, &p)?),
                         Sexp::Cons(c) => return err!(agent, LangError::InvalidSexp(c.into())),
                     }
                 }
@@ -155,9 +151,9 @@ impl Reflective for Procedure {
             let (pred, a, b) =
                 break_sexp!(cdr.unwrap() => (Primitive, Primitive, Primitive), agent)?;
             Ok(Procedure::Branch(Box::new((
-                process_primitive(agent, &pred)?,
-                process_primitive(agent, &a)?,
-                process_primitive(agent, &b)?,
+                resolve(agent, &pred)?,
+                resolve(agent, &a)?,
+                resolve(agent, &b)?,
             )))
             .into())
         } else {

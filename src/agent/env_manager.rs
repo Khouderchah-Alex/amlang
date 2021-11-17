@@ -575,22 +575,18 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         // envs, Reflective context nodes are only valid because they're specially
         // set before actual context bootstrapping occurs.
         if let Ok(node) = self.parse_node(&command) {
-            let process_primitive = |agent: &mut Agent, p: &Primitive| match p {
+            let resolve = |agent: &mut Agent, p: &Primitive| match p {
                 Primitive::Node(n) => Ok(*n),
                 Primitive::Symbol(s) => EnvManager::<Policy>::parse_node_inner(agent, &s),
                 _ => panic!(),
             };
 
             if Procedure::valid_discriminator(node, self.agent()) {
-                return Ok(Procedure::reflect(*hsexp, self.agent_mut(), process_primitive)?.into());
+                return Ok(Procedure::reflect(*hsexp, self.agent_mut(), resolve)?.into());
             } else if LocalNodeTable::valid_discriminator(node, self.agent()) {
-                return Ok(
-                    LocalNodeTable::reflect(*hsexp, self.agent_mut(), process_primitive)?.into(),
-                );
+                return Ok(LocalNodeTable::reflect(*hsexp, self.agent_mut(), resolve)?.into());
             } else if SymbolTable::valid_discriminator(node, self.agent()) {
-                return Ok(
-                    SymbolTable::reflect(*hsexp, self.agent_mut(), process_primitive)?.into(),
-                );
+                return Ok(SymbolTable::reflect(*hsexp, self.agent_mut(), resolve)?.into());
             }
         }
 

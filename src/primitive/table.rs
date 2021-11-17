@@ -113,17 +113,13 @@ impl Reflective for AmlangTable<Symbol, Node> {
         Cons::new(Some(node.into()), alist).into()
     }
 
-    fn reflect<F>(
-        structure: Sexp,
-        agent: &mut Agent,
-        mut process_primitive: F,
-    ) -> Result<Self, Error>
+    fn reflect<F>(structure: Sexp, agent: &mut Agent, mut resolve: F) -> Result<Self, Error>
     where
         Self: Sized,
         F: FnMut(&mut Agent, &Primitive) -> Result<Node, Error>,
     {
         let (command, cdr) = break_sexp!(structure => (Primitive; remainder), agent)?;
-        let node = process_primitive(agent, &command)?;
+        let node = resolve(agent, &command)?;
         if !Self::valid_discriminator(node, agent) {
             return err!(
                 agent,
@@ -152,7 +148,7 @@ impl Reflective for AmlangTable<Symbol, Node> {
                 (Some(k), Some(v)) => {
                     if let Ok(kk) = <&Symbol>::try_from(&*k) {
                         if let Ok(vp) = <&Primitive>::try_from(&*v) {
-                            table.insert(kk.clone(), process_primitive(agent, &vp)?);
+                            table.insert(kk.clone(), resolve(agent, &vp)?);
                             continue;
                         }
                     }
@@ -220,18 +216,14 @@ impl Reflective for LocalNodeTable {
         .into()
     }
 
-    fn reflect<F>(
-        structure: Sexp,
-        agent: &mut Agent,
-        mut process_primitive: F,
-    ) -> Result<Self, Error>
+    fn reflect<F>(structure: Sexp, agent: &mut Agent, mut resolve: F) -> Result<Self, Error>
     where
         Self: Sized,
         F: FnMut(&mut Agent, &Primitive) -> Result<Node, Error>,
     {
         let (command, env, cdr) =
             break_sexp!(structure => (Primitive, Primitive; remainder), agent)?;
-        let cmd = process_primitive(agent, &command)?;
+        let cmd = resolve(agent, &command)?;
         if !Self::valid_discriminator(cmd, agent) {
             return err!(
                 agent,
@@ -242,7 +234,7 @@ impl Reflective for LocalNodeTable {
             );
         }
 
-        let env = process_primitive(agent, &env)?;
+        let env = resolve(agent, &env)?;
         let mut table = Self::in_env(env.local());
         for (assoc, _proper) in SexpIntoIter::from(cdr) {
             let cons = match Cons::try_from(assoc) {
@@ -260,8 +252,8 @@ impl Reflective for LocalNodeTable {
             match cons.consume() {
                 (Some(k), Some(v)) => match (*k, *v) {
                     (Sexp::Primitive(kp), Sexp::Primitive(vp)) => {
-                        let key = process_primitive(agent, &kp)?;
-                        let val = process_primitive(agent, &vp)?;
+                        let key = resolve(agent, &kp)?;
+                        let val = resolve(agent, &vp)?;
                         if let Ok(kk) = Node::try_from(key) {
                             if let Ok(vv) = Node::try_from(val) {
                                 table.insert(kk.local(), vv.local());

@@ -51,11 +51,7 @@ impl Reflective for EnvHeader {
         )
     }
 
-    fn reflect<F>(
-        structure: Sexp,
-        agent: &mut Agent,
-        mut _process_primitive: F,
-    ) -> Result<Self, Error>
+    fn reflect<F>(structure: Sexp, agent: &mut Agent, mut _resolve: F) -> Result<Self, Error>
     where
         F: FnMut(&mut Agent, &Primitive) -> Result<Node, Error>,
     {

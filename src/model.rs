@@ -34,10 +34,10 @@ pub trait Reflective {
 
     /// Structure -> compiled meaning.
     ///
-    /// |process_primitive| is used so that reflect code can be written
-    /// uniformly in the face of, say, a Structure made of unresolved Symbols
-    /// vs one made of resolved Nodes.
-    fn reflect<F>(structure: Sexp, agent: &mut Agent, process_primitive: F) -> Result<Self, Error>
+    /// |resolve| is used so that reflect code can be written uniformly in the
+    /// face of, say, a Structure made of unresolved Symbols vs one made of
+    /// resolved Nodes.
+    fn reflect<F>(structure: Sexp, agent: &mut Agent, resolve: F) -> Result<Self, Error>
     where
         Self: Sized,
         F: FnMut(&mut Agent, &Primitive) -> Result<Node, Error>;

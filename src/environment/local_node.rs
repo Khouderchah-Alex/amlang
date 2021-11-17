@@ -73,11 +73,7 @@ impl Reflective for LocalTriple {
         list!(s, p, o,)
     }
 
-    fn reflect<F>(
-        _structure: Sexp,
-        _agent: &mut Agent,
-        _process_primitive: F,
-    ) -> Result<Self, Error> {
+    fn reflect<F>(_structure: Sexp, _agent: &mut Agent, _resolve: F) -> Result<Self, Error> {
         unimplemented!();
     }
 
