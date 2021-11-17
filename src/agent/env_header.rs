@@ -51,10 +51,7 @@ impl Reflective for EnvHeader {
         )
     }
 
-    fn reflect<F>(structure: Sexp, agent: &mut Agent, mut _resolve: F) -> Result<Self, Error>
-    where
-        F: FnMut(&mut Agent, &Primitive) -> Result<Node, Error>,
-    {
+    fn reflect<F>(structure: Sexp, agent: &mut Agent, mut _resolve: F) -> Result<Self, Error> {
         let (command, cdr) = break_sexp!(structure => (Symbol; remainder), agent)?;
         if command.as_str() != "header" {
             return err!(
