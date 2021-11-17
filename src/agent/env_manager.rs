@@ -1,6 +1,6 @@
 use log::{debug, info, warn};
 use std::collections::HashMap;
-use std::convert::{TryFrom, TryInto};
+use std::convert::TryFrom;
 use std::fs::File;
 use std::io::{BufWriter, Write};
 use std::path::Path as StdPath;
@@ -8,6 +8,7 @@ use std::path::Path as StdPath;
 use super::amlang_context::{AmlangContext, EnvPrelude};
 use super::amlang_wrappers::quote_wrapper;
 use super::deserialize_error::DeserializeError::*;
+use super::env_header::EnvHeader;
 use super::env_policy::EnvPolicy;
 use super::Agent;
 use crate::agent::lang_error::LangError;
@@ -21,7 +22,7 @@ use crate::parser::parse_sexp;
 use crate::primitive::prelude::*;
 use crate::primitive::symbol_policies::{policy_admin, AdminSymbolInfo};
 use crate::primitive::table::Table;
-use crate::sexp::{Cons, HeapSexp, Sexp, SexpIntoIter};
+use crate::sexp::{HeapSexp, Sexp, SexpIntoIter};
 use crate::token::file_stream::{FileStream, FileStreamError};
 
 
@@ -293,24 +294,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         let file = File::create(out_path.as_ref())?;
         let mut w = BufWriter::new(file);
 
-        // TODO(func) Use Header class & reify + reflect.
-        let node_count = self.agent_mut().env().all_nodes().into_iter().count();
-        let triple_count = self.agent_mut().env().match_all().into_iter().count();
-        let header = list!(
-            "header".to_symbol_or_panic(policy_admin),
-            Cons::new(
-                Some("version".to_symbol_or_panic(policy_admin).into()),
-                Some(Number::Integer(1).into())
-            ),
-            Cons::new(
-                Some("node-count".to_symbol_or_panic(policy_admin).into()),
-                Some(Number::Integer(node_count.try_into().unwrap()).into())
-            ),
-            Cons::new(
-                Some("triple-count".to_symbol_or_panic(policy_admin).into()),
-                Some(Number::Integer(triple_count.try_into().unwrap()).into())
-            ),
-        );
+        let header = EnvHeader::from_env(self.agent_mut().env()).reify(self.agent_mut());
         self.serialize_list_internal(&mut w, &header, 0)?;
 
         write!(&mut w, "(nodes")?;
@@ -381,8 +365,8 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         };
         let mut peekable = stream.peekable();
 
-        match parse_sexp(&mut peekable, 0) {
-            Ok(Some(parsed)) => self.deserialize_header(parsed)?,
+        let _header = match parse_sexp(&mut peekable, 0) {
+            Ok(Some(parsed)) => EnvHeader::reflect(parsed, self.agent_mut(), |_, _| panic!())?,
             Ok(None) => return err!(self.agent(), MissingHeaderSection),
             Err(err) => return err!(self.agent(), ParseError(err)),
         };
@@ -496,15 +480,6 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
             Primitive::Env(_) => Ok(()),
             _ => write!(w, "{}", primitive),
         }
-    }
-
-    fn deserialize_header(&mut self, structure: Sexp) -> Result<(), Error> {
-        // TODO(func) Use Header class & reify + reflect.
-        let (command, _) = break_sexp!(structure => (Symbol; remainder), self.agent())?;
-        if command.as_str() != "header" {
-            return err!(self.agent(), UnexpectedCommand(command.into()));
-        }
-        Ok(())
     }
 
     fn deserialize_nodes(&mut self, structure: Sexp) -> Result<(), Error> {
