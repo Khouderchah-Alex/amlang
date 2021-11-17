@@ -96,7 +96,48 @@ impl Table<LocalNode, LocalNode> for LocalNodeTable {
 }
 
 
-// TODO (flex) Would rather impl Reflective once. Maybe use macro.
+fn reflect_map<K, V, FK, FV>(
+    structure: Option<HeapSexp>,
+    agent: &mut Agent,
+    resolve_key: FK,
+    resolve_val: FV,
+) -> Result<BTreeMap<K, V>, Error>
+where
+    K: Ord + Clone,
+    V: Clone,
+    FK: Fn(&mut Agent, Sexp) -> Result<K, Error>,
+    FV: Fn(&mut Agent, Sexp) -> Result<V, Error>,
+{
+    let mut table = BTreeMap::<K, V>::default();
+    for (assoc, _proper) in SexpIntoIter::from(structure) {
+        let cons = match Cons::try_from(assoc) {
+            Ok(cons) => cons,
+            Err(err) => {
+                return err!(
+                    agent,
+                    LangError::InvalidArgument {
+                        given: *err,
+                        expected: "Association Cons".into()
+                    }
+                );
+            }
+        };
+        match cons.consume() {
+            (Some(k), Some(v)) => table.insert(resolve_key(agent, *k)?, resolve_val(agent, *v)?),
+            (k, v) => {
+                return err!(
+                    agent,
+                    LangError::InvalidArgument {
+                        given: Cons::new(k, v).into(),
+                        expected: "Association cons".into()
+                    }
+                );
+            }
+        };
+    }
+    Ok(table)
+}
+
 impl Reflective for AmlangTable<Symbol, Node> {
     fn reify(&self, agent: &mut Agent) -> Sexp {
         let mut alist = None;
@@ -130,48 +171,31 @@ impl Reflective for AmlangTable<Symbol, Node> {
             );
         }
 
-        let mut table = Self::default();
-        for (assoc, _proper) in SexpIntoIter::from(cdr) {
-            let cons = match Cons::try_from(assoc) {
-                Ok(cons) => cons,
-                Err(err) => {
-                    return err!(
-                        agent,
-                        LangError::InvalidArgument {
-                            given: *err,
-                            expected: "Association Cons".into()
-                        }
-                    );
-                }
-            };
-            match cons.consume() {
-                (Some(k), Some(v)) => {
-                    if let Ok(kk) = <&Symbol>::try_from(&*k) {
-                        if let Ok(vp) = <&Primitive>::try_from(&*v) {
-                            table.insert(kk.clone(), resolve(agent, &vp)?);
-                            continue;
-                        }
+        let map = reflect_map(
+            cdr,
+            agent,
+            |agent, sexp| match Symbol::try_from(sexp) {
+                Ok(key) => Ok(key),
+                Err(sexp) => err!(
+                    agent,
+                    LangError::InvalidArgument {
+                        given: sexp,
+                        expected: "Key as a Symbol".into()
                     }
-                    return err!(
-                        agent,
-                        LangError::InvalidArgument {
-                            given: Cons::new(Some(k), Some(v)).into(),
-                            expected: "(Symbol . Node) association".into()
-                        }
-                    );
-                }
-                (k, v) => {
-                    return err!(
-                        agent,
-                        LangError::InvalidArgument {
-                            given: Cons::new(k, v).into(),
-                            expected: "Association cons".into()
-                        }
-                    );
-                }
-            }
-        }
-        Ok(table)
+                ),
+            },
+            |agent, sexp| match Primitive::try_from(sexp) {
+                Ok(val) => Ok(resolve(agent, &val)?),
+                Err(sexp) => err!(
+                    agent,
+                    LangError::InvalidArgument {
+                        given: sexp,
+                        expected: "Val as a Node".into()
+                    }
+                ),
+            },
+        )?;
+        Ok(Self { map })
     }
 
     fn valid_discriminator(node: Node, agent: &Agent) -> bool {
@@ -235,54 +259,34 @@ impl Reflective for LocalNodeTable {
         }
 
         let env = resolve(agent, &env)?;
-        let mut table = Self::in_env(env.local());
-        for (assoc, _proper) in SexpIntoIter::from(cdr) {
-            let cons = match Cons::try_from(assoc) {
-                Ok(cons) => cons,
-                Err(err) => {
-                    return err!(
-                        agent,
-                        LangError::InvalidArgument {
-                            given: *err,
-                            expected: "Association Cons".into()
-                        }
-                    );
-                }
-            };
-            match cons.consume() {
-                (Some(k), Some(v)) => match (*k, *v) {
-                    (Sexp::Primitive(kp), Sexp::Primitive(vp)) => {
-                        let key = resolve(agent, &kp)?;
-                        let val = resolve(agent, &vp)?;
-                        if let Ok(kk) = Node::try_from(key) {
-                            if let Ok(vv) = Node::try_from(val) {
-                                table.insert(kk.local(), vv.local());
-                                continue;
-                            }
-                        }
+        let map = reflect_map(
+            cdr,
+            agent,
+            |agent, sexp| match Primitive::try_from(sexp) {
+                Ok(key) => Ok(resolve(agent, &key)?.local()),
+                Err(sexp) => err!(
+                    agent,
+                    LangError::InvalidArgument {
+                        given: sexp,
+                        expected: "Key as a Node".into()
                     }
-                    (k, v) => {
-                        return err!(
-                            agent,
-                            LangError::InvalidArgument {
-                                given: Cons::new(Some(k.into()), Some(v.into())).into(),
-                                expected: "(Node . Node) association".into()
-                            }
-                        );
+                ),
+            },
+            |agent, sexp| match Primitive::try_from(sexp) {
+                Ok(val) => Ok(resolve(agent, &val)?.local()),
+                Err(sexp) => err!(
+                    agent,
+                    LangError::InvalidArgument {
+                        given: sexp,
+                        expected: "Val as a Node".into()
                     }
-                },
-                (k, v) => {
-                    return err!(
-                        agent,
-                        LangError::InvalidArgument {
-                            given: Cons::new(k, v).into(),
-                            expected: "Association cons".into()
-                        }
-                    );
-                }
-            }
-        }
-        Ok(table)
+                ),
+            },
+        )?;
+        Ok(Self {
+            map,
+            env: env.local(),
+        })
     }
 
     fn valid_discriminator(node: Node, agent: &Agent) -> bool {
