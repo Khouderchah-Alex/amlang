@@ -14,7 +14,7 @@ use crate::model::Reflective;
 use crate::sexp::{Cons, HeapSexp, Sexp, SexpIntoIter};
 
 
-pub type SymbolTable = AmlangTable<Symbol, Node>;
+pub type SymNodeTable = AmlangTable<Symbol, Node>;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct AmlangTable<K, V> {
@@ -138,7 +138,7 @@ where
     Ok(table)
 }
 
-impl_amlang_table!(SymbolTable, Symbol, Node, symbol_table);
+impl_amlang_table!(SymNodeTable, Symbol, Node, sym_node_table);
 
 macro_rules! impl_amlang_table {
     ($alias:ident, $key:ident, $val:ident, $discriminator:ident) => {

@@ -42,7 +42,7 @@ macro_rules! bootstrap_context {
             let desig_node = $manager.agent().context().designation();
             let entry = $manager.agent_mut().env().entry(desig_node);
             let table = if let Ok(table) =
-                <&SymbolTable>::try_from(entry.as_option()) {
+                <&SymNodeTable>::try_from(entry.as_option()) {
                     table
                 } else {
                     panic!("Env designation isn't a symbol table");
@@ -84,7 +84,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         context.fexpr = LocalNode::new(43);
         context.progn = LocalNode::new(45);
         // Table nodes.
-        context.symbol_table = LocalNode::new(65);
+        context.sym_node_table = LocalNode::new(65);
         context.local_node_table = LocalNode::new(67);
 
         // Bootstrap meta env.
@@ -148,7 +148,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
                            t: "true",
                            f: "false",
                            eq: "eq",
-                           symbol_table: "table-sym-node",
+                           sym_node_table: "table-sym-node",
                            local_node_table: "table-lnode",
                            label: "label",
         );
@@ -209,7 +209,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
 
         // Create nodes.
         let self_env = env.insert_structure(Node::new(LocalNode::default(), env_node).into());
-        let designation = env.insert_structure(SymbolTable::default().into());
+        let designation = env.insert_structure(SymNodeTable::default().into());
         let tell_handler = env.insert_atom();
         let mut reserved_id = env.all_nodes().len() as LocalId;
         while let Some(_) = LocalNode::new(reserved_id).as_prelude() {
@@ -218,7 +218,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         }
 
         // Name nodes.
-        if let Ok(table) = <&mut SymbolTable>::try_from(env.entry_mut(designation).as_option()) {
+        if let Ok(table) = <&mut SymNodeTable>::try_from(env.entry_mut(designation).as_option()) {
             table.insert(
                 self_env
                     .as_prelude()
@@ -307,7 +307,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
                 _ if i == 1 => (false, false),
                 // Don't quote structures with special deserialize ops.
                 Some(sexp) => match sexp {
-                    Sexp::Primitive(Primitive::SymbolTable(_)) => (true, false),
+                    Sexp::Primitive(Primitive::SymNodeTable(_)) => (true, false),
                     Sexp::Primitive(Primitive::LocalNodeTable(_)) => (true, false),
                     Sexp::Primitive(Primitive::BuiltIn(_)) => (true, false),
                     Sexp::Primitive(Primitive::Procedure(_)) => (true, false),
@@ -451,7 +451,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
                 let proc_sexp = proc.reify(self.agent_mut());
                 self.serialize_list_internal(w, &proc_sexp, depth)
             }
-            Primitive::SymbolTable(table) => {
+            Primitive::SymNodeTable(table) => {
                 let sexp = table.reify(self.agent_mut());
                 self.serialize_list_internal(w, &sexp, depth)
             }
@@ -585,8 +585,8 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
                 return Ok(Procedure::reflect(*hsexp, self.agent_mut(), resolve)?.into());
             } else if LocalNodeTable::valid_discriminator(node, self.agent()) {
                 return Ok(LocalNodeTable::reflect(*hsexp, self.agent_mut(), resolve)?.into());
-            } else if SymbolTable::valid_discriminator(node, self.agent()) {
-                return Ok(SymbolTable::reflect(*hsexp, self.agent_mut(), resolve)?.into());
+            } else if SymNodeTable::valid_discriminator(node, self.agent()) {
+                return Ok(SymNodeTable::reflect(*hsexp, self.agent_mut(), resolve)?.into());
             }
         }
 
@@ -650,7 +650,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
                     return err!(self.agent(), ExpectedSymbol);
                 };
 
-                if let Ok(table) = <&mut SymbolTable>::try_from(
+                if let Ok(table) = <&mut SymNodeTable>::try_from(
                     self.agent_mut().env().entry_mut(designation).as_option(),
                 ) {
                     table.insert(name, subject);

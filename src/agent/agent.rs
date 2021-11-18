@@ -225,7 +225,7 @@ impl Agent {
         for i in 0..self.designation_chain.len() {
             let env = self.access_env(self.designation_chain[i]).unwrap();
             let entry = env.entry(designation);
-            let table = <&SymbolTable>::try_from(entry.as_option()).unwrap();
+            let table = <&SymNodeTable>::try_from(entry.as_option()).unwrap();
             if let Some(node) = table.lookup(name) {
                 return Ok(node);
             }
@@ -259,7 +259,7 @@ impl Agent {
             }
             // Reify Reflectives.
             Primitive::Procedure(proc) => Ok(proc.reify(self)),
-            Primitive::SymbolTable(table) => Ok(table.reify(self)),
+            Primitive::SymNodeTable(table) => Ok(table.reify(self)),
             Primitive::LocalNodeTable(table) => Ok(table.reify(self)),
             // Base case for self-designating.
             _ => Ok(designator.into()),
@@ -299,7 +299,7 @@ impl Agent {
         let designation = self.context().designation();
         // Use designation of current environment.
         if let Ok(table) =
-            <&mut SymbolTable>::try_from(self.env().entry_mut(designation).as_option())
+            <&mut SymNodeTable>::try_from(self.env().entry_mut(designation).as_option())
         {
             table.insert(symbol, node);
         } else {
@@ -681,7 +681,7 @@ impl Agent {
                 let s = procedure.reify(self);
                 self.write_sexp(w, &s, depth, false)
             }
-            Primitive::SymbolTable(table) => {
+            Primitive::SymNodeTable(table) => {
                 let s = table.reify(self);
                 self.write_sexp(w, &s, depth, false)
             }

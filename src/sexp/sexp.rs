@@ -473,7 +473,7 @@ sexp_from!(
     BuiltIn,
     Node,
     Path,
-    SymbolTable,
+    SymNodeTable,
     LocalNodeTable,
     Procedure,
 );

@@ -9,7 +9,7 @@ use std::convert::TryFrom;
 
 use crate::agent::Agent;
 use crate::primitive::table::Table;
-use crate::primitive::{Symbol, SymbolTable};
+use crate::primitive::{SymNodeTable, Symbol};
 
 
 // Rustyline Helper for InteractiveStream.
@@ -35,7 +35,7 @@ impl InteractiveHelper {
         let mut res = Vec::<Symbol>::new();
         for env in agent.designation_chain().clone() {
             let entry = agent.access_env(env).unwrap().entry(designation);
-            let table = <&SymbolTable>::try_from(entry.as_option()).unwrap();
+            let table = <&SymNodeTable>::try_from(entry.as_option()).unwrap();
             res.extend(
                 table
                     .as_map()

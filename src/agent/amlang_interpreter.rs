@@ -17,13 +17,13 @@ use crate::sexp::{Cons, HeapSexp, Sexp};
 
 #[derive(Clone, Debug)]
 pub struct AmlangState {
-    eval_state: Continuation<SymbolTable>,
+    eval_state: Continuation<SymNodeTable>,
 }
 
 impl Default for AmlangState {
     fn default() -> Self {
         Self {
-            eval_state: Continuation::new(SymbolTable::default()),
+            eval_state: Continuation::new(SymNodeTable::default()),
         }
     }
 }
@@ -36,7 +36,7 @@ impl InterpreterState for AmlangState {
 
 
 pub struct AmlangInterpreter<'a> {
-    eval_state: &'a mut Continuation<SymbolTable>,
+    eval_state: &'a mut Continuation<SymNodeTable>,
     agent: &'a mut Agent,
 }
 
@@ -67,9 +67,9 @@ impl<'a> AmlangInterpreter<'a> {
         params: Vec<Symbol>,
         body: HeapSexp,
         reflect: bool,
-    ) -> Result<(Procedure, SymbolTable), Error> {
+    ) -> Result<(Procedure, SymNodeTable), Error> {
         let mut surface = Vec::new();
-        let mut frame = SymbolTable::default();
+        let mut frame = SymNodeTable::default();
         for symbol in params {
             let node = self.agent_mut().env().insert_atom().globalize(self.agent());
             if frame.contains_key(&symbol) {
@@ -271,7 +271,7 @@ impl<'a> AmlangInterpreter<'a> {
                 let val_node = if let Some(s) = val {
                     // Ensure construe maps name to this node.
                     let val_node = self.agent_mut().env().insert_atom();
-                    let mut frame = SymbolTable::default();
+                    let mut frame = SymNodeTable::default();
                     if let Ok(sym) =
                         Symbol::try_from(self.agent_mut().designate(Primitive::Node(name))?)
                     {

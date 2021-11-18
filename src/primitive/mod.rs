@@ -28,7 +28,7 @@ pub mod prelude {
     pub use super::procedure::Procedure;
     pub use super::string::AmString;
     pub use super::symbol::{Symbol, ToSymbol};
-    pub use super::table::{LocalNodeTable, SymbolTable};
+    pub use super::table::{LocalNodeTable, SymNodeTable};
     pub use crate::environment::environment::EnvObject;
 }
 /// All other clients can simply pick out what to use as normal.
@@ -44,7 +44,7 @@ pub enum Primitive {
     Node(Node),
     Path(Path),
 
-    SymbolTable(SymbolTable),
+    SymNodeTable(SymNodeTable),
     LocalNodeTable(LocalNodeTable),
     Procedure(Procedure),
 
@@ -66,7 +66,7 @@ impl fmt::Display for Primitive {
             Primitive::Node(node) => write!(f, "{}", node),
             Primitive::Path(path) => write!(f, "{}", path),
 
-            Primitive::SymbolTable(table) => write!(f, "{:?}", table),
+            Primitive::SymNodeTable(table) => write!(f, "{:?}", table),
             Primitive::LocalNodeTable(table) => write!(f, "{:?}", table),
             Primitive::Procedure(proc) => write!(f, "{:?}", proc),
             Primitive::Env(env) => write!(f, "{:?}", env),
@@ -98,7 +98,7 @@ impl PartialEq for Primitive {
                     }
                     (&Primitive::Node(ref this), &Primitive::Node(ref that)) => (*this) == (*that),
                     (&Primitive::Path(ref this), &Primitive::Path(ref that)) => (*this) == (*that),
-                    (&Primitive::SymbolTable(ref this), &Primitive::SymbolTable(ref that)) => {
+                    (&Primitive::SymNodeTable(ref this), &Primitive::SymNodeTable(ref that)) => {
                         (*this) == (*that)
                     }
                     (
@@ -142,7 +142,7 @@ primitive_from!(
     BuiltIn,
     Node,
     Path,
-    SymbolTable,
+    SymNodeTable,
     LocalNodeTable,
     Procedure,
 );
