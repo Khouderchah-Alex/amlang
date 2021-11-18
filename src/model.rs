@@ -40,7 +40,7 @@ pub trait Reflective {
     fn reflect<F>(structure: Sexp, agent: &mut Agent, resolve: F) -> Result<Self, Error>
     where
         Self: Sized,
-        F: FnMut(&mut Agent, &Primitive) -> Result<Node, Error>;
+        F: Fn(&mut Agent, &Primitive) -> Result<Node, Error>;
 
     /// Whether the Structure's discriminator corresponds to this impl.
     ///

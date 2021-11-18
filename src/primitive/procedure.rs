@@ -49,9 +49,9 @@ impl Reflective for Procedure {
         }
     }
 
-    fn reflect<F>(structure: Sexp, agent: &mut Agent, mut resolve: F) -> Result<Self, Error>
+    fn reflect<F>(structure: Sexp, agent: &mut Agent, resolve: F) -> Result<Self, Error>
     where
-        F: FnMut(&mut Agent, &Primitive) -> Result<Node, Error>,
+        F: Fn(&mut Agent, &Primitive) -> Result<Node, Error>,
     {
         let (command, cdr) = break_sexp!(structure => (Primitive; remainder), agent)?;
         let node = resolve(agent, &command)?;

@@ -113,10 +113,10 @@ impl Reflective for AmlangTable<Symbol, Node> {
         Cons::new(Some(node.into()), alist).into()
     }
 
-    fn reflect<F>(structure: Sexp, agent: &mut Agent, mut resolve: F) -> Result<Self, Error>
+    fn reflect<F>(structure: Sexp, agent: &mut Agent, resolve: F) -> Result<Self, Error>
     where
         Self: Sized,
-        F: FnMut(&mut Agent, &Primitive) -> Result<Node, Error>,
+        F: Fn(&mut Agent, &Primitive) -> Result<Node, Error>,
     {
         let (command, cdr) = break_sexp!(structure => (Primitive; remainder), agent)?;
         let node = resolve(agent, &command)?;
@@ -216,10 +216,10 @@ impl Reflective for LocalNodeTable {
         .into()
     }
 
-    fn reflect<F>(structure: Sexp, agent: &mut Agent, mut resolve: F) -> Result<Self, Error>
+    fn reflect<F>(structure: Sexp, agent: &mut Agent, resolve: F) -> Result<Self, Error>
     where
         Self: Sized,
-        F: FnMut(&mut Agent, &Primitive) -> Result<Node, Error>,
+        F: Fn(&mut Agent, &Primitive) -> Result<Node, Error>,
     {
         let (command, env, cdr) =
             break_sexp!(structure => (Primitive, Primitive; remainder), agent)?;
