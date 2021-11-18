@@ -85,6 +85,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         context.progn = LocalNode::new(45);
         // Table nodes.
         context.sym_node_table = LocalNode::new(65);
+        context.sym_sexp_table = LocalNode::new(77);
         context.local_node_table = LocalNode::new(67);
 
         // Bootstrap meta env.
@@ -149,6 +150,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
                            f: "false",
                            eq: "eq",
                            sym_node_table: "table-sym-node",
+                           sym_sexp_table: "table-sym-sexp",
                            local_node_table: "table-lnode",
                            label: "label",
         );

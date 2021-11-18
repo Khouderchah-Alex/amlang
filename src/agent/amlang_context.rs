@@ -38,6 +38,7 @@ pub struct AmlangContext {
     pub f: LocalNode,
     pub eq: LocalNode,
     pub sym_node_table: LocalNode,
+    pub sym_sexp_table: LocalNode,
     pub local_node_table: LocalNode,
     pub label: LocalNode,
 }
@@ -93,6 +94,7 @@ impl AmlangContext {
             f: placeholder.clone(),
             eq: placeholder.clone(),
             sym_node_table: placeholder.clone(),
+            sym_sexp_table: placeholder.clone(),
             local_node_table: placeholder.clone(),
             label: placeholder.clone(),
         }

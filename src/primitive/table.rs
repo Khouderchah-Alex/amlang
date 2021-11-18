@@ -15,6 +15,7 @@ use crate::sexp::{Cons, HeapSexp, Sexp, SexpIntoIter};
 
 
 pub type SymNodeTable = AmlangTable<Symbol, Node>;
+pub type SymSexpTable = AmlangTable<Symbol, Sexp>;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct AmlangTable<K, V> {
@@ -139,6 +140,7 @@ where
 }
 
 impl_amlang_table!(SymNodeTable, Symbol, Node, sym_node_table);
+impl_amlang_table!(SymSexpTable, Symbol, Sexp, sym_sexp_table);
 
 macro_rules! impl_amlang_table {
     ($alias:ident, $key:ident, $val:ident, $discriminator:ident) => {
@@ -178,22 +180,22 @@ macro_rules! impl_amlang_table {
                 let map = reflect_map(
                     cdr,
                     agent,
-                    |agent, sexp| match $key::try_from(sexp) {
+                    |agent, sexp| match <impl_amlang_table!(@try_from $key)>::try_from(sexp) {
                         Ok(key) => impl_amlang_table!(@process resolve, agent, key, $key),
                         Err(sexp) => err!(
                             agent,
                             LangError::InvalidArgument {
-                                given: sexp,
+                                given: sexp.into(),
                                 expected: format!("Key as a {}", stringify!($key)).into()
                             }
                         ),
                     },
-                    |agent, sexp| match Primitive::try_from(sexp) {
+                    |agent, sexp| match <impl_amlang_table!(@try_from $val)>::try_from(sexp) {
                         Ok(val) => impl_amlang_table!(@process resolve, agent, val, $val),
                         Err(sexp) => err!(
                             agent,
                             LangError::InvalidArgument {
-                                given: sexp,
+                                given: sexp.into(),
                                 expected: format!("Val as a {}", stringify!($val)).into()
                             }
                         ),
@@ -224,11 +226,18 @@ macro_rules! impl_amlang_table {
                        Result<ref Sexp>     ->  ref $alias,
         );
     };
+    // For Node types, we want to try_from Primitive & call resolve.
     (@process $resolve:ident, $agent:ident, $val:ident, Node) => {
         $resolve($agent, &$val)
     };
     (@process $resolve:ident, $agent:ident, $val:ident, $($tail:tt)*) => {
         Ok($val)
+    };
+    (@try_from Node) => {
+        Primitive
+    };
+    (@try_from $ty:ident) => {
+        $ty
     };
 }
 use impl_amlang_table;
