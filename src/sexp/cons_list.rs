@@ -27,18 +27,24 @@ impl ConsList {
         self.head.into()
     }
 
-    pub fn release_with_tail(mut self, tail: Sexp) -> Sexp {
+    pub fn release_with_tail(mut self, tail: Option<HeapSexp>) -> Sexp {
         match self.len {
-            0 => tail,
+            0 => {
+                if let Some(hsexp) = tail {
+                    *hsexp
+                } else {
+                    Sexp::default()
+                }
+            }
             1 => {
                 // If self is moving, then end is not a usable address of
                 // self.head.
-                self.head.set_cdr(tail.into());
+                self.head.set_cdr(tail);
                 self.head.into()
             }
             _ => {
                 unsafe {
-                    (*self.end).set_cdr(Some(tail.into()));
+                    (*self.end).set_cdr(tail);
                 }
                 self.head.into()
             }

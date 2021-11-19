@@ -104,7 +104,7 @@ pub fn parse_sexp<I: Iterator<Item = TokenInfo>>(
                             token,
                         });
                     }
-                    return Ok(Some(list.release_with_tail(cdr)));
+                    return Ok(Some(list.release_with_tail(Some(cdr.into()))));
                 }
 
                 if let Some(TokenInfo {

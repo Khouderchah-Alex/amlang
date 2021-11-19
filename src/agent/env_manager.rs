@@ -368,7 +368,13 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         let mut peekable = stream.peekable();
 
         let _header = match parse_sexp(&mut peekable, 0) {
-            Ok(Some(parsed)) => EnvHeader::reflect(parsed, self.agent_mut(), |_, _| panic!())?,
+            Ok(Some(parsed)) => EnvHeader::reflect(parsed, self.agent_mut(), |_agent, p| {
+                if let Primitive::Node(n) = p {
+                    Ok(*n)
+                } else {
+                    panic!();
+                }
+            })?,
             Ok(None) => return err!(self.agent(), MissingHeaderSection),
             Err(err) => return err!(self.agent(), ParseError(err)),
         };
