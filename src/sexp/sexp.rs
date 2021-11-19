@@ -413,6 +413,7 @@ impl From<std::convert::Infallible> for Sexp {
 
 impl From<Sexp> for Option<HeapSexp> {
     fn from(sexp: Sexp) -> Self {
+        // Prefer to represent '() using None.
         if sexp.is_none() {
             None
         } else {
@@ -448,6 +449,12 @@ impl From<Cons> for HeapSexp {
     }
 }
 
+impl From<Cons> for Option<HeapSexp> {
+    fn from(cons: Cons) -> Self {
+        Some(HeapSexp::new(Sexp::Cons(cons)))
+    }
+}
+
 // Impl From<T> over Primitive subtypes.
 macro_rules! sexp_from {
     ($from:ident, $($tail:tt)*) => {
@@ -459,6 +466,11 @@ macro_rules! sexp_from {
         impl From<$from> for HeapSexp {
             fn from(elem: $from) -> Self {
                 Self::new(Sexp::Primitive(Primitive::$from(elem)))
+            }
+        }
+        impl From<$from> for Option<HeapSexp> {
+            fn from(elem: $from) -> Self {
+                Some(HeapSexp::new(Sexp::Primitive(Primitive::$from(elem))))
             }
         }
         sexp_from!($($tail)*);

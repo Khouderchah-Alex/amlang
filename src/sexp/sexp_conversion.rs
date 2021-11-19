@@ -116,7 +116,7 @@ macro_rules! list_inner {
     () => { None };
     (@cons $car:expr, $cdr:expr) => {
         <$crate::sexp::Sexp>::from(
-            $crate::sexp::Cons::new($car.into(), $cdr.into()))
+            $crate::sexp::Cons::new($car, $cdr))
     };
     (($elem:expr, $($sub_tail:tt)*), $($tail:tt)*) => {
         {

@@ -529,7 +529,7 @@ impl<'a> Interpreter for AmlangInterpreter<'a> {
                         return err!(
                             self.agent(),
                             LangError::InvalidArgument {
-                                given: Cons::new(Some(eval_car.into()), cdr).into(),
+                                given: Cons::new(eval_car, cdr).into(),
                                 expected: "special form or Procedure application".into(),
                             }
                         );

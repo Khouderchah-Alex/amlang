@@ -150,14 +150,13 @@ macro_rules! impl_amlang_table {
                 for (k, v) in self.as_map() {
                     alist = Some(
                         Cons::new(
-                            Some(Cons::new(Some(k.clone().into()), Some(v.clone().into())).into()),
+                            Cons::new(k.clone(), v.clone()),
                             alist,
-                        )
-                            .into(),
+                        ).into()
                     );
                 }
                 let node = amlang_node!(agent.context(), $discriminator);
-                Cons::new(Some(node.into()), alist).into()
+                Cons::new(node, alist).into()
             }
 
             fn reflect<F>(structure: Sexp, agent: &mut Agent, resolve: F) -> Result<Self, Error>
@@ -250,28 +249,15 @@ impl Reflective for LocalNodeTable {
         for (k, v) in self.as_map() {
             alist = Some(
                 Cons::new(
-                    Some(
-                        Cons::new(
-                            Some(Node::new(self.env, *k).into()),
-                            Some(Node::new(self.env, *v).into()),
-                        )
-                        .into(),
-                    ),
+                    Cons::new(Node::new(self.env, *k), Node::new(self.env, *v)),
                     alist,
                 )
                 .into(),
             );
         }
-        let cmd = amlang_node!(agent.context(), local_node_table).into();
         Cons::new(
-            Some(cmd),
-            Some(
-                Cons::new(
-                    Some(Node::new(LocalNode::default(), self.env).into()),
-                    alist,
-                )
-                .into(),
-            ),
+            amlang_node!(agent.context(), local_node_table),
+            Cons::new(Node::new(LocalNode::default(), self.env), alist),
         )
         .into()
     }

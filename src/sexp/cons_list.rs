@@ -56,7 +56,7 @@ impl ConsList {
             self.head.set_car(Some(val.into()));
             &self.head
         } else {
-            let tail = Cons::new(Some(val.into()), None);
+            let tail = Cons::new(val.into(), None);
             unsafe {
                 (*self.end).set_cdr(Some(tail.into()));
                 <&Cons>::try_from((*self.end).cdr()).unwrap()

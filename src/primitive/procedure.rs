@@ -35,11 +35,7 @@ impl Reflective for Procedure {
             }
             Procedure::Sequence(seq) => {
                 let progn_node = amlang_node!(context, progn);
-                Cons::new(
-                    Some(HeapSexp::new(progn_node.into())),
-                    Some(HeapSexp::new(seq.into())),
-                )
-                .into()
+                Cons::new(progn_node, Sexp::from(seq)).into()
             }
             Procedure::Branch(t) => {
                 let branch_node = amlang_node!(context, branch);

@@ -10,8 +10,11 @@ pub struct Cons {
 }
 
 impl Cons {
-    pub fn new(car: Option<HeapSexp>, cdr: Option<HeapSexp>) -> Cons {
-        Cons { car, cdr }
+    pub fn new<A: Into<Option<HeapSexp>>, B: Into<Option<HeapSexp>>>(car: A, cdr: B) -> Cons {
+        Cons {
+            car: car.into(),
+            cdr: cdr.into(),
+        }
     }
 
     pub fn car(&self) -> Option<&Sexp> {

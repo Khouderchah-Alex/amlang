@@ -54,6 +54,6 @@ impl ErrorKind for DeserializeError {
                 list!(AmString::new("InvalidNodeEntry"), sexp.clone(),)
             }
         };
-        Cons::new(Some(AmString::new("DeserializeError").into()), inner.into()).into()
+        Cons::new(AmString::new("DeserializeError"), inner).into()
     }
 }

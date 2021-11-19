@@ -38,16 +38,16 @@ impl Reflective for EnvHeader {
         let mut list = ConsList::new();
         list.append("header".to_symbol_or_panic(policy_admin));
         list.append(Cons::new(
-            Some("version".to_symbol_or_panic(policy_admin).into()),
-            Some(Number::Integer(self.file_version.try_into().unwrap()).into()),
+            "version".to_symbol_or_panic(policy_admin),
+            Number::Integer(self.file_version.try_into().unwrap()),
         ));
         list.append(Cons::new(
-            Some("node-count".to_symbol_or_panic(policy_admin).into()),
-            Some(Number::Integer(self.node_count.try_into().unwrap()).into()),
+            "node-count".to_symbol_or_panic(policy_admin),
+            Number::Integer(self.node_count.try_into().unwrap()),
         ));
         list.append(Cons::new(
-            Some("triple-count".to_symbol_or_panic(policy_admin).into()),
-            Some(Number::Integer(self.triple_count.try_into().unwrap()).into()),
+            "triple-count".to_symbol_or_panic(policy_admin),
+            Number::Integer(self.triple_count.try_into().unwrap()),
         ));
         list.release_with_tail(
             Cons::try_from(self.unrecognized.reify(agent))
@@ -73,11 +73,7 @@ impl Reflective for EnvHeader {
         }
         // Leverage SymSexpTable reflection.
         let mut table = SymSexpTable::reflect(
-            Cons::new(
-                Some(amlang_node!(agent.context(), sym_sexp_table).into()),
-                cdr,
-            )
-            .into(),
+            Cons::new(amlang_node!(agent.context(), sym_sexp_table), cdr).into(),
             agent,
             resolve,
         )?;

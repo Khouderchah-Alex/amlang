@@ -77,7 +77,7 @@ impl ErrorKind for LangError {
             }
             Self::Unsupported(msg) => list!(AmString::new("Unsupported"), AmString::new(msg),),
         };
-        Cons::new(Some(AmString::new("LangError").into()), inner.into()).into()
+        Cons::new(AmString::new("LangError"), inner).into()
     }
 }
 
