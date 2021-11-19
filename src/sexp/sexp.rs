@@ -375,21 +375,21 @@ impl FromStr for Sexp {
     }
 }
 
-impl<T: Into<Sexp>> From<Vec<T>> for Sexp {
+impl<T: Into<HeapSexp>> From<Vec<T>> for Sexp {
     fn from(vec: Vec<T>) -> Self {
         let mut list = ConsList::new();
         for value in vec {
-            list.append(HeapSexp::new(value.into()));
+            list.append(value.into());
         }
         list.release()
     }
 }
 
-impl<'a, T: Into<Sexp> + Clone> From<&'a Vec<T>> for Sexp {
+impl<'a, T: Into<HeapSexp> + Clone> From<&'a Vec<T>> for Sexp {
     fn from(vec: &'a Vec<T>) -> Self {
         let mut list = ConsList::new();
         for value in vec {
-            list.append(HeapSexp::new(value.clone().into()));
+            list.append(value.clone().into());
         }
         list.release()
     }

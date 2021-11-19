@@ -7,7 +7,7 @@ use crate::primitive::symbol::ToSymbol;
 use crate::primitive::symbol_policies::policy_base;
 use crate::primitive::AmString;
 use crate::sexp::cons_list::ConsList;
-use crate::sexp::{HeapSexp, Sexp};
+use crate::sexp::Sexp;
 use crate::token::{Token, TokenInfo};
 
 use self::ParseErrorReason::*;
@@ -118,7 +118,7 @@ pub fn parse_sexp<I: Iterator<Item = TokenInfo>>(
 
                 let sexp = parse_sexp(tokens, depth + 1)?;
                 if let Some(val) = sexp {
-                    list.append(HeapSexp::new(val));
+                    list.append(val);
                 } else {
                     return Err(ParseError {
                         reason: UnmatchedOpen,
@@ -132,8 +132,8 @@ pub fn parse_sexp<I: Iterator<Item = TokenInfo>>(
             if let Some(val) = sexp {
                 let mut list = ConsList::new();
 
-                list.append("quote".to_symbol_or_panic(policy_base).into());
-                list.append(HeapSexp::new(val));
+                list.append("quote".to_symbol_or_panic(policy_base));
+                list.append(val);
                 return Ok(Some(list.release()));
             } else {
                 return Err(ParseError {

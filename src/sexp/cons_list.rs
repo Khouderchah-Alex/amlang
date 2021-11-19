@@ -45,12 +45,12 @@ impl ConsList {
         }
     }
 
-    pub fn append(&mut self, val: HeapSexp) {
+    pub fn append<T: Into<HeapSexp>>(&mut self, val: T) {
         let l = if self.end.is_null() {
-            self.head.set_car(Some(val));
+            self.head.set_car(Some(val.into()));
             &self.head
         } else {
-            let tail = Cons::new(Some(val), None);
+            let tail = Cons::new(Some(val.into()), None);
             unsafe {
                 (*self.end).set_cdr(Some(tail.into()));
                 <&Cons>::try_from((*self.end).cdr()).unwrap()
