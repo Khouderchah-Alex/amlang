@@ -6,11 +6,15 @@ use crate::sexp::{HeapSexp, Sexp};
 
 
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct AmString(String);
+pub struct LangString(String);
 
-impl AmString {
-    pub fn new<S: AsRef<str>>(s: S) -> Self {
-        Self(s.as_ref().to_string())
+pub trait ToLangString {
+    fn to_lang_string(&self) -> LangString;
+}
+
+impl LangString {
+    pub fn new<S: ToString>(s: S) -> Self {
+        Self(s.to_string())
     }
 
     pub fn unescape_char(c: char) -> char {
@@ -32,25 +36,31 @@ impl AmString {
     }
 
     pub fn to_escaped(self) -> String {
-        self.as_str().chars().map(AmString::escape_char).collect()
+        self.as_str().chars().map(LangString::escape_char).collect()
     }
 }
 
 
-impl fmt::Display for AmString {
+impl<S: ToString + std::fmt::Display> ToLangString for S {
+    fn to_lang_string(&self) -> LangString {
+        LangString::new(self)
+    }
+}
+
+impl fmt::Display for LangString {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "\"{}\"", self.as_str())
     }
 }
 
 
-impl_try_from!(AmString;
-               Primitive         ->  AmString,
-               Sexp              ->  AmString,
-               HeapSexp          ->  AmString,
-               ref Sexp          ->  ref AmString,
-               Option<Sexp>      ->  AmString,
-               Option<ref Sexp>  ->  ref AmString,
-               Result<Sexp>      ->  AmString,
-               Result<ref Sexp>  ->  ref AmString,
+impl_try_from!(LangString;
+               Primitive         ->  LangString,
+               Sexp              ->  LangString,
+               HeapSexp          ->  LangString,
+               ref Sexp          ->  ref LangString,
+               Option<Sexp>      ->  LangString,
+               Option<ref Sexp>  ->  ref LangString,
+               Result<Sexp>      ->  LangString,
+               Result<ref Sexp>  ->  ref LangString,
 );

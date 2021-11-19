@@ -5,7 +5,7 @@ use std::fmt;
 
 use super::token::{Token, TokenInfo};
 use crate::primitive::symbol::{SymbolError, ToSymbol};
-use crate::primitive::AmString;
+use crate::primitive::LangString;
 use crate::primitive::Number as Num;
 use crate::primitive::Primitive::*;
 
@@ -173,7 +173,7 @@ impl Tokenizer {
                         '"' => {
                             s.push_str(&line.as_ref()[start..i]);
                             self.tokens.push_back(TokenInfo {
-                                token: Token::Primitive(AmString(AmString::new(s))),
+                                token: Token::Primitive(LangString(LangString::new(s))),
                                 line: self.line_count,
                                 col: *col,
                             });
@@ -186,7 +186,7 @@ impl Tokenizer {
                 }
                 InStringEscaped(s, col) => {
                     // TODO(func) allow for decoding of unicode.
-                    s.push(AmString::unescape_char(c));
+                    s.push(LangString::unescape_char(c));
 
                     empty = true;
                     let curr_str = std::mem::replace(s, String::default());

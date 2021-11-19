@@ -481,7 +481,7 @@ macro_rules! sexp_from {
 sexp_from!(
     Number,
     Symbol,
-    AmString,
+    LangString,
     BuiltIn,
     Node,
     Path,

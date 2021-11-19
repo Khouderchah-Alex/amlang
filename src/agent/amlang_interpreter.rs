@@ -361,7 +361,7 @@ impl<'a> AmlangInterpreter<'a> {
                 }
 
                 let des = self.agent_mut().designate(arg_nodes[0].into())?;
-                let path = match <&AmString>::try_from(&des) {
+                let path = match <&LangString>::try_from(&des) {
                     Ok(path) => path,
                     _ => {
                         return err!(

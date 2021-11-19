@@ -113,7 +113,7 @@ macro_rules! list {
 
 // Should not be used directly. Use list! below.
 macro_rules! list_inner {
-    () => { None };
+    () => { None as Option<$crate::sexp::HeapSexp> };
     (@cons $car:expr, $cdr:expr) => {
         <$crate::sexp::Sexp>::from(
             $crate::sexp::Cons::new($car, $cdr))

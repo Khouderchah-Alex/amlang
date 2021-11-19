@@ -316,7 +316,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
                     Sexp::Primitive(Primitive::Node(_)) => (true, false),
                     Sexp::Primitive(Primitive::Env(_)) => (false, false),
                     Sexp::Primitive(Primitive::Path(_)) => (true, false),
-                    Sexp::Primitive(Primitive::AmString(_)) => (true, false),
+                    Sexp::Primitive(Primitive::LangString(_)) => (true, false),
                     _ => (true, true),
                 },
                 _ => (false, false),
@@ -449,7 +449,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         depth: usize,
     ) -> std::io::Result<()> {
         match primitive {
-            Primitive::AmString(s) => write!(w, "\"{}\"", s.clone().to_escaped()),
+            Primitive::LangString(s) => write!(w, "\"{}\"", s.clone().to_escaped()),
             Primitive::Symbol(symbol) => write!(w, "{}", symbol.as_str()),
             Primitive::Path(path) => {
                 write!(w, "(__path \"{}\")", path.as_std_path().to_string_lossy())
@@ -574,7 +574,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
     ) -> Result<Sexp, Error> {
         match *hsexp {
             Sexp::Primitive(Primitive::Symbol(sym)) => return Ok(self.parse_node(&sym)?.into()),
-            Sexp::Primitive(Primitive::AmString(s)) => return Ok(s.into()),
+            Sexp::Primitive(Primitive::LangString(s)) => return Ok(s.into()),
             _ => {}
         }
 
@@ -613,7 +613,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
                 }
             }
             "__path" => {
-                let (path,) = break_sexp!(cdr.unwrap() => (AmString), self.agent())?;
+                let (path,) = break_sexp!(cdr.unwrap() => (LangString), self.agent())?;
                 Ok(Path::new(path.as_str().into()).into())
             }
             _ => panic!("{}", command),

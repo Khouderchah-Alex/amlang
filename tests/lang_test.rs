@@ -2,7 +2,7 @@ mod common;
 
 use std::convert::TryFrom;
 
-use amlang::primitive::{AmString, Node, Number, Primitive};
+use amlang::primitive::{LangString, Node, Number, Primitive};
 use amlang::sexp::{Cons, Sexp};
 use amlang::{amlang_node, break_sexp};
 
@@ -104,8 +104,8 @@ fn lambda_duplicate_argname() {
     let results = common::results_with_errors(&mut lang_agent, "(lambda (a a) (+ a a))");
 
     let err = results[0].as_ref().unwrap_err().kind().reify();
-    let (_, kind, _) = break_sexp!(err => (AmString, AmString; remainder)).unwrap();
-    assert_eq!(kind, AmString::new("Invalid argument"));
+    let (_, kind, _) = break_sexp!(err => (LangString, LangString; remainder)).unwrap();
+    assert_eq!(kind.as_str(), "Invalid argument");
 }
 
 #[test]
@@ -318,12 +318,12 @@ fn tell_dupe() {
     );
 
     let err = results[3].as_ref().unwrap_err().kind().reify();
-    let (_, kind, _triple) = break_sexp!(err => (AmString, AmString, Sexp)).unwrap();
-    assert_eq!(kind, AmString::new("Duplicate triple"));
+    let (_, kind, _triple) = break_sexp!(err => (LangString, LangString, Sexp)).unwrap();
+    assert_eq!(kind.as_str(), "Duplicate triple");
 
     let err = results[7].as_ref().unwrap_err().kind().reify();
-    let (_, kind, _triple) = break_sexp!(err => (AmString, AmString, Sexp)).unwrap();
-    assert_eq!(kind, AmString::new("Duplicate triple"));
+    let (_, kind, _triple) = break_sexp!(err => (LangString, LangString, Sexp)).unwrap();
+    assert_eq!(kind.as_str(), "Duplicate triple");
 }
 
 #[test]
@@ -340,8 +340,8 @@ fn tell_handler_reject() {
     );
 
     let err = results[3].as_ref().unwrap_err().kind().reify();
-    let (_, kind, _triple, ret) = break_sexp!(err => (AmString, AmString, Sexp, Node)).unwrap();
-    assert_eq!(kind, AmString::new("Rejected triple"));
+    let (_, kind, _triple, ret) = break_sexp!(err => (LangString, LangString, Sexp, Node)).unwrap();
+    assert_eq!(kind.as_str(), "Rejected triple");
     assert_eq!(ret, amlang_node!(lang_agent.context(), f).into());
 }
 
@@ -366,7 +366,7 @@ fn tell_handler_as_eq() {
     assert!(matches!(results[3], Ok(..)));
 
     let err = results[5].as_ref().unwrap_err().kind().reify();
-    let (_, kind, _triple, ret) = break_sexp!(err => (AmString, AmString, Sexp, Node)).unwrap();
-    assert_eq!(kind, AmString::new("Rejected triple"));
+    let (_, kind, _triple, ret) = break_sexp!(err => (LangString, LangString, Sexp, Node)).unwrap();
+    assert_eq!(kind.as_str(), "Rejected triple");
     assert_eq!(ret, amlang_node!(lang_agent.context(), f).into());
 }

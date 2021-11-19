@@ -1,4 +1,4 @@
-use crate::primitive::{AmString, Node, Number, Symbol};
+use crate::primitive::{LangString, Node, Number, Symbol, ToLangString};
 use crate::sexp::{Cons, HeapSexp, Sexp};
 
 
@@ -74,8 +74,8 @@ fn wrong_type() {
     let original: Sexp = "(lambda (a b) ing)".parse().unwrap();
     if let Err(err) = break_sexp!(original => (Node, Sexp, Symbol)) {
         let (_, kind, _) =
-            break_sexp!(err.kind().reify() => (AmString, AmString; remainder)).unwrap();
-        assert_eq!(kind, AmString::new("Invalid argument"));
+            break_sexp!(err.kind().reify() => (LangString, LangString; remainder)).unwrap();
+        assert_eq!(kind, "Invalid argument".to_lang_string());
     } else {
         panic!();
     }
@@ -86,8 +86,8 @@ fn extra_arguments() {
     let original: Sexp = "(test ing 1 2)".parse().unwrap();
     if let Err(err) = break_sexp!(original => (Symbol, Symbol)) {
         let (_, kind, _) =
-            break_sexp!(err.kind().reify() => (AmString, AmString; remainder)).unwrap();
-        assert_eq!(kind, AmString::new("Wrong argument count"));
+            break_sexp!(err.kind().reify() => (LangString, LangString; remainder)).unwrap();
+        assert_eq!(kind, "Wrong argument count".to_lang_string());
     } else {
         panic!();
     }
@@ -98,8 +98,8 @@ fn missing_arguments() {
     let original: Sexp = "(test)".parse().unwrap();
     if let Err(err) = break_sexp!(original => (Symbol, Symbol, Symbol)) {
         let (_, kind, _) =
-            break_sexp!(err.kind().reify() => (AmString, AmString; remainder)).unwrap();
-        assert_eq!(kind, AmString::new("Wrong argument count"));
+            break_sexp!(err.kind().reify() => (LangString, LangString; remainder)).unwrap();
+        assert_eq!(kind, "Wrong argument count".to_lang_string());
     } else {
         panic!();
     }
@@ -119,9 +119,9 @@ fn simple_list() {
 #[test]
 fn multi_type_list() {
     let original: Sexp = "(1 \"test\")".parse().unwrap();
-    let l = list!(Number::Integer(1), AmString::new("test"),);
-    let (a, b) = break_sexp!(original => (Number, AmString)).unwrap();
-    let (aa, bb) = break_sexp!(l => (Number, AmString)).unwrap();
+    let l = list!(Number::Integer(1), "test".to_lang_string(),);
+    let (a, b) = break_sexp!(original => (Number, LangString)).unwrap();
+    let (aa, bb) = break_sexp!(l => (Number, LangString)).unwrap();
     assert_eq!(a, aa);
     assert_eq!(b, bb);
 }

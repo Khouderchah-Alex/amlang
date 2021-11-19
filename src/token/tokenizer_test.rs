@@ -86,7 +86,7 @@ fn strings() {
     let input = "(\"test.'(est)\" \n\"hello\")";
     let mut expected: Vec<Token> = vec!["test.'(est)", "hello"]
         .iter_mut()
-        .map(|elem| Primitive(AmString(AmString::new(*elem))))
+        .map(|elem| Primitive(LangString(LangString::new(*elem))))
         .collect();
     expected = nest(expected);
 

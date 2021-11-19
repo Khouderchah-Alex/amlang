@@ -2,7 +2,7 @@ use std::borrow::Cow;
 use std::fmt;
 
 use crate::error::ErrorKind;
-use crate::primitive::{AmString, Number, Symbol};
+use crate::primitive::{Number, Symbol, ToLangString};
 use crate::sexp::{Cons, Sexp};
 
 
@@ -42,42 +42,46 @@ impl ErrorKind for LangError {
         let inner = match self {
             Self::InvalidArgument { given, expected } => {
                 list!(
-                    AmString::new("Invalid argument"),
-                    (AmString::new("given"), given.clone(),),
-                    (AmString::new("expected"), AmString::new(expected),),
+                    "Invalid argument".to_lang_string(),
+                    ("given".to_lang_string(), given.clone(),),
+                    ("expected".to_lang_string(), expected.to_lang_string(),),
                 )
             }
             Self::InvalidState { actual, expected } => {
                 list!(
-                    AmString::new("Invalid state"),
-                    (AmString::new("actual"), AmString::new(actual),),
-                    (AmString::new("expected"), AmString::new(expected),),
+                    "Invalid state".to_lang_string(),
+                    ("actual".to_lang_string(), actual.to_lang_string(),),
+                    ("expected".to_lang_string(), expected.to_lang_string(),),
                 )
             }
-            Self::InvalidSexp(val) => list!(AmString::new("Invalid sexp"), val.clone(),),
+            Self::InvalidSexp(val) => list!("Invalid sexp".to_lang_string(), val.clone(),),
             Self::WrongArgumentCount { given, expected } => list!(
-                AmString::new("Wrong argument count"),
-                (AmString::new("given"), Number::Integer(*given as i64),),
+                "Wrong argument count".to_lang_string(),
+                ("given".to_lang_string(), Number::Integer(*given as i64),),
                 (
-                    AmString::new("expected"),
-                    AmString::new(expected.to_string()),
+                    "expected".to_lang_string(),
+                    expected.to_string().to_lang_string(),
                 ),
             ),
-            Self::UnboundSymbol(symbol) => list!(AmString::new("Unbound symbol"), symbol.clone(),),
-            Self::AlreadyBoundSymbol(symbol) => {
-                list!(AmString::new("Already bound symbol"), symbol.clone(),)
+            Self::UnboundSymbol(symbol) => {
+                list!("Unbound symbol".to_lang_string(), symbol.clone(),)
             }
-            Self::DuplicateTriple(sexp) => list!(AmString::new("Duplicate triple"), sexp.clone(),),
+            Self::AlreadyBoundSymbol(symbol) => {
+                list!("Already bound symbol".to_lang_string(), symbol.clone(),)
+            }
+            Self::DuplicateTriple(sexp) => {
+                list!("Duplicate triple".to_lang_string(), sexp.clone(),)
+            }
             Self::RejectedTriple(triple, reason) => {
                 list!(
-                    AmString::new("Rejected triple"),
+                    "Rejected triple".to_lang_string(),
                     triple.clone(),
                     reason.clone(),
                 )
             }
-            Self::Unsupported(msg) => list!(AmString::new("Unsupported"), AmString::new(msg),),
+            Self::Unsupported(msg) => list!("Unsupported".to_lang_string(), msg.to_lang_string(),),
         };
-        Cons::new(AmString::new("LangError"), inner).into()
+        Cons::new("LangError".to_lang_string(), inner).into()
     }
 }
 

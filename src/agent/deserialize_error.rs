@@ -1,6 +1,6 @@
 use crate::error::ErrorKind;
 use crate::parser;
-use crate::primitive::{AmString, Symbol};
+use crate::primitive::{Symbol, ToLangString};
 use crate::sexp::{Cons, Sexp};
 use crate::token::file_stream;
 
@@ -23,37 +23,34 @@ impl ErrorKind for DeserializeError {
     fn reify(&self) -> Sexp {
         let inner = match self {
             Self::FileStreamError(err) => {
-                list!(
-                    AmString::new("FileStreamError"),
-                    AmString::new(err.to_string()),
-                )
+                list!("FileStreamError".to_lang_string(), err.to_lang_string(),)
             }
             Self::ParseError(err) => err.reify(),
             Self::MissingHeaderSection => {
-                list!(AmString::new("MissingHeaderSection"),)
+                list!("MissingHeaderSection".to_lang_string(),)
             }
             Self::MissingNodeSection => {
-                list!(AmString::new("MissingNodeSection"),)
+                list!("MissingNodeSection".to_lang_string(),)
             }
             Self::MissingTripleSection => {
-                list!(AmString::new("MissingTripleSection"),)
+                list!("MissingTripleSection".to_lang_string(),)
             }
             Self::ExtraneousSection => {
-                list!(AmString::new("ExtraneousSection"),)
+                list!("ExtraneousSection".to_lang_string(),)
             }
             Self::UnexpectedCommand(sexp) => {
-                list!(AmString::new("UnexpectedCommand"), sexp.clone(),)
+                list!("UnexpectedCommand".to_lang_string(), sexp.clone(),)
             }
             Self::ExpectedSymbol => {
-                list!(AmString::new("ExpectedSymbol"),)
+                list!("ExpectedSymbol".to_lang_string(),)
             }
             Self::UnrecognizedBuiltIn(symbol) => {
-                list!(AmString::new("UnrecognizedBuiltIn"), symbol.clone(),)
+                list!("UnrecognizedBuiltIn".to_lang_string(), symbol.clone(),)
             }
             Self::InvalidNodeEntry(sexp) => {
-                list!(AmString::new("InvalidNodeEntry"), sexp.clone(),)
+                list!("InvalidNodeEntry".to_lang_string(), sexp.clone(),)
             }
         };
-        Cons::new(AmString::new("DeserializeError"), inner).into()
+        Cons::new("DeserializeError".to_lang_string(), inner).into()
     }
 }

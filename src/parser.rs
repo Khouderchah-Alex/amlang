@@ -3,9 +3,8 @@
 use std::iter::Peekable;
 
 use crate::error::{Error, ErrorKind};
-use crate::primitive::symbol::ToSymbol;
 use crate::primitive::symbol_policies::policy_base;
-use crate::primitive::AmString;
+use crate::primitive::{ToLangString, ToSymbol};
 use crate::sexp::cons_list::ConsList;
 use crate::sexp::Sexp;
 use crate::token::{Token, TokenInfo};
@@ -179,9 +178,9 @@ impl ErrorKind for ParseError {
     // TODO(func) Model within env rather than fall back on strings.
     fn reify(&self) -> Sexp {
         list!(
-            AmString::new("ParseError"),
-            AmString::new(format!("{:?}", self.reason)),
-            AmString::new(self.token.to_string()),
+            "ParseError".to_lang_string(),
+            format!("{:?}", self.reason).to_lang_string(),
+            self.token.to_lang_string(),
         )
     }
 }

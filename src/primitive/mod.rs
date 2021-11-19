@@ -26,7 +26,7 @@ pub mod prelude {
     pub use super::number::Number;
     pub use super::path::Path;
     pub use super::procedure::Procedure;
-    pub use super::string::AmString;
+    pub use super::string::{LangString, ToLangString};
     pub use super::symbol::{Symbol, ToSymbol};
     pub use super::table::{LocalNodeTable, SymNodeTable, SymSexpTable};
     pub use crate::environment::environment::EnvObject;
@@ -39,7 +39,7 @@ pub use prelude::*;
 pub enum Primitive {
     Number(Number),
     Symbol(Symbol),
-    AmString(AmString),
+    LangString(LangString),
     BuiltIn(BuiltIn),
     Node(Node),
     Path(Path),
@@ -62,7 +62,7 @@ impl fmt::Display for Primitive {
         match self {
             Primitive::Number(num) => write!(f, "{}", num),
             Primitive::Symbol(s) => write!(f, "{}", s),
-            Primitive::AmString(s) => write!(f, "{}", s),
+            Primitive::LangString(s) => write!(f, "{}", s),
             Primitive::BuiltIn(b) => write!(f, "{}", b),
             Primitive::Node(node) => write!(f, "{}", node),
             Primitive::Path(path) => write!(f, "{}", path),
@@ -92,7 +92,7 @@ impl PartialEq for Primitive {
                     (&Primitive::Symbol(ref this), &Primitive::Symbol(ref that)) => {
                         (*this) == (*that)
                     }
-                    (&Primitive::AmString(ref this), &Primitive::AmString(ref that)) => {
+                    (&Primitive::LangString(ref this), &Primitive::LangString(ref that)) => {
                         (*this) == (*that)
                     }
                     (&Primitive::BuiltIn(ref this), &Primitive::BuiltIn(ref that)) => {
@@ -143,7 +143,7 @@ macro_rules! primitive_from {
 primitive_from!(
     Number,
     Symbol,
-    AmString,
+    LangString,
     BuiltIn,
     Node,
     Path,
