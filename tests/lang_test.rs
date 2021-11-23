@@ -364,6 +364,7 @@ fn tell_handler_as_eq() {
     );
 
     assert!(matches!(results[3], Ok(..)));
+    assert!(matches!(results[4], Ok(..)));
 
     let err = results[5].as_ref().unwrap_err().kind().reify();
     let (_, kind, _triple, ret) = break_sexp!(err => (LangString, LangString, Sexp, Node)).unwrap();
