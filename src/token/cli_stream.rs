@@ -1,27 +1,27 @@
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
 
-use super::interactive_helper::InteractiveHelper;
+use super::cli_helper::CliHelper;
 use super::token::TokenInfo;
 use super::tokenizer::Tokenizer;
 use crate::agent::Agent;
 use crate::primitive::symbol_policies::policy_base;
 
 
-pub struct InteractiveStream {
-    editor: Editor<InteractiveHelper>,
+pub struct CliStream {
+    editor: Editor<CliHelper>,
     tokenizer: Tokenizer,
 
     curr_expr: String,
 }
 
-impl InteractiveStream {
+impl CliStream {
     // TODO(func) Integrate this with RunIter to keep state up-to-date.
-    pub fn new(agent: Agent) -> InteractiveStream {
-        let mut editor = Editor::<InteractiveHelper>::new();
-        editor.set_helper(Some(InteractiveHelper::new(agent)));
+    pub fn new(agent: Agent) -> CliStream {
+        let mut editor = Editor::<CliHelper>::new();
+        editor.set_helper(Some(CliHelper::new(agent)));
 
-        InteractiveStream {
+        CliStream {
             editor,
             tokenizer: Tokenizer::new(),
 
@@ -31,7 +31,7 @@ impl InteractiveStream {
 }
 
 
-impl Iterator for InteractiveStream {
+impl Iterator for CliStream {
     type Item = TokenInfo;
 
     fn next(&mut self) -> Option<TokenInfo> {

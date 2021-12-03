@@ -8,9 +8,9 @@ pub mod string_stream;
 pub mod token;
 
 #[cfg(feature = "cli")]
-pub mod interactive_helper;
+pub mod cli_helper;
 #[cfg(feature = "cli")]
-pub mod interactive_stream;
+pub mod cli_stream;
 
 // Private mods.
 mod tokenizer;

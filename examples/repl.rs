@@ -25,7 +25,7 @@ use amlang::error::Error;
 use amlang::parser::ParseIter;
 use amlang::primitive::{Node, Primitive};
 use amlang::sexp::Sexp;
-use amlang::token::interactive_stream::InteractiveStream;
+use amlang::token::cli_stream::CliStream;
 
 
 fn main() -> Result<(), String> {
@@ -38,7 +38,7 @@ fn main() -> Result<(), String> {
     env_logger::init();
 
     // Parse args.
-    let matches = App::new("Interactive Amlang REPL")
+    let matches = App::new("Cli Amlang REPL")
         .version("0.1")
         .about("Bare-bones single-threaded Amlang REPL with persistence")
         .arg(
@@ -78,13 +78,13 @@ fn main() -> Result<(), String> {
     agent.jump_env(working_env);
     agent.designation_chain_mut().push_back(working_env);
 
-    // TODO(func) Rm once we sort out the deal with InteractiveHelper holding a
+    // TODO(func) Rm once we sort out the deal with CliHelper holding a
     // potentially-stale Agent copy.
     let lang_env = agent.context().lang_env();
     agent.designation_chain_mut().push_front(lang_env);
 
     // Run agent.
-    let tokens = InteractiveStream::new(agent.clone());
+    let tokens = CliStream::new(agent.clone());
     let sexps = ParseIter::from_tokens(tokens);
     for _result in agent.run(sexps, print_result) {}
 

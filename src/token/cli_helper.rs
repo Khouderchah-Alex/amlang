@@ -12,16 +12,16 @@ use crate::primitive::table::Table;
 use crate::primitive::{SymNodeTable, Symbol};
 
 
-// Rustyline Helper for InteractiveStream.
-pub struct InteractiveHelper {
+// Rustyline Helper for CliStream.
+pub struct CliHelper {
     agent: RefCell<Agent>,
 }
 
-pub struct InteractiveCandidate {
+pub struct CliCandidate {
     symbol: Symbol,
 }
 
-impl InteractiveHelper {
+impl CliHelper {
     pub fn new(agent: Agent) -> Self {
         Self {
             agent: RefCell::new(agent),
@@ -66,8 +66,8 @@ impl InteractiveHelper {
 }
 
 
-impl Completer for InteractiveHelper {
-    type Candidate = InteractiveCandidate;
+impl Completer for CliHelper {
+    type Candidate = CliCandidate;
 
     fn complete(
         &self,
@@ -81,7 +81,7 @@ impl Completer for InteractiveHelper {
             0,
             symbols
                 .into_iter()
-                .map(|symbol| InteractiveCandidate { symbol })
+                .map(|symbol| CliCandidate { symbol })
                 .collect(),
         ))
     }
@@ -95,15 +95,15 @@ impl Completer for InteractiveHelper {
 }
 
 
-impl Helper for InteractiveHelper {}
-impl Hinter for InteractiveHelper {
-    type Hint = InteractiveCandidate;
+impl Helper for CliHelper {}
+impl Hinter for CliHelper {
+    type Hint = CliCandidate;
 }
-impl Highlighter for InteractiveHelper {}
-impl Validator for InteractiveHelper {}
+impl Highlighter for CliHelper {}
+impl Validator for CliHelper {}
 
 
-impl Candidate for InteractiveCandidate {
+impl Candidate for CliCandidate {
     fn display(&self) -> &str {
         self.symbol.as_str()
     }
@@ -113,7 +113,7 @@ impl Candidate for InteractiveCandidate {
     }
 }
 
-impl Hint for InteractiveCandidate {
+impl Hint for CliCandidate {
     fn display(&self) -> &str {
         self.symbol.as_str()
     }
