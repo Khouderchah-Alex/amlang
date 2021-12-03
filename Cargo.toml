@@ -20,5 +20,5 @@ clap = "^2.33.0"
 env_logger = "^0.8.4"
 
 [features]
-default = ["interactive"]
-interactive = ["rustyline"]
+default = ["cli"]
+cli = ["rustyline"]

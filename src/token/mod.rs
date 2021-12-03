@@ -7,9 +7,9 @@ pub mod file_stream;
 pub mod string_stream;
 pub mod token;
 
-#[cfg(feature = "interactive")]
+#[cfg(feature = "cli")]
 pub mod interactive_helper;
-#[cfg(feature = "interactive")]
+#[cfg(feature = "cli")]
 pub mod interactive_stream;
 
 // Private mods.
