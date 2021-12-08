@@ -1,7 +1,7 @@
 //! Basic REPL in Amlang; no special impls, single-threaded w/SimplePolicy.
 //!
-//! Run with saved state as:       `RUST_LOG=info cargo run --example repl`.
-//! Reset saved state and run as:  `RUST_LOG=info cargo run --example repl -- -r`.
+//! Run with saved state as:       `cargo run --example repl`.
+//! Reset saved state and run as:  `cargo run --example repl -- -r`.
 //!
 //!
 //! Uses envs in the .gitignore'd examples/envs/ directory and {de,}serializes,
@@ -12,6 +12,7 @@
 //! can be used to make changes to the env as part of a commit.
 
 use clap::{App, Arg};
+use env_logger::{Builder, Env};
 use log::{info, LevelFilter};
 use std::convert::TryFrom;
 use std::fs;
@@ -35,7 +36,7 @@ fn main() -> Result<(), String> {
         .unwrap();
 
     // Setup logging.
-    env_logger::Builder::from_default_env()
+    Builder::from_env(Env::default().default_filter_or("info"))
         .filter_module("rustyline", LevelFilter::Warn)
         .init();
 
