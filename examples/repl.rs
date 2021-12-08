@@ -12,7 +12,7 @@
 //! can be used to make changes to the env as part of a commit.
 
 use clap::{App, Arg};
-use log::info;
+use log::{info, LevelFilter};
 use std::convert::TryFrom;
 use std::fs;
 use std::io;
@@ -35,7 +35,9 @@ fn main() -> Result<(), String> {
         .unwrap();
 
     // Setup logging.
-    env_logger::init();
+    env_logger::Builder::from_default_env()
+        .filter_module("rustyline", LevelFilter::Warn)
+        .init();
 
     // Parse args.
     let matches = App::new("Cli Amlang REPL")
