@@ -5,8 +5,7 @@ notice = "deny"
 unsound = "deny"
 
 [licenses]
-# Until we license amlang, just warn this.
-unlicensed = "warn"
+unlicensed = "deny"
 copyleft = "deny"
 allow-osi-fsf-free = "neither"
 confidence-threshold = 0.9
