@@ -679,7 +679,7 @@ impl Agent {
             }
             Primitive::Procedure(procedure) => {
                 let s = procedure.reify(self);
-                self.write_sexp(w, &s, depth, false)
+                self.write_sexp(w, &s, depth, true)
             }
             Primitive::SymNodeTable(table) => {
                 let s = table.reify(self);
