@@ -230,16 +230,23 @@ fn def_recursive_lambda() {
 }
 
 #[test]
-fn reify_apply() {
+fn eval() {
     let (mut lang_agent, _manager) = common::setup().unwrap();
 
     let results = common::results(
         &mut lang_agent,
-        "(car
+        "(eval (car '(lambda)))
+
+         (car
            (eval  ;; Reify.
              (eval '(+ 1 2))))  ;; Create Procedure::Application.",
     );
-    assert_eq!(results[0], amlang_node!(lang_agent.context(), apply).into());
+
+    assert_eq!(
+        results[0],
+        amlang_node!(lang_agent.context(), lambda).into()
+    );
+    assert_eq!(results[1], amlang_node!(lang_agent.context(), apply).into());
 }
 
 #[test]

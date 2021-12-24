@@ -412,7 +412,8 @@ impl<'a> AmlangInterpreter<'a> {
                 let arg = self.agent_mut().designate(arg_nodes[0].into())?;
                 if is_eval {
                     debug!("applying (eval {})", arg);
-                    self.construe(arg)
+                    let to_inner = self.contemplate(arg)?;
+                    self.construe(to_inner)
                 } else {
                     debug!("applying (exec {})", arg);
                     self.contemplate(arg)
