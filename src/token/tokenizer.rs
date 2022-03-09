@@ -12,15 +12,29 @@ use crate::primitive::Primitive::*;
 use self::TokenizerState::*;
 
 
+/// Essentially a Mealy machine that outputs and accumulates Tokens
+/// given string-like input.
 #[derive(Debug)]
 pub struct Tokenizer {
-    tokens: VecDeque<TokenInfo>,
-    line_count: usize,
+    // Mealy machine state.
     state: TokenizerState,
-
     depth: usize,
     started_quote: bool,
+
+    // Non-control state.
+    line_count: usize,
+    tokens: VecDeque<TokenInfo>,
 }
+
+#[derive(Debug)]
+enum TokenizerState {
+    Base,
+    // (String accumulated from prev lines, col of first line).
+    InString(String, usize),
+    // (String accumulated from prev lines, col of first line).
+    InStringEscaped(String, usize),
+}
+
 
 #[derive(Debug)]
 pub struct TokenizeError {
@@ -34,30 +48,24 @@ enum ErrorKind {
     InvalidSymbol(SymbolError),
 }
 
-#[derive(Debug)]
-enum TokenizerState {
-    Base,
-    InString(String, usize),
-    InStringEscaped(String, usize),
-}
-
 
 impl Tokenizer {
     pub fn new() -> Self {
         Self {
-            tokens: Default::default(),
-            line_count: 0,
             state: TokenizerState::Base,
-
             depth: 0,
             started_quote: false,
+
+            line_count: 0,
+            tokens: Default::default(),
         }
     }
 
     pub fn clear(&mut self) {
-        self.tokens.clear();
         self.depth = 0;
         self.started_quote = false;
+
+        self.tokens.clear();
     }
 
     pub fn depth(&self) -> usize {
