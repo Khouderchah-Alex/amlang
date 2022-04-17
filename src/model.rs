@@ -17,11 +17,11 @@ use crate::sexp::Sexp;
 /// encapsulation in traditional programming languages (e.g. WRT objects,
 /// modules, etc) as implicitly embodying a similar notion.
 ///
-/// In a sense, adding construe() allows for what would normally just be some
+/// In a sense, adding internalize() allows for what would normally just be some
 /// form of contemplate (or eval/call/etc) to reify some form of internal theory.
 pub trait Interpreter {
     /// Meaning of external Structure as internal Structure.
-    fn construe(&mut self, structure: Sexp) -> Result<Sexp, Error>;
+    fn internalize(&mut self, structure: Sexp) -> Result<Sexp, Error>;
 
     /// Meaning of internal Structure.
     fn contemplate(&mut self, structure: Sexp) -> Result<Sexp, Error>;

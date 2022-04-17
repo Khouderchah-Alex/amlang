@@ -101,7 +101,7 @@ impl<'a> AmlangInterpreter<'a> {
                 if !proper {
                     return err!(self.agent(), LangError::InvalidSexp(*elem));
                 }
-                let eval = self.construe(*elem)?;
+                let eval = self.internalize(*elem)?;
                 let node = self.node_or_insert(eval)?;
                 body_nodes.push(node);
             }
@@ -269,7 +269,7 @@ impl<'a> AmlangInterpreter<'a> {
                 }
 
                 let val_node = if let Some(s) = val {
-                    // Ensure construe maps name to this node.
+                    // Ensure internalize maps name to this node.
                     let val_node = self.agent_mut().env().insert_atom();
                     let mut frame = SymNodeTable::default();
                     if let Ok(sym) =
@@ -281,7 +281,7 @@ impl<'a> AmlangInterpreter<'a> {
                     // Construe, relying on self-evaluation of val_node.
                     let original = self.agent_mut().designate(Primitive::Node(s))?;
                     self.eval_state.push(frame);
-                    let meaning = self.construe(original.into());
+                    let meaning = self.internalize(original.into());
                     self.eval_state.pop();
 
                     let final_sexp = self.contemplate(meaning?)?;
@@ -327,7 +327,7 @@ impl<'a> AmlangInterpreter<'a> {
                     );
                 }
 
-                // If original expr construe + exec -> Node, use that.
+                // If original expr internalize + exec -> Node, use that.
                 let dest = self.exec_to_node(arg_nodes[0])?;
                 self.agent_mut().jump(dest);
                 self.print_curr_triples();
@@ -344,7 +344,7 @@ impl<'a> AmlangInterpreter<'a> {
                     );
                 }
 
-                // If original expr construe + exec -> Node, use that.
+                // If original expr internalize + exec -> Node, use that.
                 let original = self.exec_to_node(arg_nodes[0])?;
                 let imported = self.agent_mut().import(original)?;
                 Ok(imported.into())
@@ -413,7 +413,7 @@ impl<'a> AmlangInterpreter<'a> {
                 if is_eval {
                     debug!("applying (eval {})", arg);
                     let to_inner = self.contemplate(arg)?;
-                    self.construe(to_inner)
+                    self.internalize(to_inner)
                 } else {
                     debug!("applying (exec {})", arg);
                     self.contemplate(arg)
@@ -447,7 +447,7 @@ impl<'a> AmlangInterpreter<'a> {
     fn evlis(
         &mut self,
         structures: Option<HeapSexp>,
-        should_construe: bool,
+        should_internalize: bool,
     ) -> Result<Vec<Node>, Error> {
         if structures.is_none() {
             return Ok(vec![]);
@@ -461,8 +461,8 @@ impl<'a> AmlangInterpreter<'a> {
                 return err!(self.agent(), LangError::InvalidSexp(*structure));
             }
 
-            let arg_node = if should_construe {
-                let val = self.construe(*structure)?;
+            let arg_node = if should_internalize {
+                let val = self.internalize(*structure)?;
                 self.node_or_insert(val)?
             } else {
                 self.agent_mut()
@@ -497,7 +497,7 @@ impl<'a> Interpreter for AmlangInterpreter<'a> {
         self.exec(node)
     }
 
-    fn construe(&mut self, structure: Sexp) -> Result<Sexp, Error> {
+    fn internalize(&mut self, structure: Sexp) -> Result<Sexp, Error> {
         match structure {
             Sexp::Primitive(primitive) => {
                 if let Primitive::Symbol(symbol) = &primitive {
@@ -522,7 +522,7 @@ impl<'a> Interpreter for AmlangInterpreter<'a> {
                     }
                 };
 
-                let eval_car = self.construe(*car)?;
+                let eval_car = self.internalize(*car)?;
                 let node = match eval_car {
                     Sexp::Primitive(Primitive::Procedure(_))
                     | Sexp::Primitive(Primitive::Node(_)) => self.node_or_insert(eval_car)?,
@@ -587,7 +587,7 @@ impl<'a> Interpreter for AmlangInterpreter<'a> {
                     }
                     _ => {
                         let def_node = amlang_node!(context, def);
-                        let should_construe = match self.agent_mut().designate(node.into())? {
+                        let should_internalize = match self.agent_mut().designate(node.into())? {
                             // Don't evaluate args of reflective Abstractions.
                             Sexp::Primitive(Primitive::Procedure(Procedure::Abstraction(
                                 _,
@@ -596,7 +596,7 @@ impl<'a> Interpreter for AmlangInterpreter<'a> {
                             ))) => false,
                             _ => node != def_node,
                         };
-                        let args = self.evlis(cdr, should_construe)?;
+                        let args = self.evlis(cdr, should_internalize)?;
                         return Ok(Procedure::Application(node, args).into());
                     }
                 }

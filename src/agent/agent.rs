@@ -489,7 +489,7 @@ impl Agent {
 
     /// Execute |structure| as internal Amlang structure.
     ///
-    /// Allows Agents broadly to leverage previous construe() execution of
+    /// Allows Agents broadly to leverage previous internalize() execution of
     /// AmlangInterpreters.
     pub fn amlang_exec(&mut self, structure: Sexp) -> Result<Sexp, Error> {
         // TODO(func) Push & pop on interpreter_state?
@@ -715,7 +715,7 @@ where
         // |interpreter_state| is left to Interpreter impls.
         let mut state = self.agent.interpreter_state.top().clone();
         let mut interpreter = state.borrow_agent(self.agent);
-        let res = match interpreter.construe(sexp) {
+        let res = match interpreter.internalize(sexp) {
             Ok(meaning) => interpreter.contemplate(meaning),
             err @ _ => err,
         };
