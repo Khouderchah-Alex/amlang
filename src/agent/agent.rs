@@ -5,9 +5,10 @@ use std::convert::TryFrom;
 use std::io::{self, stdout, BufWriter};
 
 use super::agent_frames::{EnvFrame, ExecFrame, InterpreterState};
-use super::amlang_context::{AmlangContext, EnvPrelude};
+use super::amlang_context::AmlangContext;
 use super::amlang_interpreter::AmlangState;
 use super::continuation::Continuation;
+use super::env_prelude::EnvPrelude;
 use crate::agent::lang_error::LangError;
 use crate::environment::environment::{EnvObject, TripleSet};
 use crate::environment::LocalNode;

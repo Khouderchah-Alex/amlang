@@ -5,11 +5,12 @@ use std::fs::File;
 use std::io::{BufWriter, Write};
 use std::path::Path as StdPath;
 
-use super::amlang_context::{AmlangContext, EnvPrelude};
+use super::amlang_context::AmlangContext;
 use super::amlang_wrappers::quote_wrapper;
 use super::deserialize_error::DeserializeError::*;
 use super::env_header::EnvHeader;
 use super::env_policy::EnvPolicy;
+use super::env_prelude::EnvPrelude;
 use super::Agent;
 use crate::agent::lang_error::LangError;
 use crate::builtins::generate_builtin_map;

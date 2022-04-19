@@ -8,6 +8,7 @@ pub mod agent_frames;
 pub mod amlang_context;
 pub mod env_manager;
 pub mod env_policy;
+pub mod env_prelude;
 pub mod lang_error;
 
 // Private mods.
