@@ -209,7 +209,7 @@ macro_rules! impl_amlang_table {
                     return false;
                 }
 
-                node.local() == context.$discriminator
+                node.local() == context.$discriminator()
             }
         }
 
@@ -317,7 +317,7 @@ impl Reflective for LocalNodeTable {
             return false;
         }
 
-        node.local() == context.local_node_table
+        node.local() == context.local_node_table()
     }
 }
 

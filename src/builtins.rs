@@ -87,9 +87,9 @@ fn println_(arg: Sexp, agent: &mut Agent) -> Result<Sexp, Error> {
 
 fn eq_(a: Sexp, b: Sexp, agent: &mut Agent) -> Result<Node, Error> {
     let local = if a == b {
-        agent.context().t
+        agent.context().t()
     } else {
-        agent.context().f
+        agent.context().f()
     };
     Ok(Node::new(agent.context().lang_env(), local))
 }

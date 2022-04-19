@@ -62,7 +62,7 @@ impl Reflective for Procedure {
             );
         }
 
-        if node.local() == context.apply {
+        if node.local() == context.apply() {
             if cdr.is_none() {
                 return err!(
                     agent,
@@ -87,7 +87,7 @@ impl Reflective for Procedure {
                 }
             }
             Ok(Procedure::Application(fnode, arg_nodes).into())
-        } else if node.local() == context.lambda || node.local() == context.fexpr {
+        } else if node.local() == context.lambda() || node.local() == context.fexpr() {
             if cdr.is_none() {
                 return err!(
                     agent,
@@ -98,7 +98,7 @@ impl Reflective for Procedure {
                 );
             }
 
-            let reflect = node.local() == context.fexpr;
+            let reflect = node.local() == context.fexpr();
             let (params, body) = break_sexp!(cdr.unwrap() => (HeapSexp, Primitive), agent)?;
             let mut param_nodes = Vec::with_capacity(params.iter().count());
             for (param, proper) in params {
@@ -113,7 +113,7 @@ impl Reflective for Procedure {
             }
             let body_node = resolve(agent, &body)?;
             Ok(Procedure::Abstraction(param_nodes, body_node, reflect).into())
-        } else if node.local() == context.progn {
+        } else if node.local() == context.progn() {
             let mut seq = vec![];
             if cdr.is_some() {
                 for (sexp, proper) in cdr.unwrap().into_iter() {
@@ -133,7 +133,7 @@ impl Reflective for Procedure {
                 }
             }
             Ok(Procedure::Sequence(seq).into())
-        } else if node.local() == context.branch {
+        } else if node.local() == context.branch() {
             if cdr.is_none() {
                 return err!(
                     agent,
@@ -164,11 +164,11 @@ impl Reflective for Procedure {
         }
 
         let local = node.local();
-        return local == context.apply
-            || local == context.lambda
-            || local == context.fexpr
-            || local == context.progn
-            || local == context.branch;
+        return local == context.apply()
+            || local == context.lambda()
+            || local == context.fexpr()
+            || local == context.progn()
+            || local == context.branch();
     }
 }
 

@@ -240,8 +240,8 @@ impl<'a> AmlangInterpreter<'a> {
     ) -> Result<Sexp, Error> {
         let context = self.agent().context();
         match special_node {
-            _ if context.tell == special_node || context.ask == special_node => {
-                let is_tell = context.tell == special_node;
+            _ if context.tell() == special_node || context.ask() == special_node => {
+                let is_tell = context.tell() == special_node;
                 let (ss, pp, oo) = tell_wrapper(&arg_nodes, &self.agent())?;
                 let (s, p, o) = (
                     self.exec_to_node(ss)?,
@@ -261,7 +261,7 @@ impl<'a> AmlangInterpreter<'a> {
                     self.agent_mut().ask(s, p, o)
                 }
             }
-            _ if context.def == special_node => {
+            _ if context.def() == special_node => {
                 let (name, val) = def_wrapper(&arg_nodes, &self.agent())?;
                 self.agent_mut().designate(name.into())?;
                 if name.env() != self.agent().pos().env() {
@@ -303,7 +303,7 @@ impl<'a> AmlangInterpreter<'a> {
                 };
                 Ok(self.agent_mut().name_node(name, val_node)?.into())
             }
-            _ if context.curr == special_node => {
+            _ if context.curr() == special_node => {
                 if arg_nodes.len() > 0 {
                     return err!(
                         self.agent(),
@@ -316,7 +316,7 @@ impl<'a> AmlangInterpreter<'a> {
                 self.print_curr_triples();
                 Ok(self.agent().pos().into())
             }
-            _ if context.jump == special_node => {
+            _ if context.jump() == special_node => {
                 if arg_nodes.len() != 1 {
                     return err!(
                         self.agent(),
@@ -333,7 +333,7 @@ impl<'a> AmlangInterpreter<'a> {
                 self.print_curr_triples();
                 Ok(self.agent().pos().into())
             }
-            _ if context.import == special_node => {
+            _ if context.import() == special_node => {
                 if arg_nodes.len() != 1 {
                     return err!(
                         self.agent(),
@@ -349,7 +349,7 @@ impl<'a> AmlangInterpreter<'a> {
                 let imported = self.agent_mut().import(original)?;
                 Ok(imported.into())
             }
-            _ if context.env_find == special_node => {
+            _ if context.env_find() == special_node => {
                 if arg_nodes.len() != 1 {
                     return err!(
                         self.agent(),
@@ -381,7 +381,7 @@ impl<'a> AmlangInterpreter<'a> {
                 };
                 Ok(res)
             }
-            _ if context.apply == special_node => {
+            _ if context.apply() == special_node => {
                 let (proc_node, args_node) = apply_wrapper(&arg_nodes, &self.agent())?;
                 let proc_sexp = self.agent_mut().designate(proc_node.into())?;
                 let args_sexp = self.agent_mut().designate(args_node.into())?;
@@ -398,7 +398,7 @@ impl<'a> AmlangInterpreter<'a> {
 
                 return self.apply(proc, args);
             }
-            _ if context.eval == special_node || context.exec == special_node => {
+            _ if context.eval() == special_node || context.exec() == special_node => {
                 if arg_nodes.len() != 1 {
                     return err!(
                         self.agent(),
@@ -408,7 +408,7 @@ impl<'a> AmlangInterpreter<'a> {
                         }
                     );
                 }
-                let is_eval = context.eval == special_node;
+                let is_eval = context.eval() == special_node;
                 let arg = self.agent_mut().designate(arg_nodes[0].into())?;
                 if is_eval {
                     debug!("applying (eval {})", arg);
@@ -545,7 +545,7 @@ impl<'a> Interpreter for AmlangInterpreter<'a> {
                         || amlang_node!(context, fexpr) == node =>
                     {
                         let (params, body) = make_lambda_wrapper(cdr, &self.agent())?;
-                        let reflect = node.local() == context.fexpr;
+                        let reflect = node.local() == context.fexpr();
                         let (proc, _) = self.make_lambda(params, body, reflect)?;
                         return Ok(proc.into());
                     }
@@ -553,7 +553,7 @@ impl<'a> Interpreter for AmlangInterpreter<'a> {
                         || amlang_node!(context, let_rec) == node =>
                     {
                         let (params, exprs, body) = let_wrapper(cdr, &self.agent())?;
-                        let recursive = node.local() == context.let_rec;
+                        let recursive = node.local() == context.let_rec();
                         let (proc, frame) = self.make_lambda(params, body, false)?;
                         let proc_node = self.node_or_insert(proc.into())?;
 

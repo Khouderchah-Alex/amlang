@@ -164,7 +164,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         // TODO(func) Allow for delayed loading of environments.
         for triple in env_triples {
             let subject_node = context.meta().triple_subject(triple);
-            if subject_node == context.lang_env {
+            if subject_node == context.lang_env() {
                 continue;
             }
 

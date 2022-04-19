@@ -369,29 +369,29 @@ impl Agent {
         };
         let (s, p, o) = (to_local(subject)?, to_local(predicate)?, to_local(object)?);
 
-        let res = if s == self.context.placeholder {
-            if p == self.context.placeholder {
-                if o == self.context.placeholder {
+        let res = if s == self.context.placeholder() {
+            if p == self.context.placeholder() {
+                if o == self.context.placeholder() {
                     self.env().match_all()
                 } else {
                     self.env().match_object(o)
                 }
             } else {
-                if o == self.context.placeholder {
+                if o == self.context.placeholder() {
                     self.env().match_predicate(p)
                 } else {
                     self.env().match_but_subject(p, o)
                 }
             }
         } else {
-            if p == self.context.placeholder {
-                if o == self.context.placeholder {
+            if p == self.context.placeholder() {
+                if o == self.context.placeholder() {
                     self.env().match_subject(s)
                 } else {
                     self.env().match_but_predicate(s, o)
                 }
             } else {
-                if o == self.context.placeholder {
+                if o == self.context.placeholder() {
                     self.env().match_but_object(s, p)
                 } else {
                     let mut set = TripleSet::new();
@@ -500,8 +500,8 @@ impl Agent {
     }
 
     fn get_or_create_import_table(&mut self, from_env: LocalNode) -> LocalNode {
-        let imports_node = self.context.imports;
-        let import_table_node = self.context.import_table;
+        let imports_node = self.context.imports();
+        let import_table_node = self.context.import_table();
         let env = self.pos().env();
         let import_triple = {
             let meta = self.context.meta_mut();
@@ -536,8 +536,8 @@ impl Agent {
     }
 
     fn get_import_table(&mut self, from_env: LocalNode) -> Option<LocalNode> {
-        let imports_node = self.context.imports;
-        let import_table_node = self.context.import_table;
+        let imports_node = self.context.imports();
+        let import_table_node = self.context.import_table();
         let env = self.pos().env();
         let import_triple = {
             let meta = self.context.meta_mut();
