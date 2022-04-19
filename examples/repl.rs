@@ -143,22 +143,17 @@ fn reset_state(base_dir: &Path) -> io::Result<()> {
 }
 
 fn copy_meta(base_dir: &Path) -> io::Result<()> {
-    info!("No meta env; copying from tests/.");
-    let test_meta = base_dir.join("tests/common/meta.env");
+    info!("No meta env; copying from envs/.");
+    let amlang_meta = base_dir.join("envs/meta.env");
     let example_meta = base_dir.join("examples/envs/meta.env");
-    fs::copy(test_meta, example_meta.clone())?;
+    fs::copy(amlang_meta, example_meta.clone())?;
 
     let a = Command::new("sh")
         .arg("-c")
-        .arg(r"sed -i 's|../../envs/lang.env|../envs/lang.env|g' envs/meta.env")
+        .arg(r"sed -i 's|envs/lang.env|../envs/lang.env|g' envs/meta.env")
         .status()
         .expect("failed to monkeypatch lang.env path");
-    let b = Command::new("sh")
-        .arg("-c")
-        .arg(r"sed -E -i 's/(working|history)/envs\/\1/g' envs/meta.env")
-        .status()
-        .expect("failed to monkeypatch {working,history}.env path");
-    if !a.success() || !b.success() {
+    if !a.success() {
         fs::remove_file(example_meta)?;
         return Err(io::Error::new(
             io::ErrorKind::Other,

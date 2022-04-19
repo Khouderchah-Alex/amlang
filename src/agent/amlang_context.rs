@@ -7,7 +7,7 @@ use crate::environment::LocalNode;
 use crate::error::Error;
 use crate::model::Reflective;
 use crate::primitive::{Node, Primitive};
-use crate::sexp::{HeapSexp, Sexp};
+use crate::sexp::{HeapSexp, Sexp, SexpIntoIter};
 
 macro_rules! generate_context {
     (
@@ -22,11 +22,10 @@ macro_rules! generate_context {
         pub struct AmlangContext {
             meta: Box<EnvObject>,
 
-            // TODO(func) Don't make these pub once we deserialize internally.
             // Relative to meta env.
-            $(pub(super) $meta_node: LocalNode,)+
+            $($meta_node: LocalNode,)+
             // Relative to lang_env.
-            $(pub(super) $lang_node: LocalNode,)+
+            $($lang_node: LocalNode,)+
         }
 
 
@@ -59,19 +58,24 @@ macro_rules! generate_context {
                 list!(meta, lang,)
             }
 
-            fn reflect<F>(structure: Sexp, agent: &mut Agent, _resolve: F) -> Result<Self, Error>
+            fn reflect<F>(structure: Sexp, agent: &mut Agent, resolve: F) -> Result<Self, Error>
             where
                 Self: Sized,
                 F: Fn(&mut Agent, &Primitive) -> Result<Node, Error> {
                 // Clone passed-in agent's context to hack around the
                 // fact that we can't create a meta env here.
                 let mut context = agent.context().clone();
-
                 let (meta, lang) = break_sexp!(structure => (HeapSexp, HeapSexp), agent)?;
+
+                let mut resolve_node = |iter: &mut SexpIntoIter| -> Node {
+                    let primitive = Primitive::try_from(iter.next().unwrap().0).unwrap();
+                    resolve(agent, &primitive).unwrap()
+                };
+
                 let mut miter = meta.into_iter();
-                $(context.$meta_node = Node::try_from(miter.next().unwrap().0).unwrap().local();)+
+                $(context.$meta_node = resolve_node(&mut miter).local();)+
                 let mut liter = lang.into_iter();
-                $(context.$lang_node = Node::try_from(liter.next().unwrap().0).unwrap().local();)+
+                $(context.$lang_node = resolve_node(&mut liter).local();)+
 
                 Ok(context)
             }

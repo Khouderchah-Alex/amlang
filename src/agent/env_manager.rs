@@ -32,8 +32,8 @@ pub struct EnvManager<Policy: EnvPolicy> {
     policy: Policy,
 }
 
-/// Replace placeholder'd context nodes through AmlangDesignation lookups.
-macro_rules! bootstrap_context {
+/// Sanity check bootstrapped context nodes match env.
+macro_rules! verify_context {
     (
         $manager:expr,
         $($node:ident : $query:expr),+
@@ -62,9 +62,9 @@ macro_rules! bootstrap_context {
             )
         };
 
-        // Fill in placeholder'd context nodes.
+        // Verify context nodes.
         let context = $manager.agent_mut().context_mut();
-        $(context.$node = $node;)+
+        $(assert_eq!(context.$node(), $node);)+
     };
 }
 
@@ -73,53 +73,42 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         let mut policy = Policy::default();
         let meta = EnvManager::create_env(&mut policy, LocalNode::default());
 
-        let mut context = AmlangContext::new(meta);
-        // Make context usable for reflecting Reflectives during bootstrapping.
-        // TODO(flex) Find more flexible approch to bootstrapping Reflective
-        // nodes, like {,de}serializing this as a bootstrap kernel.
-        context.lang_env = LocalNode::new(16);
-        // Procedure nodes.
-        context.lambda = LocalNode::new(17);
-        context.apply = LocalNode::new(31);
-        context.branch = LocalNode::new(39);
-        context.fexpr = LocalNode::new(43);
-        context.progn = LocalNode::new(45);
-        // Table nodes.
-        context.sym_node_table = LocalNode::new(65);
-        context.sym_sexp_table = LocalNode::new(77);
-        context.local_node_table = LocalNode::new(67);
+        let mut context_path = in_path.as_ref().to_path_buf();
+        context_path.push("context.bootstrap");
+        let context = EnvManager::<Policy>::bootstrap_context(meta, context_path)?;
+        info!("Context bootstrapping complete.");
 
         // Bootstrap meta env.
-        let meta_state = Agent::new(
+        let meta_agent = Agent::new(
             Node::new(LocalNode::default(), context.self_node()),
-            context,
+            context.clone(),
             // Subtle: Can't use history_env until meta env has been bootstrapped.
             LocalNode::default(),
         );
         let mut manager = Self {
-            agent: meta_state,
+            agent: meta_agent,
             policy: policy,
         };
 
         let mut meta_path = in_path.as_ref().to_path_buf();
         meta_path.push("meta.env");
         manager.deserialize_curr_env(meta_path)?;
-        bootstrap_context!(manager,
-                           imports: "__imports",
-                           import_table: "__import_table",
-                           serialize_path: "__serialize_path",
+        verify_context!(manager,
+                        imports: "__imports",
+                        import_table: "__import_table",
+                        serialize_path: "__serialize_path",
         );
         let history_env = manager.agent().find_env("history.env").unwrap();
         manager.agent_mut().set_history_env(history_env);
         info!("Meta env bootstrapping complete.");
 
         // Bootstrap lang env.
-        let lang_env = manager.agent().context().lang_env();
+        let lang_env = context.lang_env();
         manager.initialize_env_node(lang_env);
-        let serialize_path = manager.agent().context().serialize_path;
+        let serialize_path = context.serialize_path();
         manager.agent_mut().jump_env(lang_env);
         let lang_path = {
-            let meta = manager.agent().context().meta();
+            let meta = context.meta();
             let lang_path_triple = meta
                 .match_but_object(lang_env, serialize_path)
                 .iter()
@@ -131,40 +120,38 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
             Path::try_from(meta.entry(lang_path_node).owned()).unwrap()
         };
         manager.deserialize_curr_env(lang_path.as_std_path())?;
-        bootstrap_context!(manager,
-                           quote: "quote",
-                           lambda: "lambda",
-                           fexpr: "fexpr",
-                           def: "def",
-                           tell: "tell",
-                           curr: "curr",
-                           jump: "jump",
-                           ask: "ask",
-                           placeholder: "_",
-                           apply: "apply",
-                           eval: "eval",
-                           exec: "exec",
-                           import: "import",
-                           branch: "if",
-                           progn: "progn",
-                           let_basic: "let",
-                           let_rec: "letrec",
-                           env_find: "env-find",
-                           t: "true",
-                           f: "false",
-                           eq: "eq",
-                           sym_node_table: "table-sym-node",
-                           sym_sexp_table: "table-sym-sexp",
-                           local_node_table: "table-lnode",
-                           label: "label",
+        verify_context!(manager,
+                        quote: "quote",
+                        lambda: "lambda",
+                        fexpr: "fexpr",
+                        def: "def",
+                        tell: "tell",
+                        curr: "curr",
+                        jump: "jump",
+                        ask: "ask",
+                        placeholder: "_",
+                        apply: "apply",
+                        eval: "eval",
+                        exec: "exec",
+                        import: "import",
+                        branch: "if",
+                        progn: "progn",
+                        let_basic: "let",
+                        let_rec: "letrec",
+                        env_find: "env-find",
+                        t: "true",
+                        f: "false",
+                        eq: "eq",
+                        sym_node_table: "table-sym-node",
+                        sym_sexp_table: "table-sym-sexp",
+                        local_node_table: "table-lnode",
+                        label: "label",
         );
         info!("Lang env bootstrapping complete.");
 
-        // Since we've bootstrapped the lang by here, we can clone the context
-        // without worrying about using stale/placeholder values.
-        let context = manager.agent().context().clone();
-        let env_triples = context.meta().match_predicate(serialize_path);
+        // Load all other envs.
         // TODO(func) Allow for delayed loading of environments.
+        let env_triples = context.meta().match_predicate(serialize_path);
         for triple in env_triples {
             let subject_node = context.meta().triple_subject(triple);
             if subject_node == context.lang_env() {
@@ -195,7 +182,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
     }
 
     pub fn insert_new_env<P: AsRef<StdPath>>(&mut self, path: P) -> LocalNode {
-        let serialize_path = self.agent().context().serialize_path;
+        let serialize_path = self.agent().context().serialize_path();
         let env_node = self
             .agent_mut()
             .context_mut()
@@ -208,6 +195,36 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         meta.insert_triple(env_node, serialize_path, path_node);
 
         env_node
+    }
+
+    fn bootstrap_context<P: AsRef<StdPath>>(
+        meta: Box<Policy::StoredEnv>,
+        in_path: P,
+    ) -> Result<AmlangContext, Error> {
+        let placeholder_context = AmlangContext::new(meta);
+        let mut placeholder_agent = Agent::new(
+            Node::new(LocalNode::default(), placeholder_context.self_node()),
+            placeholder_context,
+            LocalNode::default(),
+        );
+
+        let stream = match FileStream::new(in_path.as_ref(), policy_admin) {
+            Ok(stream) => stream,
+            Err(err) => return err!(placeholder_agent, FileStreamError(err)),
+        };
+        let mut peekable = stream.peekable();
+
+        let s = match parse_sexp(&mut peekable, 0) {
+            Ok(Some(parsed)) => parsed,
+            Ok(None) => return err!(placeholder_agent, MissingNodeSection),
+            Err(err) => return err!(placeholder_agent, ParseError(err)),
+        };
+        AmlangContext::reflect(s, &mut placeholder_agent, |agent, p| {
+            EnvManager::<Policy>::parse_node_inner(
+                agent,
+                &Symbol::try_from(Sexp::from(p.clone())).unwrap(),
+            )
+        })
     }
 
     fn create_env(policy: &mut Policy, env_node: LocalNode) -> Box<Policy::StoredEnv> {
@@ -292,7 +309,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         }
 
         // Serialize envs in meta env.
-        let serialize_path = self.agent().context().serialize_path;
+        let serialize_path = self.agent().context().serialize_path();
         let env_triples = self
             .agent()
             .context()

@@ -10,21 +10,15 @@ use amlang::token::string_stream::StringStream;
 
 
 pub fn setup() -> Result<(Agent, EnvManager<impl EnvPolicy>), String> {
-    const RELATIVE_SERIALIZE_PATH: &str = "";
-
-    // Start in this dir.
+    // Start at crate-level.
     let crate_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
-    let file_dir = Path::new(file!()).parent().unwrap();
-    let start_dir = crate_dir.join(file_dir).canonicalize().unwrap();
-    amlang::init(start_dir).unwrap();
+    amlang::init(crate_dir.canonicalize().unwrap()).unwrap();
 
     // Integration tests will call this method multiple times; ignore the error.
     if let Err(_err) = env_logger::try_init() {}
 
     // Bootstrap/deserialize.
-    let manager = match amlang::agent::env_manager::EnvManager::<SimplePolicy>::bootstrap(
-        RELATIVE_SERIALIZE_PATH,
-    ) {
+    let manager = match amlang::agent::env_manager::EnvManager::<SimplePolicy>::bootstrap("envs/") {
         Ok(val) => val,
         Err(err) => return Err(format!("{}", err)),
     };

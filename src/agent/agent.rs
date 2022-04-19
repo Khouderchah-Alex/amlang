@@ -474,7 +474,7 @@ impl Agent {
 
     pub fn find_env<S: AsRef<str>>(&self, s: S) -> Option<LocalNode> {
         let meta = self.context.meta();
-        let triples = meta.match_predicate(self.context.serialize_path);
+        let triples = meta.match_predicate(self.context.serialize_path());
         for triple in triples {
             let object_node = meta.triple_object(triple);
             let entry = meta.entry(object_node);
