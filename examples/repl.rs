@@ -30,7 +30,7 @@ use amlang::token::cli_stream::CliStream;
 
 
 fn main() -> Result<(), String> {
-    const RELATIVE_META_PATH: &str = "envs/meta.env";
+    const RELATIVE_SERIALIZE_PATH: &str = "envs/";
     let base_dir = Path::new(env!("CARGO_MANIFEST_DIR"))
         .canonicalize()
         .unwrap();
@@ -63,14 +63,19 @@ fn main() -> Result<(), String> {
             return Err(format!("Resetting state failed: {}", err));
         }
     }
-    if !Path::new(RELATIVE_META_PATH).exists() {
+    let meta_path = RELATIVE_SERIALIZE_PATH.to_string() + "meta.env";
+    if !Path::new(meta_path.as_str()).exists() {
         if let Err(err) = copy_meta(&base_dir) {
             return Err(format!("Copying meta.env failed: {}", err));
+        }
+
+        if let Err(err) = copy_context(&base_dir) {
+            return Err(format!("Copying context.bootstrap failed: {}", err));
         }
     }
 
     // Bootstrap/deserialize.
-    let mut manager = match EnvManager::<SimplePolicy>::bootstrap(RELATIVE_META_PATH) {
+    let mut manager = match EnvManager::<SimplePolicy>::bootstrap(RELATIVE_SERIALIZE_PATH) {
         Ok(val) => val,
         Err(err) => return Err(format!("{}", err)),
     };
@@ -92,7 +97,7 @@ fn main() -> Result<(), String> {
     for _result in agent.run(sexps, print_result) {}
 
     // Serialize.
-    if let Err(err) = manager.serialize_full(RELATIVE_META_PATH) {
+    if let Err(err) = manager.serialize_full(RELATIVE_SERIALIZE_PATH) {
         return Err(err.to_string());
     }
 
@@ -161,4 +166,11 @@ fn copy_meta(base_dir: &Path) -> io::Result<()> {
         ));
     }
     Ok(())
+}
+
+fn copy_context(base_dir: &Path) -> io::Result<u64> {
+    info!("No context bootstrap; copying from envs/.");
+    let amlang_context = base_dir.join("envs/context.bootstrap");
+    let example_context = base_dir.join("examples/envs/context.bootstrap");
+    fs::copy(amlang_context, example_context.clone())
 }

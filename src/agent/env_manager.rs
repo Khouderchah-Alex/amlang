@@ -69,7 +69,7 @@ macro_rules! bootstrap_context {
 }
 
 impl<Policy: EnvPolicy> EnvManager<Policy> {
-    pub fn bootstrap<P: AsRef<StdPath>>(meta_path: P) -> Result<Self, Error> {
+    pub fn bootstrap<P: AsRef<StdPath>>(in_path: P) -> Result<Self, Error> {
         let mut policy = Policy::default();
         let meta = EnvManager::create_env(&mut policy, LocalNode::default());
 
@@ -100,6 +100,9 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
             agent: meta_state,
             policy: policy,
         };
+
+        let mut meta_path = in_path.as_ref().to_path_buf();
+        meta_path.push("meta.env");
         manager.deserialize_curr_env(meta_path)?;
         bootstrap_context!(manager,
                            imports: "__imports",
@@ -266,11 +269,29 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
     pub fn serialize_full<P: AsRef<StdPath>>(&mut self, out_path: P) -> std::io::Result<()> {
         let original_pos = self.agent().pos();
 
+        // Serialize meta env.
         self.agent_mut()
             .jump(Node::new(LocalNode::default(), LocalNode::default()));
-        self.serialize_curr_env(out_path)?;
+        let mut meta_path = out_path.as_ref().to_path_buf();
+        meta_path.push("meta.env");
+        self.serialize_curr_env(meta_path)?;
 
-        // Serialize recursively.
+        // Serialize context.
+        {
+            let mut path = out_path.as_ref().to_path_buf();
+            path.push("context.bootstrap");
+            let file = File::create(path)?;
+            let mut w = BufWriter::new(file);
+
+            let context = self.agent().context().clone().reify(self.agent_mut());
+            write!(&mut w, "(\n\n")?;
+            for (sublist, _) in context {
+                self.serialize_list_internal(&mut w, &sublist, 0)?;
+            }
+            write!(&mut w, ")\n")?;
+        }
+
+        // Serialize envs in meta env.
         let serialize_path = self.agent().context().serialize_path;
         let env_triples = self
             .agent()

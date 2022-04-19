@@ -10,7 +10,7 @@ use amlang::token::string_stream::StringStream;
 
 
 pub fn setup() -> Result<(Agent, EnvManager<impl EnvPolicy>), String> {
-    const META_ENV_PATH: &str = "meta.env";
+    const RELATIVE_SERIALIZE_PATH: &str = "";
 
     // Start in this dir.
     let crate_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
@@ -22,11 +22,12 @@ pub fn setup() -> Result<(Agent, EnvManager<impl EnvPolicy>), String> {
     if let Err(_err) = env_logger::try_init() {}
 
     // Bootstrap/deserialize.
-    let manager =
-        match amlang::agent::env_manager::EnvManager::<SimplePolicy>::bootstrap(META_ENV_PATH) {
-            Ok(val) => val,
-            Err(err) => return Err(format!("{}", err)),
-        };
+    let manager = match amlang::agent::env_manager::EnvManager::<SimplePolicy>::bootstrap(
+        RELATIVE_SERIALIZE_PATH,
+    ) {
+        Ok(val) => val,
+        Err(err) => return Err(format!("{}", err)),
+    };
 
     // Prep agent.
     let mut agent = manager.agent().clone();
