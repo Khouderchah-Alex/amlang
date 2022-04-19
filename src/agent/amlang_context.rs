@@ -1,6 +1,13 @@
+use std::convert::TryFrom;
+
 use super::env_prelude::EnvPrelude;
+use crate::agent::Agent;
 use crate::environment::environment::EnvObject;
 use crate::environment::LocalNode;
+use crate::error::Error;
+use crate::model::Reflective;
+use crate::primitive::{Node, Primitive};
+use crate::sexp::{HeapSexp, Sexp};
 
 macro_rules! generate_context {
     (
@@ -39,6 +46,39 @@ macro_rules! generate_context {
 
             $(pub fn $meta_node(&self) -> LocalNode { self.$meta_node })+
             $(pub fn $lang_node(&self) -> LocalNode { self.$lang_node })+
+        }
+
+        impl Reflective for AmlangContext {
+            fn reify(&self, _agent: &mut Agent) -> Sexp {
+                let meta: Sexp = vec![
+                    $(Node::new(LocalNode::default(), self.$meta_node),)+
+                ].into();
+                let lang: Sexp = vec![
+                    $(Node::new(self.lang_env, self.$lang_node),)+
+                ].into();
+                list!(meta, lang,)
+            }
+
+            fn reflect<F>(structure: Sexp, agent: &mut Agent, _resolve: F) -> Result<Self, Error>
+            where
+                Self: Sized,
+                F: Fn(&mut Agent, &Primitive) -> Result<Node, Error> {
+                // Clone passed-in agent's context to hack around the
+                // fact that we can't create a meta env here.
+                let mut context = agent.context().clone();
+
+                let (meta, lang) = break_sexp!(structure => (HeapSexp, HeapSexp), agent)?;
+                let mut miter = meta.into_iter();
+                $(context.$meta_node = Node::try_from(miter.next().unwrap().0).unwrap().local();)+
+                let mut liter = lang.into_iter();
+                $(context.$lang_node = Node::try_from(liter.next().unwrap().0).unwrap().local();)+
+
+                Ok(context)
+            }
+
+            fn valid_discriminator(_node: Node, _agent: &Agent) -> bool {
+                unimplemented!();
+            }
         }
     };
 }
