@@ -14,13 +14,8 @@ pub fn generate_builtin_map() -> HashMap<&'static str, BuiltIn> {
         [$($x:expr),*] => {
             {
                 let mut m = HashMap::new();
-                $(
-                    m.insert(
-                        stringify!($x),
-                        BuiltIn::new(stringify!($x), $x),
-                    );
-                )*
-                    m
+                $(m.insert(stringify!($x), BuiltIn::new(stringify!($x), $x));)*
+                m
             }
         };
         [$($n:tt : $x:expr),+ ,] => {
