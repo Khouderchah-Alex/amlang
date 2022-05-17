@@ -9,6 +9,38 @@ use crate::model::Reflective;
 use crate::primitive::{Node, Primitive};
 use crate::sexp::{HeapSexp, Sexp, SexpIntoIter};
 
+
+generate_context!(
+    (lang_env, imports, import_table, serialize_path),
+    (
+        quote,
+        lambda,
+        fexpr,
+        def,
+        tell,
+        curr,
+        jump,
+        ask,
+        placeholder,
+        apply,
+        eval,
+        exec,
+        import,
+        progn,
+        branch,
+        let_basic,
+        let_rec,
+        env_find,
+        t,
+        f,
+        eq,
+        sym_node_table,
+        sym_sexp_table,
+        local_node_table,
+        label
+    )
+);
+
 macro_rules! generate_context {
     (
         ($($meta_node:ident),+),
@@ -87,37 +119,6 @@ macro_rules! generate_context {
     };
 }
 
-generate_context!(
-    (lang_env, imports, import_table, serialize_path),
-    (
-        quote,
-        lambda,
-        fexpr,
-        def,
-        tell,
-        curr,
-        jump,
-        ask,
-        placeholder,
-        apply,
-        eval,
-        exec,
-        import,
-        progn,
-        branch,
-        let_basic,
-        let_rec,
-        env_find,
-        t,
-        f,
-        eq,
-        sym_node_table,
-        sym_sexp_table,
-        local_node_table,
-        label
-    )
-);
-
 impl AmlangContext {
     pub fn meta(&self) -> &Box<EnvObject> {
         &self.meta
@@ -136,3 +137,5 @@ impl AmlangContext {
         EnvPrelude::TellHandler.local()
     }
 }
+
+use generate_context;
