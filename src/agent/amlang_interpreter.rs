@@ -89,7 +89,7 @@ impl<'a> AmlangInterpreter<'a> {
                 .insert_structure(symbol.into())
                 .globalize(self.agent());
             // Unlike amlang designation, label predicate must be imported.
-            let raw_predicate = amlang_node!(self.agent().context(), label);
+            let raw_predicate = amlang_node!(label, self.agent().context());
             let label_predicate = self.agent_mut().import(raw_predicate)?;
             self.agent_mut().tell(node, label_predicate, name)?;
         }
@@ -143,9 +143,9 @@ impl<'a> AmlangInterpreter<'a> {
 
                         // TODO(func) Integrate actual boolean type.
                         let context = self.agent().context();
-                        if cond == amlang_node!(context, t).into() {
+                        if cond == amlang_node!(t, context).into() {
                             Ok(self.exec(a)?)
-                        } else if cond == amlang_node!(context, f).into() {
+                        } else if cond == amlang_node!(f, context).into() {
                             Ok(self.exec(b)?)
                         } else {
                             err!(
@@ -538,19 +538,19 @@ impl<'a> Interpreter for AmlangInterpreter<'a> {
                 };
                 let context = self.agent().context();
                 match node {
-                    _ if amlang_node!(context, quote) == node => {
+                    _ if amlang_node!(quote, context) == node => {
                         return Ok(*quote_wrapper(cdr, self.agent())?);
                     }
-                    _ if amlang_node!(context, lambda) == node
-                        || amlang_node!(context, fexpr) == node =>
+                    _ if amlang_node!(lambda, context) == node
+                        || amlang_node!(fexpr, context) == node =>
                     {
                         let (params, body) = make_lambda_wrapper(cdr, &self.agent())?;
                         let reflect = node.local() == context.fexpr();
                         let (proc, _) = self.make_lambda(params, body, reflect)?;
                         return Ok(proc.into());
                     }
-                    _ if amlang_node!(context, let_basic) == node
-                        || amlang_node!(context, let_rec) == node =>
+                    _ if amlang_node!(let_basic, context) == node
+                        || amlang_node!(let_rec, context) == node =>
                     {
                         let (params, exprs, body) = let_wrapper(cdr, &self.agent())?;
                         let recursive = node.local() == context.let_rec();
@@ -567,7 +567,7 @@ impl<'a> Interpreter for AmlangInterpreter<'a> {
                         };
                         return Ok(Procedure::Application(proc_node, args).into());
                     }
-                    _ if amlang_node!(context, branch) == node => {
+                    _ if amlang_node!(branch, context) == node => {
                         let args = self.evlis(cdr, true)?;
                         if args.len() != 3 {
                             return err!(
@@ -581,12 +581,12 @@ impl<'a> Interpreter for AmlangInterpreter<'a> {
                         let proc = Procedure::Branch((args[0], args[1], args[2]).into());
                         return Ok(proc.into());
                     }
-                    _ if amlang_node!(context, progn) == node => {
+                    _ if amlang_node!(progn, context) == node => {
                         let args = self.evlis(cdr, true)?;
                         return Ok(Procedure::Sequence(args).into());
                     }
                     _ => {
-                        let def_node = amlang_node!(context, def);
+                        let def_node = amlang_node!(def, context);
                         let should_internalize = match self.agent_mut().designate(node.into())? {
                             // Don't evaluate args of reflective Abstractions.
                             Sexp::Primitive(Primitive::Procedure(Procedure::Abstraction(

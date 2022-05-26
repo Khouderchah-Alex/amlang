@@ -198,7 +198,7 @@ impl Agent {
     pub fn node_label(&mut self, node: Node) -> Option<Symbol> {
         let pos = self.pos();
         self.jump(node);
-        let try_import = self.get_imported(amlang_node!(self.context(), label));
+        let try_import = self.get_imported(amlang_node!(label, self.context()));
         self.jump(pos);
         let label_predicate = match try_import {
             Some(pred) => pred,
@@ -341,7 +341,7 @@ impl Agent {
                 .into(),
             )?;
             // Only allow insertion to continue if the handler returns true.
-            if res != amlang_node!(self.context(), t).into() {
+            if res != amlang_node!(t, self.context()).into() {
                 return err!(
                     self,
                     LangError::RejectedTriple(list!(subject, predicate, object,), res)
@@ -358,7 +358,7 @@ impl Agent {
 
     pub fn ask(&mut self, subject: Node, predicate: Node, object: Node) -> Result<Sexp, Error> {
         let to_local = |node: Node| {
-            let placeholder = amlang_node!(self.context(), placeholder);
+            let placeholder = amlang_node!(placeholder, self.context());
             if node != placeholder && node.env() != self.pos().env() {
                 return err!(
                     self,

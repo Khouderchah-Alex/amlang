@@ -22,23 +22,23 @@ impl Reflective for Procedure {
         let context = agent.context();
         match self {
             Procedure::Application(func, args) => {
-                let apply_node = amlang_node!(context, apply);
+                let apply_node = amlang_node!(apply, context);
                 list!(apply_node, *func, args,)
             }
             Procedure::Abstraction(params, body, reflect) => {
                 let special_node = if *reflect {
-                    amlang_node!(context, fexpr)
+                    amlang_node!(fexpr, context)
                 } else {
-                    amlang_node!(context, lambda)
+                    amlang_node!(lambda, context)
                 };
                 list!(special_node, params, *body,)
             }
             Procedure::Sequence(seq) => {
-                let progn_node = amlang_node!(context, progn);
+                let progn_node = amlang_node!(progn, context);
                 Cons::new(progn_node, Sexp::from(seq)).into()
             }
             Procedure::Branch(t) => {
-                let branch_node = amlang_node!(context, branch);
+                let branch_node = amlang_node!(branch, context);
                 let (pred, a, b) = **t;
                 list!(branch_node, pred, a, b,)
             }

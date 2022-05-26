@@ -73,7 +73,7 @@ impl Reflective for EnvHeader {
         }
         // Leverage SymSexpTable reflection.
         let mut table = SymSexpTable::reflect(
-            Cons::new(amlang_node!(agent.context(), sym_sexp_table), cdr).into(),
+            Cons::new(amlang_node!(sym_sexp_table, agent.context()), cdr).into(),
             agent,
             resolve,
         )?;

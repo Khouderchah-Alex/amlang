@@ -63,7 +63,7 @@ fn lambda_seq_body() {
     let results = common::results(&mut lang_agent, "((lambda (a) (jump a) (curr)) lambda)");
     assert_eq!(
         results,
-        vec![amlang_node!(lang_agent.context(), lambda).into()]
+        vec![amlang_node!(lambda, lang_agent.context()).into()]
     );
 }
 
@@ -155,11 +155,11 @@ fn let_rec_lambdas() {
     let cons = Cons::try_from(results[0].clone()).unwrap();
     assert_eq!(
         *cons.car().unwrap(),
-        amlang_node!(lang_agent.context(), f).into()
+        amlang_node!(f, lang_agent.context()).into()
     );
     assert_eq!(
         *cons.cdr().unwrap(),
-        amlang_node!(lang_agent.context(), t).into()
+        amlang_node!(t, lang_agent.context()).into()
     );
 }
 
@@ -244,9 +244,9 @@ fn eval() {
 
     assert_eq!(
         results[0],
-        amlang_node!(lang_agent.context(), lambda).into()
+        amlang_node!(lambda, lang_agent.context()).into()
     );
-    assert_eq!(results[1], amlang_node!(lang_agent.context(), apply).into());
+    assert_eq!(results[1], amlang_node!(apply, lang_agent.context()).into());
 }
 
 #[test]
@@ -254,7 +254,7 @@ fn improper_list() {
     let (mut lang_agent, _manager) = common::setup().unwrap();
 
     let results = common::results(&mut lang_agent, "(eq '(1 2 . 3) (cons 1 (cons 2 3)))");
-    assert_eq!(results[0], amlang_node!(lang_agent.context(), t).into());
+    assert_eq!(results[0], amlang_node!(t, lang_agent.context()).into());
 }
 
 #[test]
@@ -299,10 +299,10 @@ fn import() {
     );
 
     let context = lang_agent.context();
-    assert_eq!(results[1], amlang_node!(context, t).into());
-    assert_eq!(results[2], amlang_node!(context, t).into());
-    assert_eq!(results[3], amlang_node!(context, f).into());
-    assert_eq!(results[5], amlang_node!(context, t).into());
+    assert_eq!(results[1], amlang_node!(t, context).into());
+    assert_eq!(results[2], amlang_node!(t, context).into());
+    assert_eq!(results[3], amlang_node!(f, context).into());
+    assert_eq!(results[5], amlang_node!(t, context).into());
 }
 
 #[test]
@@ -349,7 +349,7 @@ fn tell_handler_reject() {
     let err = results[3].as_ref().unwrap_err().kind().reify();
     let (_, kind, _triple, ret) = break_sexp!(err => (LangString, LangString, Sexp, Node)).unwrap();
     assert_eq!(kind.as_str(), "Rejected triple");
-    assert_eq!(ret, amlang_node!(lang_agent.context(), f).into());
+    assert_eq!(ret, amlang_node!(f, lang_agent.context()).into());
 }
 
 #[test]
@@ -376,5 +376,5 @@ fn tell_handler_as_eq() {
     let err = results[5].as_ref().unwrap_err().kind().reify();
     let (_, kind, _triple, ret) = break_sexp!(err => (LangString, LangString, Sexp, Node)).unwrap();
     assert_eq!(kind.as_str(), "Rejected triple");
-    assert_eq!(ret, amlang_node!(lang_agent.context(), f).into());
+    assert_eq!(ret, amlang_node!(f, lang_agent.context()).into());
 }

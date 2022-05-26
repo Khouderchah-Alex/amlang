@@ -155,7 +155,7 @@ macro_rules! impl_amlang_table {
                         ).into()
                     );
                 }
-                let node = amlang_node!(agent.context(), $discriminator);
+                let node = amlang_node!($discriminator, agent.context());
                 Cons::new(node, alist).into()
             }
 
@@ -256,7 +256,7 @@ impl Reflective for LocalNodeTable {
             );
         }
         Cons::new(
-            amlang_node!(agent.context(), local_node_table),
+            amlang_node!(local_node_table, agent.context()),
             Cons::new(Node::new(LocalNode::default(), self.env), alist),
         )
         .into()
