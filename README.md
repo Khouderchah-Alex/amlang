@@ -14,7 +14,7 @@ The concepts behind the project are described in this article series:
 
 ### Simple REPL
 
-To play around with a simple form of the base language system, run `cargo run --example repl`.
+To play around with a simple form of the base language system, run `cargo run --example simple_repl`.
 
 Basic commands:
   - Environment:
@@ -30,6 +30,6 @@ Basic commands:
     - `(quote sexp)` or `'sexp`
     - `(let ((name1 val1) (name2 val2)) body-using-names)`
 
-Note that the Environments you work with will be serialized and the changes available the next time you run the REPL. Run `cargo run --example repl -- -r` to reset the saved state before running the REPL.
+Note that the Environments you work with will be serialized and the changes available the next time you run the REPL. Run `cargo run --example simple_repl -- -r` to reset the saved state before running the REPL.
 
 The [lang_test](tests/lang_test.rs) contains examples of guaranteed-supported behavior.

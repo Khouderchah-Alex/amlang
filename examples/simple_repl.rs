@@ -1,7 +1,7 @@
 //! Basic REPL in Amlang; no special impls, single-threaded w/SimplePolicy.
 //!
-//! Run with saved state as:       `cargo run --example repl`.
-//! Reset saved state and run as:  `cargo run --example repl -- -r`.
+//! Run with saved state as:       `cargo run --example simple_repl`.
+//! Reset saved state and run as:  `cargo run --example simple_repl -- -r`.
 //!
 //!
 //! Uses envs in the .gitignore'd examples/envs/ directory and {de,}serializes,
