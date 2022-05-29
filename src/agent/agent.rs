@@ -95,6 +95,10 @@ impl Agent {
 
 // Basic frame functionality.
 impl Agent {
+    // SAFETY: Clients must ensure the LocalNode is indeed a part of the Agent's
+    // current env. While operational design can be used to prevent access to
+    // sensitive information by unprivileged Agents, the ability to use the same
+    // LocalNode in different envs is something we really want to avoid.
     pub fn globalize(&self, local: LocalNode) -> Node {
         Node::new(self.pos().env(), local)
     }
