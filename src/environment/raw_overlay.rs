@@ -2,8 +2,8 @@ use std::cell::UnsafeCell;
 use std::sync::Arc;
 
 use super::entry::{Entry, EntryMut};
-use super::environment::{Environment, NodeSet, TripleSet};
 use super::local_node::{LocalNode, LocalTriple};
+use super::{Environment, NodeSet, TripleSet};
 use crate::sexp::Sexp;
 
 

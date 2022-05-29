@@ -6,14 +6,13 @@ use std::fmt;
 
 use super::entry::{Entry, EntryMut};
 use super::local_node::{LocalNode, LocalTriple};
+use super::triple_set::TripleSet;
 use crate::sexp::Sexp;
 
 
 pub type EnvObject = dyn Environment;
 
-// TODO(flex) Use newtype w/trait impls? In future could be enum w/static dispatch.
 pub type NodeSet = BTreeSet<LocalNode>;
-pub type TripleSet = BTreeSet<LocalTriple>;
 
 /// Triple store of Nodes, which can be atoms, structures, or triples.
 /// Always contains at least one node, which represents itself.
@@ -47,12 +46,9 @@ pub trait Environment: DynClone {
     fn match_all(&self) -> TripleSet;
 
     fn match_any(&self, node: LocalNode) -> TripleSet {
-        let mut triples = self.match_subject(node);
-        triples = triples
-            .union(&self.match_predicate(node))
-            .cloned()
-            .collect();
-        triples.union(&self.match_object(node)).cloned().collect()
+        let a = self.match_subject(node);
+        let b = a.union(&self.match_predicate(node));
+        b.union(&self.match_object(node))
     }
 
     fn entry(&self, node: LocalNode) -> Entry;

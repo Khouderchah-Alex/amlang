@@ -10,8 +10,8 @@ use super::amlang_interpreter::AmlangState;
 use super::continuation::Continuation;
 use super::env_prelude::EnvPrelude;
 use crate::agent::lang_error::LangError;
-use crate::environment::environment::{EnvObject, TripleSet};
 use crate::environment::LocalNode;
+use crate::environment::{EnvObject, TripleSet};
 use crate::error::Error;
 use crate::model::Reflective;
 use crate::primitive::prelude::*;
@@ -185,8 +185,7 @@ impl Agent {
         let designation = self.context().designation();
         let env = self.access_env(node.env()).unwrap();
         let names = env.match_but_object(node.local(), designation);
-        if let Some(name_node) = names.iter().next() {
-            let name = env.triple_object(*name_node);
+        if let Some(name) = names.objects().next() {
             if let Ok(sym) = Symbol::try_from(env.entry(name).owned().unwrap()) {
                 return Some(sym);
             }
@@ -207,9 +206,8 @@ impl Agent {
         let env = self.access_env(node.env()).unwrap();
 
         let labels = env.match_but_object(node.local(), label_predicate.local());
-        if let Some(name_node) = labels.iter().next() {
-            let name = env.triple_object(*name_node);
-            if let Ok(sym) = Symbol::try_from(env.entry(name).owned().unwrap()) {
+        if let Some(label) = labels.objects().next() {
+            if let Ok(sym) = Symbol::try_from(env.entry(label).owned().unwrap()) {
                 return Some(sym);
             }
         }
@@ -331,14 +329,15 @@ impl Agent {
 
         // If a tell_handler exists for the predicate, ensure it passes before adding triple.
         let tell_handler = self.context().tell_handler();
-        if let Some(&handler_triple) = self.env().match_but_object(p, tell_handler).iter().next() {
-            let handler_lnode = self.env().triple_object(handler_triple);
+        if let Some(handler) = self
+            .env()
+            .match_but_object(p, tell_handler)
+            .objects()
+            .next()
+        {
             let res = self.amlang_exec(
-                Procedure::Application(
-                    handler_lnode.globalize(self),
-                    vec![subject, predicate, object],
-                )
-                .into(),
+                Procedure::Application(handler.globalize(self), vec![subject, predicate, object])
+                    .into(),
             )?;
             // Only allow insertion to continue if the handler returns true.
             if res != amlang_node!(t, self.context()).into() {
@@ -394,15 +393,11 @@ impl Agent {
                 if o == self.context.placeholder() {
                     self.env().match_but_object(s, p)
                 } else {
-                    let mut set = TripleSet::new();
-                    if let Some(triple) = self.env().match_triple(s, p, o) {
-                        set.insert(triple);
-                    }
-                    set
+                    TripleSet::match_triple(&**self.env(), s, p, o)
                 }
             }
         }
-        .into_iter()
+        .triples()
         .map(|t| t.node().globalize(&self).into())
         .collect::<Vec<Sexp>>();
 
@@ -474,7 +469,9 @@ impl Agent {
 
     pub fn find_env<S: AsRef<str>>(&self, s: S) -> Option<LocalNode> {
         let meta = self.context.meta();
-        let triples = meta.match_predicate(self.context.serialize_path());
+        let triples = meta
+            .match_predicate(self.context.serialize_path())
+            .triples();
         for triple in triples {
             let object_node = meta.triple_object(triple);
             let entry = meta.entry(object_node);
@@ -527,10 +524,7 @@ impl Agent {
                 );
                 table_node
             }
-            1 => self
-                .context
-                .meta()
-                .triple_object(*matches.iter().next().unwrap()),
+            1 => matches.objects().next().unwrap(),
             _ => panic!("Found multiple import tables for single import triple"),
         }
     }
@@ -554,11 +548,7 @@ impl Agent {
             .match_but_object(import_triple.node(), import_table_node);
         match matches.len() {
             0 => None,
-            1 => Some(
-                self.context
-                    .meta()
-                    .triple_object(*matches.iter().next().unwrap()),
-            ),
+            1 => Some(matches.objects().next().unwrap()),
             _ => panic!("Found multiple import tables for single import triple"),
         }
     }

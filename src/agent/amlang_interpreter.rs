@@ -477,7 +477,7 @@ impl<'a> AmlangInterpreter<'a> {
 
     fn print_curr_triples(&mut self) {
         let local = self.agent().pos().local();
-        let triples = self.agent_mut().env().match_any(local);
+        let triples = self.agent_mut().env().match_any(local).triples();
         for triple in triples {
             print!("    ");
             let structure = triple.reify(self.agent_mut());

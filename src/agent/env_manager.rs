@@ -109,13 +109,12 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         manager.agent_mut().jump_env(lang_env);
         let lang_path = {
             let meta = context.meta();
-            let lang_path_triple = meta
+            let lang_path_node = meta
                 .match_but_object(lang_env, serialize_path)
-                .iter()
+                .objects()
                 .next()
                 .unwrap()
                 .clone();
-            let lang_path_node = meta.triple_object(lang_path_triple);
 
             Path::try_from(meta.entry(lang_path_node).owned()).unwrap()
         };
@@ -151,7 +150,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
 
         // Load all other envs.
         // TODO(func) Allow for delayed loading of environments.
-        let env_triples = context.meta().match_predicate(serialize_path);
+        let env_triples = context.meta().match_predicate(serialize_path).triples();
         for triple in env_triples {
             let subject_node = context.meta().triple_subject(triple);
             if subject_node == context.lang_env() {
@@ -314,7 +313,8 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
             .agent()
             .context()
             .meta()
-            .match_predicate(serialize_path);
+            .match_predicate(serialize_path)
+            .triples();
         for triple in env_triples {
             let subject_node = self.agent().context().meta().triple_subject(triple);
             let path = {
@@ -377,7 +377,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         write!(&mut w, "\n)\n\n")?;
 
         write!(&mut w, "(triples")?;
-        for triple in self.agent_mut().env().match_all() {
+        for triple in self.agent_mut().env().match_all().triples() {
             write!(&mut w, "\n    ")?;
             let s = triple.reify(self.agent_mut());
             self.serialize_list_internal(&mut w, &s, 1)?;

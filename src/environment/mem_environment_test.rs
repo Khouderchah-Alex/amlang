@@ -16,7 +16,7 @@ fn atomic_insertion() {
 
     let m = env.match_subject(a);
     assert_eq!(m.len(), 1);
-    assert_eq!(env.triple_object(*m.iter().next().unwrap()), c);
+    assert_eq!(m.objects().next().unwrap(), c);
 }
 
 #[test]
@@ -37,7 +37,7 @@ fn structure_insertion() {
 
     let m = env.match_predicate(b);
     assert_eq!(m.len(), 1);
-    assert_eq!(env.triple_object(*m.iter().next().unwrap()), c);
+    assert_eq!(m.objects().next().unwrap(), c);
 }
 
 #[test]

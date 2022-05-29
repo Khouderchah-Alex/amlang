@@ -22,8 +22,8 @@ pub struct EnvHeader {
 
 impl EnvHeader {
     pub fn from_env(env: &mut Box<EnvObject>) -> Self {
-        let node_count = env.all_nodes().into_iter().count();
-        let triple_count = env.match_all().into_iter().count();
+        let node_count = env.all_nodes().len();
+        let triple_count = env.match_all().len();
         Self {
             file_version: 1,
             node_count,

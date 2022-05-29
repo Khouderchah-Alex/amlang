@@ -4,9 +4,9 @@ use log::warn;
 use std::fmt::Debug;
 
 use super::entry::{Entry, EntryKind, EntryMut, EntryMutKind};
-use super::environment::{Environment, NodeSet, TripleSet};
 use super::local_node::{LocalId, LocalNode, LocalTriple};
 use super::mem_backend::{index_id_conv::*, Edges, MemBackend, Node, Triple};
+use super::{Environment, NodeSet, TripleSet};
 use crate::sexp::Sexp;
 
 
@@ -68,15 +68,15 @@ impl<Backend: MemBackend> Environment for MemEnvironment<Backend> {
 
     fn match_subject(&self, subject: LocalNode) -> TripleSet {
         let set = self.backend.edges(subject).as_subject.iter();
-        set.cloned().collect()
+        TripleSet::new(self, set.cloned().collect())
     }
     fn match_predicate(&self, predicate: LocalNode) -> TripleSet {
         let set = self.backend.edges(predicate).as_predicate.iter();
-        set.cloned().collect()
+        TripleSet::new(self, set.cloned().collect())
     }
     fn match_object(&self, object: LocalNode) -> TripleSet {
         let set = self.backend.edges(object).as_object.iter();
-        set.cloned().collect()
+        TripleSet::new(self, set.cloned().collect())
     }
 
     fn match_but_subject(&self, predicate: LocalNode, object: LocalNode) -> TripleSet {
@@ -85,7 +85,7 @@ impl<Backend: MemBackend> Environment for MemEnvironment<Backend> {
             .edges(predicate)
             .as_predicate
             .intersection(&self.backend.edges(object).as_object);
-        set.cloned().collect()
+        TripleSet::new(self, set.cloned().collect())
     }
     fn match_but_predicate(&self, subject: LocalNode, object: LocalNode) -> TripleSet {
         let set = self
@@ -93,7 +93,7 @@ impl<Backend: MemBackend> Environment for MemEnvironment<Backend> {
             .edges(subject)
             .as_subject
             .intersection(&self.backend.edges(object).as_object);
-        set.cloned().collect()
+        TripleSet::new(self, set.cloned().collect())
     }
     fn match_but_object(&self, subject: LocalNode, predicate: LocalNode) -> TripleSet {
         let set = self
@@ -101,7 +101,7 @@ impl<Backend: MemBackend> Environment for MemEnvironment<Backend> {
             .edges(subject)
             .as_subject
             .intersection(&self.backend.edges(predicate).as_predicate);
-        set.cloned().collect()
+        TripleSet::new(self, set.cloned().collect())
     }
 
     fn match_triple(
@@ -111,14 +111,15 @@ impl<Backend: MemBackend> Environment for MemEnvironment<Backend> {
         object: LocalNode,
     ) -> Option<LocalTriple> {
         self.match_but_object(subject, predicate)
-            .iter()
-            .find(|&&triple| self.triple_object(triple) == object)
-            .cloned()
+            .triples()
+            .find(|&triple| self.triple_object(triple) == object)
     }
     fn match_all(&self) -> TripleSet {
-        (0..self.backend.triple_count())
+        // TODO(feat) Watch out if backends can ever have gaps here.
+        let elements = (0..self.backend.triple_count())
             .map(|x| index_to_triple_id(x))
-            .collect()
+            .collect();
+        TripleSet::new(self, elements)
     }
 
     fn entry(&self, node: LocalNode) -> Entry {
