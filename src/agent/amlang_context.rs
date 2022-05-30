@@ -38,7 +38,8 @@ generate_context!(
         sym_sexp_table,
         local_node_table,
         label,
-        vector
+        vector,
+        set
     )
 );
 

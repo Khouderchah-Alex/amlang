@@ -303,6 +303,21 @@ impl<'a> AmlangInterpreter<'a> {
                 };
                 Ok(self.agent_mut().name_node(name, val_node)?.into())
             }
+            _ if context.set() == special_node => {
+                // Note that unlike def, set! follows normal internalization during evlis.
+                let (node, val) = def_wrapper(&arg_nodes, &self.agent())?;
+                let node = Node::try_from(node).unwrap();
+                if let Some(s) = val {
+                    let meaning = self.internalize(s.into());
+                    let final_sexp = self.contemplate(meaning?)?;
+                    let env = self.agent_mut().access_env(node.env()).unwrap();
+                    *env.entry_mut(node.local()).kind_mut() = EntryMutKind::Owned(final_sexp);
+                } else {
+                    let env = self.agent_mut().access_env(node.env()).unwrap();
+                    *env.entry_mut(node.local()).kind_mut() = EntryMutKind::Atomic;
+                }
+                Ok(node.into())
+            }
             _ if context.curr() == special_node => {
                 if arg_nodes.len() > 0 {
                     return err!(

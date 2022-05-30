@@ -146,6 +146,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
                         local_node_table: "table-lnode",
                         label: "label",
                         vector: "vector",
+                        set: "set!"
         );
         info!("Lang env bootstrapping complete.");
 

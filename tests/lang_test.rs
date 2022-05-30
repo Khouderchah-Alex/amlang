@@ -230,6 +230,50 @@ fn def_recursive_lambda() {
 }
 
 #[test]
+fn set_atom() {
+    let (mut lang_agent, _manager) = common::setup().unwrap();
+
+    let results = common::results(
+        &mut lang_agent,
+        "(def a)
+         (set! a 4)
+         a
+
+         (set! a)
+         a",
+    );
+    assert_eq!(results[2], Number::Integer(4).into());
+    let original_atom = Node::try_from(results[0].clone()).unwrap();
+    assert_eq!(results[4], original_atom.into());
+}
+
+#[test]
+fn set_lambda() {
+    let (mut lang_agent, _manager) = common::setup().unwrap();
+
+    let results = common::results(
+        &mut lang_agent,
+        "(def a)
+         (set! a (lambda (a) (+ a a)))
+         (a 4)",
+    );
+    assert_eq!(results[2], Number::Integer(8).into());
+}
+
+#[test]
+fn set_recursive() {
+    let (mut lang_agent, _manager) = common::setup().unwrap();
+
+    let results = common::results(
+        &mut lang_agent,
+        "(def a 4)
+         (set! a (* a 2))
+         a",
+    );
+    assert_eq!(results[2], Number::Integer(8).into());
+}
+
+#[test]
 fn eval() {
     let (mut lang_agent, _manager) = common::setup().unwrap();
 

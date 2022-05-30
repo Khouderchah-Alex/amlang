@@ -10,7 +10,7 @@ pub fn policy_base(s: &str) -> Result<(), SymbolError> {
         "+" | "-" | "*" | "/" => Ok(()),
         _ if s
             .chars()
-            .all(|c| c.is_alphabetic() || c == '_' || c == '-' || c == '*') =>
+            .all(|c| c.is_alphabetic() || c == '_' || c == '-' || c == '*' || c == '!') =>
         {
             if s.chars().take(2).collect::<String>() == "__" {
                 Err(SymbolError::DunderPrefix(s.to_string()))
@@ -27,7 +27,7 @@ pub fn policy_admin(s: &str) -> Result<AdminSymbolInfo, SymbolError> {
         "+" | "-" | "*" | "/" => Ok(AdminSymbolInfo::Identifier),
         _ if s
             .chars()
-            .all(|c| c.is_alphabetic() || c == '_' || c == '-' || c == '*') =>
+            .all(|c| c.is_alphabetic() || c == '_' || c == '-' || c == '*' || c == '!') =>
         {
             Ok(AdminSymbolInfo::Identifier)
         }
