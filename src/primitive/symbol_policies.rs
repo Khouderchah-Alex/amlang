@@ -5,32 +5,55 @@ use super::symbol::SymbolError;
 use crate::environment::local_node::{LocalId, LocalNode};
 
 
-pub fn policy_base(s: &str) -> Result<(), SymbolError> {
+/// De-facto specification of amlang identifier format.
+fn is_amlang_identifier(s: &str) -> bool {
     match s {
-        "+" | "-" | "*" | "/" => Ok(()),
+        "+" | "-" | "*" | "/" => true,
         _ if s
             .chars()
             .all(|c| c.is_alphabetic() || c == '_' || c == '-' || c == '*' || c == '!') =>
         {
-            if s.chars().take(2).collect::<String>() == "__" {
-                Err(SymbolError::DunderPrefix(s.to_string()))
-            } else {
-                Ok(())
-            }
+            true
         }
-        _ => Err(SymbolError::NonAlphabetic(s.to_string())),
+        _ => false,
     }
 }
 
-pub fn policy_admin(s: &str) -> Result<AdminSymbolInfo, SymbolError> {
-    match s {
-        "+" | "-" | "*" | "/" => Ok(AdminSymbolInfo::Identifier),
-        _ if s
-            .chars()
-            .all(|c| c.is_alphabetic() || c == '_' || c == '-' || c == '*' || c == '!') =>
-        {
-            Ok(AdminSymbolInfo::Identifier)
+/// Only accepts non-dunder identifiers.
+pub fn policy_base(s: &str) -> Result<(), SymbolError> {
+    if is_amlang_identifier(s) {
+        if s.chars().take(2).collect::<String>() == "__" {
+            Err(SymbolError::DunderPrefix(s.to_string()))
+        } else {
+            Ok(())
         }
+    } else {
+        Err(SymbolError::NonAlphabetic(s.to_string()))
+    }
+}
+
+
+pub enum AdminSymbolInfo {
+    Identifier,
+    LocalNode(LocalNode),
+    LocalTriple(usize),
+    GlobalNode(LocalNode, LocalNode),
+    GlobalTriple(LocalNode, usize),
+}
+
+/// Accepts all identifiers.
+pub fn policy_admin(s: &str) -> Result<AdminSymbolInfo, SymbolError> {
+    if is_amlang_identifier(s) {
+        Ok(AdminSymbolInfo::Identifier)
+    } else {
+        Err(SymbolError::NonAlphabetic(s.to_string()))
+    }
+}
+
+/// Accepts all identifiers, as well as local & global nodes/triples.
+pub fn policy_env_serde(s: &str) -> Result<AdminSymbolInfo, SymbolError> {
+    match s {
+        _ if is_amlang_identifier(s) => Ok(AdminSymbolInfo::Identifier),
         _ if s
             .chars()
             .all(|c| c.is_ascii_digit() || c == '^' || c == 't') =>
@@ -66,13 +89,4 @@ pub fn policy_admin(s: &str) -> Result<AdminSymbolInfo, SymbolError> {
         }
         _ => Err(SymbolError::NonAlphabetic(s.to_string())),
     }
-}
-
-
-pub enum AdminSymbolInfo {
-    Identifier,
-    LocalNode(LocalNode),
-    LocalTriple(usize),
-    GlobalNode(LocalNode, LocalNode),
-    GlobalTriple(LocalNode, usize),
 }

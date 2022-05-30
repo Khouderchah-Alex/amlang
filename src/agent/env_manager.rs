@@ -21,7 +21,7 @@ use crate::error::Error;
 use crate::model::Reflective;
 use crate::parser::parse_sexp;
 use crate::primitive::prelude::*;
-use crate::primitive::symbol_policies::{policy_admin, AdminSymbolInfo};
+use crate::primitive::symbol_policies::{policy_admin, policy_env_serde, AdminSymbolInfo};
 use crate::primitive::table::Table;
 use crate::sexp::{HeapSexp, Sexp, SexpIntoIter};
 use crate::token::file_stream::{FileStream, FileStreamError};
@@ -209,7 +209,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
             LocalNode::default(),
         );
 
-        let stream = match FileStream::new(in_path.as_ref(), policy_admin) {
+        let stream = match FileStream::new(in_path.as_ref(), policy_env_serde) {
             Ok(stream) => stream,
             Err(err) => return err!(placeholder_agent, FileStreamError(err)),
         };
@@ -394,7 +394,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
     }
 
     pub fn deserialize_curr_env<P: AsRef<StdPath>>(&mut self, in_path: P) -> Result<(), Error> {
-        let stream = match FileStream::new(in_path.as_ref(), policy_admin) {
+        let stream = match FileStream::new(in_path.as_ref(), policy_env_serde) {
             Ok(stream) => stream,
             Err(FileStreamError::IoError(ref e)) if e.kind() == std::io::ErrorKind::NotFound => {
                 warn!("Env file not found: {}", in_path.as_ref().to_string_lossy());
@@ -592,7 +592,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
     }
 
     fn parse_node_inner(agent: &mut Agent, sym: &Symbol) -> Result<Node, Error> {
-        match policy_admin(sym.as_str()).unwrap() {
+        match policy_env_serde(sym.as_str()).unwrap() {
             AdminSymbolInfo::Identifier => {
                 err!(agent, LangError::UnboundSymbol(sym.clone()))
             }
