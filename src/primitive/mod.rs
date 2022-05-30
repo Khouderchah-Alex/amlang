@@ -15,6 +15,7 @@ pub mod string;
 pub mod symbol;
 pub mod symbol_policies;
 pub mod table;
+pub mod vector;
 
 /// Some modules tend to interact with most primitive types rather
 /// than just a few. Provide this for those clients to ::* use.
@@ -29,6 +30,7 @@ pub mod prelude {
     pub use super::string::{LangString, ToLangString};
     pub use super::symbol::{Symbol, ToSymbol};
     pub use super::table::{LocalNodeTable, SymNodeTable, SymSexpTable};
+    pub use super::vector::Vector;
     pub use crate::environment::environment::EnvObject;
 }
 /// All other clients can simply pick out what to use as normal.
@@ -47,6 +49,7 @@ pub enum Primitive {
     SymNodeTable(SymNodeTable),
     SymSexpTable(SymSexpTable),
     LocalNodeTable(LocalNodeTable),
+    Vector(Vector),
     Procedure(Procedure),
 
     // Presumably only present in meta env Nodes, but this comes down
@@ -71,6 +74,7 @@ impl fmt::Display for Primitive {
             Primitive::SymSexpTable(table) => write!(f, "{:?}", table),
             Primitive::LocalNodeTable(table) => write!(f, "{:?}", table),
             Primitive::Procedure(proc) => write!(f, "{:?}", proc),
+            Primitive::Vector(vector) => write!(f, "{:?}", vector),
             Primitive::Env(env) => write!(f, "{:?}", env),
         }
     }
@@ -113,6 +117,9 @@ impl PartialEq for Primitive {
                     (&Primitive::Procedure(ref this), &Primitive::Procedure(ref that)) => {
                         (*this) == (*that)
                     }
+                    (&Primitive::Vector(ref this), &Primitive::Vector(ref that)) => {
+                        (*this) == (*that)
+                    }
                     // Consider all envs to be different a priori.
                     (&Primitive::Env(_), &Primitive::Env(_)) => false,
                     _ => {
@@ -151,4 +158,5 @@ primitive_from!(
     SymSexpTable,
     LocalNodeTable,
     Procedure,
+    Vector,
 );

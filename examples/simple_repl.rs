@@ -68,10 +68,10 @@ fn main() -> Result<(), String> {
         if let Err(err) = copy_meta(&base_dir) {
             return Err(format!("Copying meta.env failed: {}", err));
         }
-
-        if let Err(err) = copy_context(&base_dir) {
-            return Err(format!("Copying context.bootstrap failed: {}", err));
-        }
+    }
+    // Always copy context.bootstrap to easily handle new lang additions.
+    if let Err(err) = copy_context(&base_dir) {
+        return Err(format!("Copying context.bootstrap failed: {}", err));
     }
 
     // Bootstrap/deserialize.
@@ -164,7 +164,7 @@ fn copy_meta(base_dir: &Path) -> io::Result<()> {
 }
 
 fn copy_context(base_dir: &Path) -> io::Result<u64> {
-    info!("No context bootstrap; copying from envs/.");
+    info!("Copying context bootstrap from envs/.");
     let amlang_context = base_dir.join("envs/context.bootstrap");
     let example_context = base_dir.join("examples/envs/context.bootstrap");
     fs::copy(amlang_context, example_context.clone())

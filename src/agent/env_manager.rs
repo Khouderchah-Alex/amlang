@@ -145,6 +145,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
                         sym_sexp_table: "table-sym-sexp",
                         local_node_table: "table-lnode",
                         label: "label",
+                        vector: "vector",
         );
         info!("Lang env bootstrapping complete.");
 
