@@ -28,7 +28,7 @@ pub fn policy_base(s: &str) -> Result<(), SymbolError> {
             Ok(())
         }
     } else {
-        Err(SymbolError::NonAlphabetic(s.to_string()))
+        Err(SymbolError::InvalidIdentifier(s.to_string()))
     }
 }
 
@@ -46,7 +46,7 @@ pub fn policy_admin(s: &str) -> Result<AdminSymbolInfo, SymbolError> {
     if is_amlang_identifier(s) {
         Ok(AdminSymbolInfo::Identifier)
     } else {
-        Err(SymbolError::NonAlphabetic(s.to_string()))
+        Err(SymbolError::InvalidIdentifier(s.to_string()))
     }
 }
 
@@ -87,6 +87,6 @@ pub fn policy_env_serde(s: &str) -> Result<AdminSymbolInfo, SymbolError> {
                 Err(SymbolError::InvalidNodeSpec(s.to_string()))
             }
         }
-        _ => Err(SymbolError::NonAlphabetic(s.to_string())),
+        _ => Err(SymbolError::InvalidIdentifier(s.to_string())),
     }
 }
