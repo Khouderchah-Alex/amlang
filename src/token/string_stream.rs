@@ -1,6 +1,6 @@
 use super::token::TokenInfo;
 use super::tokenizer::{TokenizeError, Tokenizer};
-use crate::primitive::symbol::SymbolError;
+use crate::agent::symbol_policies::SymbolPolicy;
 
 
 pub struct StringStream {
@@ -8,15 +8,12 @@ pub struct StringStream {
 }
 
 impl StringStream {
-    pub fn new<S: AsRef<str>, SymbolInfo, SymbolPolicy>(
+    pub fn new<S: AsRef<str>, SymbolInfo>(
         line: S,
-        symbol_policy: SymbolPolicy,
-    ) -> Result<StringStream, TokenizeError>
-    where
-        SymbolPolicy: Fn(&str) -> Result<SymbolInfo, SymbolError>,
-    {
+        symbol_policy: SymbolPolicy<SymbolInfo>,
+    ) -> Result<StringStream, TokenizeError> {
         let mut tokenizer = Tokenizer::new();
-        if let Err(err) = tokenizer.tokenize(&line, &symbol_policy) {
+        if let Err(err) = tokenizer.tokenize(&line, symbol_policy) {
             return Err(err);
         }
 

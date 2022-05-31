@@ -5,7 +5,7 @@ use std::path::Path;
 
 use super::token::TokenInfo;
 use super::tokenizer::{TokenizeError, Tokenizer};
-use crate::primitive::symbol::SymbolError;
+use crate::agent::symbol_policies::SymbolPolicy;
 
 
 pub struct FileStream {
@@ -19,19 +19,16 @@ pub enum FileStreamError {
 }
 
 impl FileStream {
-    pub fn new<P: AsRef<Path>, SymbolInfo, SymbolPolicy>(
+    pub fn new<P: AsRef<Path>, SymbolInfo>(
         path: P,
-        symbol_policy: SymbolPolicy,
-    ) -> Result<FileStream, FileStreamError>
-    where
-        SymbolPolicy: Fn(&str) -> Result<SymbolInfo, SymbolError>,
-    {
+        symbol_policy: SymbolPolicy<SymbolInfo>,
+    ) -> Result<FileStream, FileStreamError> {
         let file = File::open(path)?;
         let reader = BufReader::new(file);
 
         let mut tokenizer = Tokenizer::new();
         for line in reader.lines() {
-            tokenizer.tokenize(line?, &symbol_policy)?;
+            tokenizer.tokenize(line?, symbol_policy)?;
         }
 
         Ok(FileStream { tokenizer })

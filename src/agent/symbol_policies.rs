@@ -19,6 +19,9 @@ fn is_amlang_identifier(s: &str) -> bool {
     }
 }
 
+
+pub type SymbolPolicy<SymbolInfo> = fn(&str) -> Result<SymbolInfo, SymbolError>;
+
 /// Only accepts non-dunder identifiers.
 pub fn policy_base(s: &str) -> Result<(), SymbolError> {
     if is_amlang_identifier(s) {

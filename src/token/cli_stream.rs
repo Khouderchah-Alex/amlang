@@ -66,7 +66,7 @@ impl Iterator for CliStream {
                     }
                     self.curr_expr += &line;
                     // TODO(func) Make generic over policy.
-                    if let Err(err) = self.tokenizer.tokenize(&line, &policy_base) {
+                    if let Err(err) = self.tokenizer.tokenize(&line, policy_base) {
                         println!("{}", err);
                         println!("");
                         self.tokenizer.clear();

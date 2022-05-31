@@ -4,6 +4,7 @@ use std::collections::VecDeque;
 use std::fmt;
 
 use super::token::{Token, TokenInfo};
+use crate::agent::symbol_policies::SymbolPolicy;
 use crate::primitive::symbol::{SymbolError, ToSymbol};
 use crate::primitive::LangString;
 use crate::primitive::Number as Num;
@@ -74,28 +75,22 @@ impl Tokenizer {
         std::cmp::max(self.depth, q as usize)
     }
 
-    pub fn tokenize<S: AsRef<str>, SymbolInfo, SymbolPolicy>(
+    pub fn tokenize<S: AsRef<str>, SymbolInfo>(
         &mut self,
         input: S,
-        symbol_policy: &SymbolPolicy,
-    ) -> Result<(), TokenizeError>
-    where
-        SymbolPolicy: Fn(&str) -> Result<SymbolInfo, SymbolError>,
-    {
+        symbol_policy: SymbolPolicy<SymbolInfo>,
+    ) -> Result<(), TokenizeError> {
         for line in input.as_ref().split('\n') {
             self.tokenize_line(line, symbol_policy)?;
         }
         Ok(())
     }
 
-    fn tokenize_line<S: AsRef<str>, SymbolInfo, SymbolPolicy>(
+    fn tokenize_line<S: AsRef<str>, SymbolInfo>(
         &mut self,
         line: S,
-        symbol_policy: &SymbolPolicy,
-    ) -> Result<(), TokenizeError>
-    where
-        SymbolPolicy: Fn(&str) -> Result<SymbolInfo, SymbolError>,
-    {
+        symbol_policy: SymbolPolicy<SymbolInfo>,
+    ) -> Result<(), TokenizeError> {
         let mut start: usize = 0;
         let mut empty = true;
         let l = line.as_ref();
@@ -226,15 +221,12 @@ impl Tokenizer {
     }
 
 
-    fn push_token<SymbolInfo, SymbolPolicy>(
+    fn push_token<SymbolInfo>(
         &mut self,
         ptoken: &str,
         start: usize,
-        symbol_policy: &SymbolPolicy,
-    ) -> Result<(), TokenizeError>
-    where
-        SymbolPolicy: Fn(&str) -> Result<SymbolInfo, SymbolError>,
-    {
+        symbol_policy: SymbolPolicy<SymbolInfo>,
+    ) -> Result<(), TokenizeError> {
         if ptoken == "." {
             self.tokens.push_back(TokenInfo {
                 token: Token::Period,
