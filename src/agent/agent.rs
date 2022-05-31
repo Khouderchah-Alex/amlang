@@ -10,12 +10,12 @@ use super::amlang_interpreter::AmlangState;
 use super::continuation::Continuation;
 use super::env_prelude::EnvPrelude;
 use crate::agent::lang_error::LangError;
+use crate::agent::symbol_policies::policy_admin;
 use crate::environment::LocalNode;
 use crate::environment::{EnvObject, TripleSet};
 use crate::error::Error;
 use crate::model::Reflective;
 use crate::primitive::prelude::*;
-use crate::primitive::symbol_policies::policy_admin;
 use crate::primitive::table::Table;
 use crate::sexp::Sexp;
 

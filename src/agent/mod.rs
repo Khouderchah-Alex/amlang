@@ -10,6 +10,7 @@ pub mod env_manager;
 pub mod env_policy;
 pub mod env_prelude;
 pub mod lang_error;
+pub mod symbol_policies;
 
 // Private mods.
 mod amlang_interpreter;

@@ -13,7 +13,6 @@ pub mod path;
 pub mod procedure;
 pub mod string;
 pub mod symbol;
-pub mod symbol_policies;
 pub mod table;
 pub mod vector;
 

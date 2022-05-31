@@ -1,6 +1,6 @@
 use super::*;
 
-use crate::primitive::symbol_policies::policy_base;
+use crate::agent::symbol_policies::policy_base;
 use crate::primitive::{Number, ToSymbol};
 use crate::token::string_stream::StringStream;
 use Token::*;

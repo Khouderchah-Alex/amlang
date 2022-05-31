@@ -1,10 +1,10 @@
 use std::path::Path;
 
 use amlang::agent::env_policy::{EnvPolicy, SimplePolicy};
+use amlang::agent::symbol_policies::policy_base;
 use amlang::agent::{Agent, EnvManager};
 use amlang::error::Error;
 use amlang::parser::ParseIter;
-use amlang::primitive::symbol_policies::policy_base;
 use amlang::sexp::Sexp;
 use amlang::token::string_stream::StringStream;
 

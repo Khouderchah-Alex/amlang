@@ -4,8 +4,8 @@ use rustyline::Editor;
 use super::cli_helper::CliHelper;
 use super::token::TokenInfo;
 use super::tokenizer::Tokenizer;
+use crate::agent::symbol_policies::policy_base;
 use crate::agent::Agent;
-use crate::primitive::symbol_policies::policy_base;
 
 
 pub struct CliStream {

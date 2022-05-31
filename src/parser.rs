@@ -2,8 +2,8 @@
 
 use std::iter::Peekable;
 
+use crate::agent::symbol_policies::policy_base;
 use crate::error::{Error, ErrorKind};
-use crate::primitive::symbol_policies::policy_base;
 use crate::primitive::{ToLangString, ToSymbol};
 use crate::sexp::cons_list::ConsList;
 use crate::sexp::Sexp;

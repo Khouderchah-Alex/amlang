@@ -1,8 +1,8 @@
 use lazy_static::lazy_static;
 use regex::Regex;
 
-use super::symbol::SymbolError;
 use crate::environment::local_node::{LocalId, LocalNode};
+use crate::primitive::symbol::SymbolError;
 
 
 /// De-facto specification of amlang identifier format.

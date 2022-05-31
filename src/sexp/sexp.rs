@@ -35,10 +35,10 @@ use std::str::FromStr;
 use super::cons::Cons;
 use super::cons_list::ConsList;
 use super::fmt_io_adapter::FmtIoAdapter;
+use crate::agent::symbol_policies::policy_base;
 use crate::environment::Environment;
 use crate::parser::{parse_sexp, ParseError};
 use crate::primitive::prelude::*;
-use crate::primitive::symbol_policies::policy_base;
 use crate::token::string_stream::StringStream;
 use crate::token::TokenizeError;
 
