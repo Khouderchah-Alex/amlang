@@ -673,14 +673,23 @@ impl Agent {
                 }
             }
             Primitive::Procedure(procedure) => {
+                if show_redirects {
+                    write!(w, "[Procedure]->")?;
+                }
                 let s = procedure.reify(self);
                 self.write_sexp(w, &s, depth, true)
             }
             Primitive::SymNodeTable(table) => {
+                if show_redirects {
+                    write!(w, "[SymNodeTable]->")?;
+                }
                 let s = table.reify(self);
                 self.write_sexp(w, &s, depth, false)
             }
             Primitive::LocalNodeTable(table) => {
+                if show_redirects {
+                    write!(w, "[LocalNodeTable]->")?;
+                }
                 let s = table.reify(self);
                 self.write_sexp(w, &s, depth, false)
             }
