@@ -3,6 +3,7 @@
 # Summary
 An intersection of programming language, database, and simulation system.
 Both a language system in its own right, and a library to build language systems out of.
+A key principle of Amlang is the ability to both collapse and reproduce the context of data.
 
 A 10,000 foot view of Amlang is as a graph database ([triplestore](https://en.wikipedia.org/wiki/Triplestore)) with nodes containing and interconnected by [S-exp](https://en.wikipedia.org/wiki/S-expression)-like structures, called the Environment. Agents exist in, modify, and explore the Environment, while using local state to apply subjective "lenses" to the shared Environment. Amlang code is evaluated into a representation within the Environment and can itself be explored and modified; consider an Agent exploring the code that it's currently executing. Indeed, many important components from the base system in Rust are [reified](https://en.wikipedia.org/wiki/Reification_(computer_science)) in the Environment, allowing Amlang to modify and extend the system it exists on top of.
 
