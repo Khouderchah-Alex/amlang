@@ -16,7 +16,7 @@ regex = "~1"
 rustyline = { version = "~9", optional = true }
 
 [dev-dependencies]
-clap = "~2"
+clap = "~3"
 env_logger = "~0.8.4"
 
 [features]

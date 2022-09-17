@@ -46,7 +46,7 @@ fn main() -> Result<(), String> {
         .about("Bare-bones single-threaded Amlang REPL with persistence")
         .arg(
             Arg::with_name("reset")
-                .short("r")
+                .short('r')
                 .long("reset")
                 .help("Reset all serialized state"),
         )
