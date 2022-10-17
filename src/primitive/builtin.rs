@@ -3,6 +3,8 @@
 use std::convert::TryFrom;
 use std::fmt;
 
+use serde::{Deserialize, Serialize};
+
 use crate::agent::Agent;
 use crate::error::Error;
 use crate::primitive::Primitive;
@@ -11,19 +13,31 @@ use crate::sexp::{HeapSexp, Sexp};
 
 pub type Args = Vec<Sexp>;
 
-#[derive(Clone, Copy)]
+fn empty() -> fn(Args, &mut Agent) -> Result<Sexp, Error> {
+    |_: Args, _: &mut Agent| -> Result<Sexp, Error> {
+        panic!("Tried to run deserialized builtin");
+    }
+}
+
+#[derive(Clone, Serialize, Deserialize)]
 pub struct BuiltIn {
-    name: &'static str,
+    name: String,
+
+    // TODO(func) Use custom Deserializers to not skip.
+    #[serde(skip, default = "empty")]
     fun: fn(Args, &mut Agent) -> Result<Sexp, Error>,
 }
 
 impl BuiltIn {
     pub fn new(name: &'static str, fun: fn(Args, &mut Agent) -> Result<Sexp, Error>) -> BuiltIn {
-        BuiltIn { name, fun }
+        BuiltIn {
+            name: name.to_string(),
+            fun,
+        }
     }
 
-    pub fn name(&self) -> &'static str {
-        self.name
+    pub fn name(&self) -> &str {
+        &self.name
     }
 
     pub fn call(&self, args: Args, agent: &mut Agent) -> Result<Sexp, Error> {

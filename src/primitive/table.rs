@@ -5,6 +5,8 @@ use std::collections::btree_map::Entry;
 use std::collections::BTreeMap;
 use std::convert::TryFrom;
 
+use serde::{Deserialize, Serialize};
+
 use super::{Node, Primitive, Symbol};
 use crate::agent::lang_error::LangError;
 use crate::agent::Agent;
@@ -17,12 +19,12 @@ use crate::sexp::{Cons, HeapSexp, Sexp, SexpIntoIter};
 pub type SymNodeTable = AmlangTable<Symbol, Node>;
 pub type SymSexpTable = AmlangTable<Symbol, Sexp>;
 
-#[derive(Clone, Debug, PartialEq)]
-pub struct AmlangTable<K, V> {
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct AmlangTable<K: Ord, V> {
     map: BTreeMap<K, V>,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct LocalNodeTable {
     map: BTreeMap<LocalNode, LocalNode>,
     env: LocalNode,

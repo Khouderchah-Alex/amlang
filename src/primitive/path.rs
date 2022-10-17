@@ -2,11 +2,13 @@ use std::convert::TryFrom;
 use std::fmt;
 use std::path::PathBuf;
 
+use serde::{Deserialize, Serialize};
+
 use super::Primitive;
 use crate::sexp::{HeapSexp, Sexp};
 
 
-#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub struct Path(PathBuf);
 
 impl Path {

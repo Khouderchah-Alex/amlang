@@ -3,12 +3,14 @@
 use std::convert::TryFrom;
 use std::fmt;
 
+use serde::{Deserialize, Serialize};
+
 use crate::environment::LocalNode;
 use crate::primitive::Primitive;
 use crate::sexp::{HeapSexp, Sexp};
 
 
-#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialOrd, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialOrd, PartialEq, Serialize, Deserialize)]
 pub struct Node {
     env: LocalNode,
     node: LocalNode,

@@ -32,6 +32,8 @@ use std::fmt;
 use std::io::Write;
 use std::str::FromStr;
 
+use serde::{Deserialize, Serialize};
+
 use super::cons::Cons;
 use super::cons_list::ConsList;
 use super::fmt_io_adapter::FmtIoAdapter;
@@ -45,7 +47,7 @@ use crate::token::TokenizeError;
 
 pub type HeapSexp = Box<Sexp>;
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Serialize, Deserialize)]
 pub enum Sexp {
     Primitive(Primitive),
     Cons(Cons),

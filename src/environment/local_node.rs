@@ -4,6 +4,8 @@
 
 use std::fmt;
 
+use serde::{Deserialize, Serialize};
+
 use crate::agent::env_prelude::EnvPrelude;
 use crate::agent::Agent;
 use crate::error::Error;
@@ -14,7 +16,9 @@ use crate::sexp::Sexp;
 
 pub type LocalId = u64;
 
-#[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialOrd, PartialEq)]
+#[derive(
+    Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialOrd, PartialEq, Serialize, Deserialize,
+)]
 pub struct LocalNode(LocalId);
 
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialOrd, PartialEq)]

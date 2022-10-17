@@ -1,11 +1,13 @@
 use std::convert::TryFrom;
 use std::fmt;
 
+use serde::{Deserialize, Serialize};
+
 use super::Primitive;
 use crate::sexp::{HeapSexp, Sexp};
 
 
-#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub struct LangString(String);
 
 pub trait ToLangString {

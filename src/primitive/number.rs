@@ -5,12 +5,14 @@ use std::fmt;
 use std::ops;
 use std::str;
 
+use serde::{Deserialize, Serialize};
+
 use self::Number::*;
 use super::Primitive;
 use crate::sexp::{HeapSexp, Sexp};
 
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub enum Number {
     Integer(i64),
     Float(f64),

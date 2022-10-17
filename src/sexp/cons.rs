@@ -1,9 +1,11 @@
 use std::convert::TryFrom;
 
+use serde::{Deserialize, Serialize};
+
 use super::sexp::{HeapSexp, Sexp};
 
 
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct Cons {
     car: Option<HeapSexp>,
     cdr: Option<HeapSexp>,

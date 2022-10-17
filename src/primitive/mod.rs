@@ -3,6 +3,8 @@
 use std::fmt;
 use std::mem;
 
+use serde::{Deserialize, Serialize};
+
 #[macro_use]
 mod try_from_helper;
 
@@ -36,7 +38,7 @@ pub mod prelude {
 pub use prelude::*;
 
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum Primitive {
     Number(Number),
     Symbol(Symbol),
@@ -55,6 +57,8 @@ pub enum Primitive {
     // to how base Agents are implemented.
     //
     // TODO(flex) Use newtype.
+    // TODO(func) Use custom Deserializers to not skip.
+    #[serde(skip)]
     Env(Box<EnvObject>),
 }
 

@@ -1,11 +1,13 @@
 use std::convert::TryFrom;
 use std::fmt;
 
+use serde::{Deserialize, Serialize};
+
 use super::Primitive;
 use crate::sexp::{HeapSexp, Sexp};
 
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Vector(Vec<Sexp>);
 
 

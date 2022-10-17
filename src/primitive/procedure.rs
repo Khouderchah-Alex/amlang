@@ -1,5 +1,7 @@
 use std::convert::TryFrom;
 
+use serde::{Deserialize, Serialize};
+
 use super::{Node, Primitive};
 use crate::agent::lang_error::{ExpectedCount, LangError};
 use crate::agent::Agent;
@@ -8,7 +10,7 @@ use crate::model::Reflective;
 use crate::sexp::{Cons, HeapSexp, Sexp};
 
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum Procedure {
     Application(Node, Vec<Node>),
     Abstraction(Vec<Node>, Node, bool),

@@ -2,6 +2,8 @@ use std::borrow::Borrow;
 use std::convert::TryFrom;
 use std::fmt;
 
+use serde::{Deserialize, Serialize};
+
 use super::Primitive;
 use crate::sexp::{HeapSexp, Sexp};
 
@@ -9,7 +11,7 @@ use crate::sexp::{HeapSexp, Sexp};
 /// String which can be used as an identifier (amlang designator).
 ///
 /// Currently this means only alphabetic characters and underscore.
-#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub struct Symbol(String);
 
 pub trait ToSymbol {
