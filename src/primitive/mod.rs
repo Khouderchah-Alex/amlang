@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 mod try_from_helper;
 
 pub mod builtin;
+pub mod env;
 pub mod node;
 pub mod number;
 pub mod path;
@@ -57,8 +58,6 @@ pub enum Primitive {
     // to how base Agents are implemented.
     //
     // TODO(flex) Use newtype.
-    // TODO(func) Use custom Deserializers to not skip.
-    #[serde(skip)]
     Env(Box<EnvObject>),
 }
 

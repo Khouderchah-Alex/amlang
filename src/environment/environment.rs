@@ -2,7 +2,6 @@
 
 use dyn_clone::DynClone;
 use std::collections::BTreeSet;
-use std::fmt;
 
 use super::entry::{Entry, EntryMut};
 use super::local_node::{LocalNode, LocalTriple};
@@ -64,11 +63,5 @@ pub trait Environment: DynClone {
     fn triple_from_index(&self, index: usize) -> LocalTriple;
 }
 
-
-impl fmt::Debug for Box<EnvObject> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "[{} @ {:p}]", self.type_name(), self)
-    }
-}
 
 dyn_clone::clone_trait_object!(Environment);
