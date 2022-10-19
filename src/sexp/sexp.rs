@@ -376,7 +376,7 @@ impl FromStr for Sexp {
     }
 }
 
-impl<T: Into<HeapSexp>> From<Vec<T>> for Sexp {
+impl<T: Into<Option<HeapSexp>>> From<Vec<T>> for Sexp {
     fn from(vec: Vec<T>) -> Self {
         let mut list = ConsList::new();
         for value in vec {
@@ -386,7 +386,7 @@ impl<T: Into<HeapSexp>> From<Vec<T>> for Sexp {
     }
 }
 
-impl<'a, T: Into<HeapSexp> + Clone> From<&'a Vec<T>> for Sexp {
+impl<'a, T: Into<Option<HeapSexp>> + Clone> From<&'a Vec<T>> for Sexp {
     fn from(vec: &'a Vec<T>) -> Self {
         let mut list = ConsList::new();
         for value in vec {

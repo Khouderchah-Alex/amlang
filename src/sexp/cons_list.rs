@@ -51,9 +51,9 @@ impl ConsList {
         }
     }
 
-    pub fn append<T: Into<HeapSexp>>(&mut self, val: T) {
+    pub fn append<T: Into<Option<HeapSexp>>>(&mut self, val: T) {
         let l = if self.end.is_null() {
-            self.head.set_car(Some(val.into()));
+            self.head.set_car(val.into());
             &self.head
         } else {
             let tail = Cons::new(val.into(), None);
