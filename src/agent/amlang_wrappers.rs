@@ -2,8 +2,7 @@ use crate::agent::lang_error::{ExpectedCount, LangError};
 use crate::agent::Agent;
 use crate::error::Error;
 use crate::primitive::{Node, Primitive, Symbol};
-use crate::sexp::cons_list::ConsList;
-use crate::sexp::{HeapSexp, Sexp, SexpIntoIter};
+use crate::sexp::{ConsList, HeapSexp, Sexp, SexpIntoIter};
 
 
 pub fn quote_wrapper(args: Option<HeapSexp>, agent: &Agent) -> Result<HeapSexp, Error> {

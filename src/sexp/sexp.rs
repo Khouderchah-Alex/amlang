@@ -34,9 +34,8 @@ use std::str::FromStr;
 
 use serde::{Deserialize, Serialize};
 
-use super::cons::Cons;
-use super::cons_list::ConsList;
 use super::fmt_io_adapter::FmtIoAdapter;
+use super::{Cons, ConsList};
 use crate::agent::symbol_policies::policy_base;
 use crate::environment::Environment;
 use crate::parser::{parse_sexp, ParseError};

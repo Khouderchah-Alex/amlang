@@ -9,4 +9,5 @@ mod fmt_io_adapter;
 
 
 pub use cons::Cons;
+pub use cons_list::ConsList;
 pub use sexp::{HeapSexp, Sexp, SexpIntoIter};
