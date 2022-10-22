@@ -1,6 +1,7 @@
 // Public exports.
 pub use agent::Agent;
 pub use env_manager::EnvManager;
+pub use lang_serializer::LangSerializer;
 
 // Public mods.
 pub mod agent;
@@ -10,6 +11,7 @@ pub mod env_manager;
 pub mod env_policy;
 pub mod env_prelude;
 pub mod lang_error;
+pub mod lang_serializer;
 pub mod symbol_policies;
 
 // Private mods.

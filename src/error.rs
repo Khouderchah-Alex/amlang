@@ -6,6 +6,8 @@
 
 use std::fmt;
 
+use serde::{de, ser};
+
 use crate::agent::Agent;
 use crate::sexp::Sexp;
 
@@ -72,5 +74,20 @@ impl fmt::Display for dyn ErrorKind + '_ {
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.kind())
+    }
+}
+
+
+impl std::error::Error for Error {}
+
+impl ser::Error for Error {
+    fn custom<T: fmt::Display>(_msg: T) -> Self {
+        panic!()
+    }
+}
+
+impl de::Error for Error {
+    fn custom<T: fmt::Display>(_msg: T) -> Self {
+        panic!()
     }
 }
