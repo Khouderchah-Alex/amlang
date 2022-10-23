@@ -1,3 +1,8 @@
+//! Allows reifying ABI into API.
+//!
+//! Agent is in charge of determining how user-created abstractions in
+//! Rust are repr'd.
+
 use std::collections::VecDeque;
 use std::convert::TryFrom;
 
@@ -11,13 +16,13 @@ use crate::primitive::prelude::*;
 use crate::sexp::{Cons, ConsList, HeapSexp};
 
 
-pub struct LangSerializer<'a> {
+pub struct BaseSerializer<'a> {
     agent: &'a mut Agent,
     stack: VecDeque<ConsList>,
     tmp: Vec<HeapSexp>,
 }
 
-impl<'a> LangSerializer<'a> {
+impl<'a> BaseSerializer<'a> {
     pub fn new(agent: &'a mut Agent) -> Self {
         Self {
             agent,
@@ -27,8 +32,7 @@ impl<'a> LangSerializer<'a> {
     }
 
     fn serialize_symbol<S: AsRef<str>>(s: S) -> Result<HeapSexp, Error> {
-        // TODO(func) This should correspond to Node, but let's just
-        // serialize into a Symbol until we sort out Env repr.
+        // TODO(func) This should be controlled by the Agent.
         match s.to_symbol(policy_base) {
             Ok(sym) => Ok(sym.into()),
             Err(err) => panic!("{:?}", err),
@@ -36,7 +40,7 @@ impl<'a> LangSerializer<'a> {
     }
 }
 
-impl<'a, 'b> ser::Serializer for &'a mut LangSerializer<'b> {
+impl<'a, 'b> ser::Serializer for &'a mut BaseSerializer<'b> {
     type Ok = HeapSexp;
     type Error = Error;
 
@@ -139,7 +143,7 @@ impl<'a, 'b> ser::Serializer for &'a mut LangSerializer<'b> {
         _variant_index: u32,
         variant: &'static str,
     ) -> Result<Self::Ok, Self::Error> {
-        LangSerializer::<'b>::serialize_symbol(variant)
+        BaseSerializer::<'b>::serialize_symbol(variant)
     }
 
     fn serialize_newtype_struct<T>(
@@ -165,7 +169,7 @@ impl<'a, 'b> ser::Serializer for &'a mut LangSerializer<'b> {
         T: ?Sized + Serialize,
     {
         debug!("Serializing newtype_variant {}::{}", name, variant);
-        let name = LangSerializer::<'b>::serialize_symbol(name)?;
+        let name = BaseSerializer::<'b>::serialize_symbol(name)?;
         let v = value.serialize(&mut *self)?;
         Ok(list!(name, v,).into())
     }
@@ -187,7 +191,7 @@ impl<'a, 'b> ser::Serializer for &'a mut LangSerializer<'b> {
     ) -> Result<Self::SerializeTupleStruct, Self::Error> {
         debug!("Serializing tuple_struct {}", name);
         self.stack.push_front(ConsList::new());
-        let name = LangSerializer::<'b>::serialize_symbol(name)?;
+        let name = BaseSerializer::<'b>::serialize_symbol(name)?;
         self.stack[0].append(name);
         Ok(self)
     }
@@ -201,8 +205,8 @@ impl<'a, 'b> ser::Serializer for &'a mut LangSerializer<'b> {
     ) -> Result<Self::SerializeTupleVariant, Self::Error> {
         debug!("Serializing tuple_variant {}::{}", name, variant);
         self.stack.push_front(ConsList::new());
-        let name = LangSerializer::<'b>::serialize_symbol(name)?;
-        let variant = LangSerializer::<'b>::serialize_symbol(variant)?;
+        let name = BaseSerializer::<'b>::serialize_symbol(name)?;
+        let variant = BaseSerializer::<'b>::serialize_symbol(variant)?;
         let val: HeapSexp = Cons::new(name, variant).into();
         self.stack[0].append(val);
         Ok(self)
@@ -221,7 +225,7 @@ impl<'a, 'b> ser::Serializer for &'a mut LangSerializer<'b> {
     ) -> Result<Self::SerializeStruct, Self::Error> {
         debug!("Serializing struct {}", name);
         self.stack.push_front(ConsList::new());
-        let name = LangSerializer::<'b>::serialize_symbol(name)?;
+        let name = BaseSerializer::<'b>::serialize_symbol(name)?;
         self.stack[0].append(name);
         Ok(self)
     }
@@ -235,15 +239,15 @@ impl<'a, 'b> ser::Serializer for &'a mut LangSerializer<'b> {
     ) -> Result<Self::SerializeStructVariant, Self::Error> {
         debug!("Serializing struct_variant {}::{}", name, variant);
         self.stack.push_front(ConsList::new());
-        let name = LangSerializer::<'b>::serialize_symbol(name)?;
-        let variant = LangSerializer::<'b>::serialize_symbol(variant)?;
+        let name = BaseSerializer::<'b>::serialize_symbol(name)?;
+        let variant = BaseSerializer::<'b>::serialize_symbol(variant)?;
         let val: HeapSexp = Cons::new(name, variant).into();
         self.stack[0].append(val);
         Ok(self)
     }
 }
 
-impl<'a, 'b> ser::SerializeSeq for &'a mut LangSerializer<'b> {
+impl<'a, 'b> ser::SerializeSeq for &'a mut BaseSerializer<'b> {
     type Ok = HeapSexp;
     type Error = Error;
 
@@ -260,7 +264,7 @@ impl<'a, 'b> ser::SerializeSeq for &'a mut LangSerializer<'b> {
     }
 }
 
-impl<'a, 'b> ser::SerializeTuple for &'a mut LangSerializer<'b> {
+impl<'a, 'b> ser::SerializeTuple for &'a mut BaseSerializer<'b> {
     type Ok = HeapSexp;
     type Error = Error;
 
@@ -277,7 +281,7 @@ impl<'a, 'b> ser::SerializeTuple for &'a mut LangSerializer<'b> {
     }
 }
 
-impl<'a, 'b> ser::SerializeTupleStruct for &'a mut LangSerializer<'b> {
+impl<'a, 'b> ser::SerializeTupleStruct for &'a mut BaseSerializer<'b> {
     type Ok = HeapSexp;
     type Error = Error;
 
@@ -294,7 +298,7 @@ impl<'a, 'b> ser::SerializeTupleStruct for &'a mut LangSerializer<'b> {
     }
 }
 
-impl<'a, 'b> ser::SerializeTupleVariant for &'a mut LangSerializer<'b> {
+impl<'a, 'b> ser::SerializeTupleVariant for &'a mut BaseSerializer<'b> {
     type Ok = HeapSexp;
     type Error = Error;
 
@@ -311,7 +315,7 @@ impl<'a, 'b> ser::SerializeTupleVariant for &'a mut LangSerializer<'b> {
     }
 }
 
-impl<'a, 'b> ser::SerializeMap for &'a mut LangSerializer<'b> {
+impl<'a, 'b> ser::SerializeMap for &'a mut BaseSerializer<'b> {
     type Ok = HeapSexp;
     type Error = Error;
 
@@ -337,7 +341,7 @@ impl<'a, 'b> ser::SerializeMap for &'a mut LangSerializer<'b> {
     }
 }
 
-impl<'a, 'b> ser::SerializeStruct for &'a mut LangSerializer<'b> {
+impl<'a, 'b> ser::SerializeStruct for &'a mut BaseSerializer<'b> {
     type Ok = HeapSexp;
     type Error = Error;
 
@@ -345,7 +349,7 @@ impl<'a, 'b> ser::SerializeStruct for &'a mut LangSerializer<'b> {
     where
         T: ?Sized + Serialize,
     {
-        let k = LangSerializer::<'b>::serialize_symbol(key)?;
+        let k = BaseSerializer::<'b>::serialize_symbol(key)?;
         let v = value.serialize(&mut **self)?;
         let val: HeapSexp = Cons::new(k, v).into();
         Ok(self.stack[0].append(val))
@@ -356,7 +360,7 @@ impl<'a, 'b> ser::SerializeStruct for &'a mut LangSerializer<'b> {
     }
 }
 
-impl<'a, 'b> ser::SerializeStructVariant for &'a mut LangSerializer<'b> {
+impl<'a, 'b> ser::SerializeStructVariant for &'a mut BaseSerializer<'b> {
     type Ok = HeapSexp;
     type Error = Error;
 
@@ -364,7 +368,7 @@ impl<'a, 'b> ser::SerializeStructVariant for &'a mut LangSerializer<'b> {
     where
         T: ?Sized + Serialize,
     {
-        let k = LangSerializer::<'b>::serialize_symbol(key)?;
+        let k = BaseSerializer::<'b>::serialize_symbol(key)?;
         let v = value.serialize(&mut **self)?;
         let val: HeapSexp = Cons::new(k, v).into();
         Ok(self.stack[0].append(val))
