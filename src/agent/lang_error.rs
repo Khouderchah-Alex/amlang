@@ -57,7 +57,7 @@ impl ErrorKind for LangError {
             Self::InvalidSexp(val) => list!("Invalid sexp".to_lang_string(), val.clone(),),
             Self::WrongArgumentCount { given, expected } => list!(
                 "Wrong argument count".to_lang_string(),
-                ("given".to_lang_string(), Number::Integer(*given as i64),),
+                ("given".to_lang_string(), Number::USize(*given),),
                 (
                     "expected".to_lang_string(),
                     expected.to_string().to_lang_string(),

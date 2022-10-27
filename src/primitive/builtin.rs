@@ -13,18 +13,16 @@ use crate::primitive::Primitive;
 use crate::sexp::{HeapSexp, Sexp};
 
 
-pub type Args = Vec<Sexp>;
-
 #[derive(Clone, Serialize)]
 pub struct BuiltIn {
     name: String,
 
     #[serde(skip_serializing)]
-    fun: fn(Args, &mut Agent) -> Result<Sexp, Error>,
+    fun: fn(Sexp, &mut Agent) -> Result<Sexp, Error>,
 }
 
 impl BuiltIn {
-    pub fn new(name: &'static str, fun: fn(Args, &mut Agent) -> Result<Sexp, Error>) -> BuiltIn {
+    pub fn new(name: &'static str, fun: fn(Sexp, &mut Agent) -> Result<Sexp, Error>) -> BuiltIn {
         BuiltIn {
             name: name.to_string(),
             fun,
@@ -35,7 +33,7 @@ impl BuiltIn {
         &self.name
     }
 
-    pub fn call(&self, args: Args, agent: &mut Agent) -> Result<Sexp, Error> {
+    pub fn call(&self, args: Sexp, agent: &mut Agent) -> Result<Sexp, Error> {
         (self.fun)(args, agent)
     }
 }

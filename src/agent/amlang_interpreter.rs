@@ -12,7 +12,7 @@ use crate::error::Error;
 use crate::model::{Interpreter, Reflective};
 use crate::primitive::prelude::*;
 use crate::primitive::table::Table;
-use crate::sexp::{Cons, HeapSexp, Sexp};
+use crate::sexp::{Cons, ConsList, HeapSexp, Sexp};
 
 
 #[derive(Clone, Debug)]
@@ -187,11 +187,11 @@ impl<'a> AmlangInterpreter<'a> {
                 }
             }
             Sexp::Primitive(Primitive::BuiltIn(builtin)) => {
-                let mut args = Vec::with_capacity(arg_nodes.len());
+                let mut args = ConsList::default();
                 for node in arg_nodes {
-                    args.push(self.exec(node)?);
+                    args.append(self.exec(node)?);
                 }
-                builtin.call(args, self.agent_mut())
+                builtin.call(args.release(), self.agent_mut())
             }
             Sexp::Primitive(Primitive::Procedure(Procedure::Abstraction(params, body_node, _))) => {
                 if arg_nodes.len() != params.len() {

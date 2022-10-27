@@ -4,7 +4,6 @@
 //! Rust are repr'd.
 
 use std::collections::VecDeque;
-use std::convert::TryFrom;
 
 use log::debug;
 use serde::{ser, Serialize};
@@ -64,40 +63,36 @@ impl<'a, 'b> ser::Serializer for &'a mut BaseSerializer<'b> {
 
     // TODO(func) Have Number support more than i64, f64.
     fn serialize_i8(self, v: i8) -> Result<Self::Ok, Self::Error> {
-        self.serialize_i64(i64::from(v))
+        Ok(Number::I8(v).into())
     }
     fn serialize_i16(self, v: i16) -> Result<Self::Ok, Self::Error> {
-        self.serialize_i64(i64::from(v))
+        Ok(Number::I16(v).into())
     }
     fn serialize_i32(self, v: i32) -> Result<Self::Ok, Self::Error> {
-        self.serialize_i64(i64::from(v))
+        Ok(Number::I32(v).into())
     }
     fn serialize_i64(self, v: i64) -> Result<Self::Ok, Self::Error> {
-        Ok(Number::Integer(v).into())
+        Ok(Number::I64(v).into())
     }
 
     fn serialize_u8(self, v: u8) -> Result<Self::Ok, Self::Error> {
-        self.serialize_u64(u64::from(v))
+        Ok(Number::U8(v).into())
     }
     fn serialize_u16(self, v: u16) -> Result<Self::Ok, Self::Error> {
-        self.serialize_u64(u64::from(v))
+        Ok(Number::U16(v).into())
     }
     fn serialize_u32(self, v: u32) -> Result<Self::Ok, Self::Error> {
-        self.serialize_u64(u64::from(v))
+        Ok(Number::U32(v).into())
     }
     fn serialize_u64(self, v: u64) -> Result<Self::Ok, Self::Error> {
-        match i64::try_from(v) {
-            Ok(signed) => Ok(Number::Integer(signed).into()),
-            // TODO(sec) Handle properly (probably by extending Number).
-            Err(err) => panic!("{}", err),
-        }
+        Ok(Number::U64(v).into())
     }
 
     fn serialize_f32(self, v: f32) -> Result<Self::Ok, Self::Error> {
-        self.serialize_f64(f64::from(v))
+        Ok(Number::F32(v).into())
     }
     fn serialize_f64(self, v: f64) -> Result<Self::Ok, Self::Error> {
-        Ok(Number::Float(v).into())
+        Ok(Number::F64(v).into())
     }
 
     fn serialize_char(self, v: char) -> Result<Self::Ok, Self::Error> {

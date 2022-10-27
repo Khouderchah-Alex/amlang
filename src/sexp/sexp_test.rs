@@ -21,18 +21,18 @@ fn non_cons() {
     let mut iter = HeapSexp::new(s).into_iter();
     assert_eq!(
         iter.next().unwrap(),
-        (HeapSexp::new(Number::Integer(1).into()), true)
+        (HeapSexp::new(Number::I64(1).into()), true)
     );
     assert_eq!(
         iter.next().unwrap(),
-        (HeapSexp::new(Number::Integer(2).into()), true)
+        (HeapSexp::new(Number::I64(2).into()), true)
     );
     assert_eq!(
         iter.next().unwrap(),
-        (HeapSexp::new(Number::Integer(3).into()), true)
+        (HeapSexp::new(Number::I64(3).into()), true)
     );
     assert_eq!(
         iter.next().unwrap(),
-        (HeapSexp::new(Number::Integer(4).into()), false)
+        (HeapSexp::new(Number::I64(4).into()), false)
     );
 }

@@ -38,15 +38,15 @@ impl Reflective for EnvHeader {
         list.append("header".to_symbol_or_panic(policy_admin));
         list.append(Cons::new(
             "version".to_symbol_or_panic(policy_admin),
-            Number::Integer(self.file_version.try_into().unwrap()),
+            Number::USize(self.file_version),
         ));
         list.append(Cons::new(
             "node-count".to_symbol_or_panic(policy_admin),
-            Number::Integer(self.node_count.try_into().unwrap()),
+            Number::USize(self.node_count),
         ));
         list.append(Cons::new(
             "triple-count".to_symbol_or_panic(policy_admin),
-            Number::Integer(self.triple_count.try_into().unwrap()),
+            Number::USize(self.triple_count),
         ));
         list.release_with_tail(
             Cons::try_from(self.unrecognized.reify(agent))
@@ -79,7 +79,7 @@ impl Reflective for EnvHeader {
 
         let map = table.as_map_mut();
         let mut extract = |key| match map.remove(key) {
-            Some(Sexp::Primitive(Primitive::Number(Number::Integer(i)))) => i,
+            Some(Sexp::Primitive(Primitive::Number(Number::I64(i)))) => i,
             _ => panic!(),
         };
         let file_version = extract("version").try_into().unwrap();

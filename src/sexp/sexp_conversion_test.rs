@@ -58,15 +58,15 @@ fn ref_elements() {
 #[test]
 fn vec_break_no_remainder() {
     let original: Vec<Sexp> = vec![
-        Number::Integer(1).into(),
-        Number::Integer(2).into(),
-        Number::Integer(3).into(),
+        Number::I64(1).into(),
+        Number::I64(2).into(),
+        Number::I64(3).into(),
     ];
     let (a, b, c) =
         break_sexp!(original.into_iter().map(|e| (e, true)) => (Number, Number, Number)).unwrap();
-    assert_eq!(a, Number::Integer(1));
-    assert_eq!(b, Number::Integer(2));
-    assert_eq!(c, Number::Integer(3));
+    assert_eq!(a, Number::I64(1));
+    assert_eq!(b, Number::I64(2));
+    assert_eq!(c, Number::I64(3));
 }
 
 #[test]
@@ -109,7 +109,7 @@ fn missing_arguments() {
 #[test]
 fn simple_list() {
     let original: Sexp = "(1 2)".parse().unwrap();
-    let l = list!(Number::Integer(1), Number::Integer(2),);
+    let l = list!(Number::I64(1), Number::I64(2),);
     let (a, b) = break_sexp!(original => (Number, Number)).unwrap();
     let (aa, bb) = break_sexp!(l => (Number, Number)).unwrap();
     assert_eq!(a, aa);
@@ -119,7 +119,7 @@ fn simple_list() {
 #[test]
 fn multi_type_list() {
     let original: Sexp = "(1 \"test\")".parse().unwrap();
-    let l = list!(Number::Integer(1), "test".to_lang_string(),);
+    let l = list!(Number::I64(1), "test".to_lang_string(),);
     let (a, b) = break_sexp!(original => (Number, LangString)).unwrap();
     let (aa, bb) = break_sexp!(l => (Number, LangString)).unwrap();
     assert_eq!(a, aa);
@@ -128,8 +128,8 @@ fn multi_type_list() {
 
 #[test]
 fn simple_list_vars() {
-    let a = Number::Integer(1);
-    let b = Number::Integer(2);
+    let a = Number::I64(1);
+    let b = Number::I64(2);
     let l = list!(a, b,);
     let (aa, bb) = break_sexp!(l => (Number, Number)).unwrap();
     assert_eq!(a, aa);
@@ -138,9 +138,9 @@ fn simple_list_vars() {
 
 #[test]
 fn nested_list_vars() {
-    let a = Number::Integer(1);
-    let b = Number::Integer(2);
-    let c = Number::Integer(3);
+    let a = Number::I64(1);
+    let b = Number::I64(2);
+    let c = Number::I64(3);
     let l = list!(a, (b, c,),);
     let (aa, sub) = break_sexp!(l => (Number, HeapSexp)).unwrap();
     let (bb, cc) = break_sexp!(sub => (Number, Number)).unwrap();

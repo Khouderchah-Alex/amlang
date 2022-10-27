@@ -14,6 +14,12 @@ pub struct ConsList {
     len: usize,
 }
 
+impl Default for ConsList {
+    fn default() -> Self {
+        ConsList::new()
+    }
+}
+
 impl ConsList {
     pub fn new() -> ConsList {
         ConsList {

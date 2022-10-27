@@ -1,10 +1,10 @@
 use std::collections::HashMap;
+use std::mem;
 
-use crate::agent::lang_error::{ExpectedCount, LangError};
+use crate::agent::lang_error::LangError;
 use crate::agent::Agent;
 use crate::error::Error;
-use crate::primitive::builtin::Args;
-use crate::primitive::{BuiltIn, Node, Number, Primitive};
+use crate::primitive::{BuiltIn, Node, Number};
 use crate::sexp::{Cons, HeapSexp, Sexp};
 
 
@@ -58,7 +58,7 @@ fn cons_(car: HeapSexp, cdr: HeapSexp, _agent: &mut Agent) -> Result<Cons, Error
 }
 
 fn list_len_(sexp: HeapSexp, agent: &mut Agent) -> Result<Number, Error> {
-    let mut count = 0i64;
+    let mut count = 0;
     for (_elem, proper) in sexp.iter() {
         if !proper {
             return err!(
@@ -69,9 +69,9 @@ fn list_len_(sexp: HeapSexp, agent: &mut Agent) -> Result<Number, Error> {
                 }
             );
         }
-        count = count.saturating_add(1);
+        count += 1;
     }
-    Ok(Number::Integer(count).into())
+    Ok(Number::USize(count).into())
 }
 
 fn println_(arg: Sexp, agent: &mut Agent) -> Result<Sexp, Error> {
@@ -90,111 +90,87 @@ fn eq_(a: Sexp, b: Sexp, agent: &mut Agent) -> Result<Node, Error> {
 }
 
 
-fn add(args: Args, agent: &mut Agent) -> Result<Sexp, Error> {
-    let mut curr = Number::default();
-    for arg in args {
-        if let Sexp::Primitive(Primitive::Number(num)) = arg {
-            curr += num;
-        } else {
+fn add(args: Sexp, agent: &mut Agent) -> Result<Sexp, Error> {
+    let (mut curr, mut tail) = break_sexp!(args => (Number; remainder), agent)?;
+    let curr_d = mem::discriminant(&curr);
+    while tail != None {
+        let (num, new_tail) = break_sexp!(tail.unwrap() => (Number; remainder), agent)?;
+        tail = new_tail;
+
+        if mem::discriminant(&num) != curr_d {
             return err!(
                 agent,
                 LangError::InvalidArgument {
-                    given: arg.clone(),
-                    expected: "a Number".into(),
+                    given: num.clone().into(),
+                    expected: std::borrow::Cow::Owned(format!("discriminant {:?}", curr_d))
                 }
             );
         }
+        curr += num;
     }
-
     Ok(curr.into())
 }
 
-fn sub(args: Args, agent: &mut Agent) -> Result<Sexp, Error> {
-    if args.len() < 1 {
-        return err!(
-            agent,
-            LangError::WrongArgumentCount {
-                given: 0,
-                expected: ExpectedCount::AtLeast(1),
-            }
-        );
-    }
+fn sub(args: Sexp, agent: &mut Agent) -> Result<Sexp, Error> {
+    let (mut curr, mut tail) = break_sexp!(args => (Number; remainder), agent)?;
+    let curr_d = mem::discriminant(&curr);
+    while tail != None {
+        let (num, new_tail) = break_sexp!(tail.unwrap() => (Number; remainder), agent)?;
+        tail = new_tail;
 
-    let mut curr = Number::default();
-    let mut first = true;
-    for arg in args {
-        if let Sexp::Primitive(Primitive::Number(num)) = arg {
-            if first {
-                curr = num;
-                first = false;
-            } else {
-                curr -= num;
-            }
-        } else {
+        if mem::discriminant(&num) != curr_d {
             return err!(
                 agent,
                 LangError::InvalidArgument {
-                    given: arg.clone(),
-                    expected: "a Number".into(),
+                    given: num.clone().into(),
+                    expected: std::borrow::Cow::Owned(format!("discriminant {:?}", curr_d))
                 }
             );
         }
+        curr -= num;
     }
-
     Ok(curr.into())
 }
 
-fn mul(args: Args, agent: &mut Agent) -> Result<Sexp, Error> {
-    let mut curr = Number::Integer(1);
-    for arg in args {
-        if let Sexp::Primitive(Primitive::Number(num)) = arg {
-            curr *= num;
-        } else {
+fn mul(args: Sexp, agent: &mut Agent) -> Result<Sexp, Error> {
+    let (mut curr, mut tail) = break_sexp!(args => (Number; remainder), agent)?;
+    let curr_d = mem::discriminant(&curr);
+    while tail != None {
+        let (num, new_tail) = break_sexp!(tail.unwrap() => (Number; remainder), agent)?;
+        tail = new_tail;
+
+        if mem::discriminant(&num) != curr_d {
             return err!(
                 agent,
                 LangError::InvalidArgument {
-                    given: arg.clone(),
-                    expected: "a Number".into(),
+                    given: num.clone().into(),
+                    expected: std::borrow::Cow::Owned(format!("discriminant {:?}", curr_d))
                 }
             );
         }
+        curr *= num;
     }
-
     Ok(curr.into())
 }
 
-fn div(args: Args, agent: &mut Agent) -> Result<Sexp, Error> {
-    if args.len() < 1 {
-        return err!(
-            agent,
-            LangError::WrongArgumentCount {
-                given: 0,
-                expected: ExpectedCount::AtLeast(1),
-            }
-        );
-    }
+fn div(args: Sexp, agent: &mut Agent) -> Result<Sexp, Error> {
+    let (mut curr, mut tail) = break_sexp!(args => (Number; remainder), agent)?;
+    let curr_d = mem::discriminant(&curr);
+    while tail != None {
+        let (num, new_tail) = break_sexp!(tail.unwrap() => (Number; remainder), agent)?;
+        tail = new_tail;
 
-    let mut curr = Number::default();
-    let mut first = true;
-    for arg in args {
-        if let Sexp::Primitive(Primitive::Number(num)) = arg {
-            if first {
-                curr = num;
-                first = false;
-            } else {
-                curr /= num;
-            }
-        } else {
+        if mem::discriminant(&num) != curr_d {
             return err!(
                 agent,
                 LangError::InvalidArgument {
-                    given: arg.clone(),
-                    expected: "a Number".into(),
+                    given: num.clone().into(),
+                    expected: std::borrow::Cow::Owned(format!("discriminant {:?}", curr_d))
                 }
             );
         }
+        curr /= num;
     }
-
     Ok(curr.into())
 }
 
@@ -202,20 +178,20 @@ fn div(args: Args, agent: &mut Agent) -> Result<Sexp, Error> {
 /// Autogen function taking args: Vec<Sexp> from one taking specific subtypes.
 macro_rules! wrap_builtin {
     ($raw:ident($ta:ident) => $wrapped:ident) => {
-        fn $wrapped(args: Args, agent: &mut Agent) -> Result<Sexp, Error> {
-            let (a,) = break_sexp!(args.into_iter().map(|e| (e, true)) => ($ta), agent)?;
+        fn $wrapped(args: Sexp, agent: &mut Agent) -> Result<Sexp, Error> {
+            let (a,) = break_sexp!(args => ($ta), agent)?;
             Ok($raw(a, agent)?.into())
         }
     };
     ($raw:ident($ta:ident, $tb:ident) => $wrapped:ident) => {
-        fn $wrapped(args: Args, agent: &mut Agent) -> Result<Sexp, Error> {
-            let (a, b) = break_sexp!(args.into_iter().map(|e| (e, true)) => ($ta, $tb), agent)?;
+        fn $wrapped(args: Sexp, agent: &mut Agent) -> Result<Sexp, Error> {
+            let (a, b) = break_sexp!(args => ($ta, $tb), agent)?;
             Ok($raw(a, b, agent)?.into())
         }
     };
     ($raw:ident($($type:ident),+) => $wrapped:ident) => {
-        fn $wrapped(args: Args, agent: &mut Agent) -> Result<Sexp, Error> {
-            let tuple = break_sexp!(args.into_iter().map(|e| (e, true)) => ($($type),+), agent)?;
+        fn $wrapped(args: Sexp, agent: &mut Agent) -> Result<Sexp, Error> {
+            let tuple = break_sexp!(args => ($($type),+), agent)?;
             $raw(tuple, agent)
         }
     };
