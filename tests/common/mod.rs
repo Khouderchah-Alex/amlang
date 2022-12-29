@@ -1,5 +1,3 @@
-use std::path::Path;
-
 use amlang::agent::env_policy::{EnvPolicy, SimplePolicy};
 use amlang::agent::symbol_policies::policy_base;
 use amlang::agent::{Agent, EnvManager};
@@ -7,18 +5,17 @@ use amlang::error::Error;
 use amlang::parser::ParseIter;
 use amlang::sexp::Sexp;
 use amlang::token::string_stream::StringStream;
+use amlang::InitOptions;
 
 
 pub fn setup() -> Result<(Agent, EnvManager<impl EnvPolicy>), String> {
-    // Start at crate-level.
-    let crate_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
-    amlang::init(crate_dir.canonicalize().unwrap()).unwrap();
+    amlang::init(InitOptions::RootRun).unwrap();
 
     // Integration tests will call this method multiple times; ignore the error.
     if let Err(_err) = env_logger::try_init() {}
 
     // Bootstrap/deserialize.
-    let manager = match amlang::agent::env_manager::EnvManager::<SimplePolicy>::bootstrap("envs/") {
+    let manager = match amlang::agent::env_manager::EnvManager::<SimplePolicy>::bootstrap(".") {
         Ok(val) => val,
         Err(err) => return Err(format!("{}", err)),
     };

@@ -13,12 +13,9 @@
 
 use clap::{App, Arg};
 use env_logger::{Builder, Env};
-use log::{info, LevelFilter};
+use log::LevelFilter;
 use std::convert::TryFrom;
-use std::fs;
-use std::io;
 use std::path::Path;
-use std::process::Command;
 
 use amlang::agent::env_policy::SimplePolicy;
 use amlang::agent::{Agent, EnvManager};
@@ -29,12 +26,9 @@ use amlang::sexp::Sexp;
 use amlang::token::cli_stream::CliStream;
 
 
-fn main() -> Result<(), String> {
-    const RELATIVE_SERIALIZE_PATH: &str = "envs/";
-    let base_dir = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .canonicalize()
-        .unwrap();
+const SERIALIZATION_PATH: &str = ".";
 
+fn main() -> Result<(), String> {
     // Setup logging.
     Builder::from_env(Env::default().default_filter_or("info"))
         .filter_module("rustyline", LevelFilter::Warn)
@@ -52,30 +46,19 @@ fn main() -> Result<(), String> {
         )
         .get_matches();
 
-    // Start amlang in this file's dir.
-    let file_dir = Path::new(file!()).parent().unwrap();
-    let start_dir = base_dir.join(file_dir);
-    amlang::init(start_dir).unwrap();
-
-    // Perform any needed state preparation.
-    if matches.is_present("reset") {
-        if let Err(err) = reset_state(&base_dir) {
-            return Err(format!("Resetting state failed: {}", err));
-        }
-    }
-    let meta_path = RELATIVE_SERIALIZE_PATH.to_string() + "meta.env";
-    if !Path::new(meta_path.as_str()).exists() {
-        if let Err(err) = copy_meta(&base_dir) {
-            return Err(format!("Copying meta.env failed: {}", err));
-        }
-    }
-    // Always copy context.bootstrap to easily handle new lang additions.
-    if let Err(err) = copy_context(&base_dir) {
-        return Err(format!("Copying context.bootstrap failed: {}", err));
-    }
+    // Use examples/envs/.
+    let base_dir = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .canonicalize()
+        .unwrap();
+    let examples_dir = Path::new(file!()).parent().unwrap();
+    let init_options = amlang::InitOptions::IsolatedRun(
+        base_dir.join(examples_dir).join("envs"),
+        matches.is_present("reset"),
+    );
+    amlang::init(init_options).unwrap();
 
     // Bootstrap/deserialize.
-    let mut manager = match EnvManager::<SimplePolicy>::bootstrap(RELATIVE_SERIALIZE_PATH) {
+    let mut manager = match EnvManager::<SimplePolicy>::bootstrap(SERIALIZATION_PATH) {
         Ok(val) => val,
         Err(err) => return Err(format!("{}", err)),
     };
@@ -97,7 +80,7 @@ fn main() -> Result<(), String> {
     for _result in agent.run(sexps, print_result) {}
 
     // Serialize.
-    if let Err(err) = manager.serialize_full(RELATIVE_SERIALIZE_PATH) {
+    if let Err(err) = manager.serialize_full(SERIALIZATION_PATH) {
         return Err(err.to_string());
     }
 
@@ -124,48 +107,4 @@ fn print_result(agent: &mut Agent, result: &Result<Sexp, Error>) {
         }
     };
     println!("");
-}
-
-
-fn reset_state(base_dir: &Path) -> io::Result<()> {
-    let envs_dir = base_dir.join("examples/envs/");
-    for entry in fs::read_dir(envs_dir)? {
-        let entry = entry?;
-        let path = entry.path();
-        // For now, let's just leave subdirs as safe havens.
-        if path.is_dir() || path.file_name() == Some(".gitignore".as_ref()) {
-            continue;
-        }
-
-        fs::remove_file(path)?;
-    }
-    Ok(())
-}
-
-fn copy_meta(base_dir: &Path) -> io::Result<()> {
-    info!("No meta env; copying from envs/.");
-    let amlang_meta = base_dir.join("envs/meta.env");
-    let example_meta = base_dir.join("examples/envs/meta.env");
-    fs::copy(amlang_meta, example_meta.clone())?;
-
-    let a = Command::new("sh")
-        .arg("-c")
-        .arg(r"sed -i 's|envs/lang.env|../envs/lang.env|g' envs/meta.env")
-        .status()
-        .expect("failed to monkeypatch lang.env path");
-    if !a.success() {
-        fs::remove_file(example_meta)?;
-        return Err(io::Error::new(
-            io::ErrorKind::Other,
-            "Failed to monkeypatch paths",
-        ));
-    }
-    Ok(())
-}
-
-fn copy_context(base_dir: &Path) -> io::Result<u64> {
-    info!("Copying context bootstrap from envs/.");
-    let amlang_context = base_dir.join("envs/context.bootstrap");
-    let example_context = base_dir.join("examples/envs/context.bootstrap");
-    fs::copy(amlang_context, example_context.clone())
 }
