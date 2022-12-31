@@ -102,6 +102,20 @@ macro_rules! generate_number {
             }
         }
 
+        $(
+            impl TryFrom<Number> for $type {
+                type Error = Number;
+
+                fn try_from(value: Number) -> Result<Self, Self::Error> {
+                    if let Number::$variant(val) = value {
+                        Ok(val)
+                    } else {
+                        Err(value)
+                    }
+                }
+            }
+        )+
+
     };
 }
 
