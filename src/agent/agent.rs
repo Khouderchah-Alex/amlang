@@ -314,7 +314,7 @@ impl Agent {
         Ok(node)
     }
 
-    pub fn tell(&mut self, subject: Node, predicate: Node, object: Node) -> Result<Sexp, Error> {
+    pub fn tell(&mut self, subject: Node, predicate: Node, object: Node) -> Result<Node, Error> {
         let to_local = |node: Node| {
             if node.env() != self.pos().env() {
                 return err!(
@@ -353,10 +353,11 @@ impl Agent {
         }
 
         // Note(sec) If the tell handler jumps to a different environment, the
-        // local nodes will globalize into the wrong Environment.
+        // local nodes will globalize into the wrong Environment without jumping
+        // back to the original env.
         self.jump(original_pos);
         let triple = self.env().insert_triple(s, p, o);
-        Ok(triple.node().globalize(&self).into())
+        Ok(triple.node().globalize(&self))
     }
 
     pub fn ask(&mut self, subject: Node, predicate: Node, object: Node) -> Result<Sexp, Error> {

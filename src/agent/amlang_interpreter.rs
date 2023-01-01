@@ -256,7 +256,7 @@ impl<'a> AmlangInterpreter<'a> {
                     o
                 );
                 if is_tell {
-                    self.agent_mut().tell(s, p, o)
+                    Ok(self.agent_mut().tell(s, p, o)?.into())
                 } else {
                     self.agent_mut().ask(s, p, o)
                 }
