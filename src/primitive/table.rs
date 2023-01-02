@@ -101,15 +101,15 @@ impl Table<LocalNode, LocalNode> for LocalNodeTable {
 
 fn reflect_map<K, V, FK, FV>(
     structure: Option<HeapSexp>,
-    agent: &mut Agent,
+    agent: &Agent,
     resolve_key: FK,
     resolve_val: FV,
 ) -> Result<BTreeMap<K, V>, Error>
 where
     K: Ord + Clone,
     V: Clone,
-    FK: Fn(&mut Agent, Sexp) -> Result<K, Error>,
-    FV: Fn(&mut Agent, Sexp) -> Result<V, Error>,
+    FK: Fn(&Agent, Sexp) -> Result<K, Error>,
+    FV: Fn(&Agent, Sexp) -> Result<V, Error>,
 {
     let mut table = BTreeMap::<K, V>::default();
     for (assoc, _proper) in SexpIntoIter::from(structure) {
@@ -147,7 +147,7 @@ impl_amlang_table!(SymSexpTable, Symbol, Sexp, sym_sexp_table);
 macro_rules! impl_amlang_table {
     ($alias:ident, $key:ident, $val:ident, $discriminator:ident) => {
         impl Reflective for AmlangTable<$key, $val> {
-            fn reify(&self, agent: &mut Agent) -> Sexp {
+            fn reify(&self, agent: &Agent) -> Sexp {
                 let mut alist = None;
                 for (k, v) in self.as_map() {
                     alist = Some(
@@ -161,10 +161,10 @@ macro_rules! impl_amlang_table {
                 Cons::new(node, alist).into()
             }
 
-            fn reflect<F>(structure: Sexp, agent: &mut Agent, resolve: F) -> Result<Self, Error>
+            fn reflect<F>(structure: Sexp, agent: &Agent, resolve: F) -> Result<Self, Error>
             where
                 Self: Sized,
-                F: Fn(&mut Agent, &Primitive) -> Result<Node, Error>,
+                F: Fn(&Agent, &Primitive) -> Result<Node, Error>,
             {
                 let (command, cdr) = break_sexp!(structure => (Primitive; remainder), agent)?;
                 let cmd = resolve(agent, &command)?;
@@ -246,7 +246,7 @@ use impl_amlang_table;
 
 /// Special impl for LocalNodeTable.
 impl Reflective for LocalNodeTable {
-    fn reify(&self, agent: &mut Agent) -> Sexp {
+    fn reify(&self, agent: &Agent) -> Sexp {
         let mut alist = None;
         for (k, v) in self.as_map() {
             alist = Some(
@@ -264,10 +264,10 @@ impl Reflective for LocalNodeTable {
         .into()
     }
 
-    fn reflect<F>(structure: Sexp, agent: &mut Agent, resolve: F) -> Result<Self, Error>
+    fn reflect<F>(structure: Sexp, agent: &Agent, resolve: F) -> Result<Self, Error>
     where
         Self: Sized,
-        F: Fn(&mut Agent, &Primitive) -> Result<Node, Error>,
+        F: Fn(&Agent, &Primitive) -> Result<Node, Error>,
     {
         let (command, env, cdr) =
             break_sexp!(structure => (Primitive, Primitive; remainder), agent)?;

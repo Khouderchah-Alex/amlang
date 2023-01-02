@@ -82,7 +82,7 @@ macro_rules! generate_context {
         }
 
         impl Reflective for AmlangContext {
-            fn reify(&self, _agent: &mut Agent) -> Sexp {
+            fn reify(&self, _agent: &Agent) -> Sexp {
                 let meta: Sexp = vec![
                     $(Node::new(LocalNode::default(), self.$meta_node),)+
                 ].into();
@@ -92,16 +92,16 @@ macro_rules! generate_context {
                 list!(meta, lang,)
             }
 
-            fn reflect<F>(structure: Sexp, agent: &mut Agent, resolve: F) -> Result<Self, Error>
+            fn reflect<F>(structure: Sexp, agent: &Agent, resolve: F) -> Result<Self, Error>
             where
                 Self: Sized,
-                F: Fn(&mut Agent, &Primitive) -> Result<Node, Error> {
+                F: Fn(&Agent, &Primitive) -> Result<Node, Error> {
                 // Clone passed-in agent's context to hack around the
                 // fact that we can't create a meta env here.
                 let mut context = agent.context().clone();
                 let (meta, lang) = break_sexp!(structure => (HeapSexp, HeapSexp), agent)?;
 
-                let mut resolve_node = |iter: &mut SexpIntoIter| -> Node {
+                let resolve_node = |iter: &mut SexpIntoIter| -> Node {
                     let primitive = Primitive::try_from(iter.next().unwrap().0).unwrap();
                     resolve(agent, &primitive).unwrap()
                 };

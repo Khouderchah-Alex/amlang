@@ -6,7 +6,6 @@ use super::agent_frames::{ExecFrame, InterpreterState};
 use super::amlang_wrappers::*;
 use super::continuation::Continuation;
 use crate::agent::lang_error::{ExpectedCount, LangError};
-use crate::environment::entry::EntryMutKind;
 use crate::environment::LocalNode;
 use crate::error::Error;
 use crate::model::{Interpreter, Reflective};
@@ -71,7 +70,7 @@ impl<'a> AmlangInterpreter<'a> {
         let mut surface = Vec::new();
         let mut frame = SymNodeTable::default();
         for symbol in params {
-            let node = self.agent_mut().env().insert_atom().globalize(self.agent());
+            let node = self.agent_mut().define(None)?;
             if frame.contains_key(&symbol) {
                 return err!(
                     self.agent(),
@@ -83,11 +82,7 @@ impl<'a> AmlangInterpreter<'a> {
             }
             frame.insert(symbol.clone(), node);
             surface.push(node);
-            let name = self
-                .agent_mut()
-                .env()
-                .insert_structure(symbol.into())
-                .globalize(self.agent());
+            let name = self.agent_mut().define(Some(symbol.into()))?;
             // Unlike amlang designation, label predicate must be imported.
             let raw_predicate = amlang_node!(label, self.agent().context());
             let label_predicate = self.agent_mut().import(raw_predicate)?;
@@ -111,9 +106,7 @@ impl<'a> AmlangInterpreter<'a> {
             } else {
                 let seq_node = self
                     .agent_mut()
-                    .env()
-                    .insert_structure(Procedure::Sequence(body_nodes).into())
-                    .globalize(self.agent());
+                    .define(Some(Procedure::Sequence(body_nodes).into()))?;
                 Ok(Procedure::Abstraction(surface, seq_node, reflect))
             }
         })();
@@ -258,7 +251,25 @@ impl<'a> AmlangInterpreter<'a> {
                 if is_tell {
                     Ok(self.agent_mut().tell(s, p, o)?.into())
                 } else {
-                    self.agent_mut().ask(s, p, o)
+                    let resolve_placeholder = |node: Node| {
+                        if node == amlang_node!(placeholder, self.agent().context()) {
+                            None
+                        } else {
+                            Some(node)
+                        }
+                    };
+                    let (s, p, o) = (
+                        resolve_placeholder(s),
+                        resolve_placeholder(p),
+                        resolve_placeholder(o),
+                    );
+                    Ok(self
+                        .agent_mut()
+                        .ask(s, p, o)?
+                        .triples()
+                        .map(|t| t.node().globalize(self.agent()).into())
+                        .collect::<Vec<Sexp>>()
+                        .into())
                 }
             }
             _ if context.def() == special_node => {
@@ -270,12 +281,12 @@ impl<'a> AmlangInterpreter<'a> {
 
                 let val_node = if let Some(s) = val {
                     // Ensure internalize maps name to this node.
-                    let val_node = self.agent_mut().env().insert_atom();
+                    let val_node = self.agent_mut().define(None)?;
                     let mut frame = SymNodeTable::default();
                     if let Ok(sym) =
                         Symbol::try_from(self.agent_mut().designate(Primitive::Node(name))?)
                     {
-                        frame.insert(sym, val_node.globalize(self.agent()));
+                        frame.insert(sym, val_node);
                     }
 
                     // Construe, relying on self-evaluation of val_node.
@@ -294,12 +305,11 @@ impl<'a> AmlangInterpreter<'a> {
                     if let Ok(node) = <Node>::try_from(&final_sexp) {
                         node
                     } else {
-                        *self.agent_mut().env().entry_mut(val_node).kind_mut() =
-                            EntryMutKind::Owned(final_sexp);
-                        val_node.globalize(self.agent())
+                        self.agent_mut().set(val_node, Some(final_sexp))?;
+                        val_node
                     }
                 } else {
-                    self.agent_mut().env().insert_atom().globalize(self.agent())
+                    self.agent_mut().define(None)?
                 };
                 Ok(self.agent_mut().name_node(name, val_node)?.into())
             }
@@ -310,11 +320,9 @@ impl<'a> AmlangInterpreter<'a> {
                 if let Some(s) = val {
                     let meaning = self.internalize(s.into());
                     let final_sexp = self.contemplate(meaning?)?;
-                    let env = self.agent_mut().access_env(node.env()).unwrap();
-                    *env.entry_mut(node.local()).kind_mut() = EntryMutKind::Owned(final_sexp);
+                    self.agent_mut().set(node, Some(final_sexp))?;
                 } else {
-                    let env = self.agent_mut().access_env(node.env()).unwrap();
-                    *env.entry_mut(node.local()).kind_mut() = EntryMutKind::Atomic;
+                    self.agent_mut().set(node, None)?;
                 }
                 Ok(node.into())
             }
@@ -451,11 +459,7 @@ impl<'a> AmlangInterpreter<'a> {
         if let Ok(node) = <Node>::try_from(&sexp) {
             Ok(node)
         } else {
-            Ok(self
-                .agent_mut()
-                .env()
-                .insert_structure(sexp)
-                .globalize(self.agent()))
+            self.agent_mut().define(Some(sexp))
         }
     }
 
@@ -480,10 +484,7 @@ impl<'a> AmlangInterpreter<'a> {
                 let val = self.internalize(*structure)?;
                 self.node_or_insert(val)?
             } else {
-                self.agent_mut()
-                    .env()
-                    .insert_structure(*structure)
-                    .globalize(self.agent())
+                self.agent_mut().define(Some(*structure))?
             };
             args.push(arg_node);
         }
@@ -491,9 +492,8 @@ impl<'a> AmlangInterpreter<'a> {
     }
 
     fn print_curr_triples(&mut self) {
-        let local = self.agent().pos().local();
-        let triples = self.agent_mut().env().match_any(local).triples();
-        for triple in triples {
+        let triples = self.agent().ask_any(self.agent().pos()).unwrap();
+        for triple in triples.triples() {
             print!("    ");
             let structure = triple.reify(self.agent_mut());
             self.agent_mut().print_sexp(&structure);

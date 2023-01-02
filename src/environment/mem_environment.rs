@@ -109,10 +109,12 @@ impl<Backend: MemBackend> Environment for MemEnvironment<Backend> {
         subject: LocalNode,
         predicate: LocalNode,
         object: LocalNode,
-    ) -> Option<LocalTriple> {
-        self.match_but_object(subject, predicate)
+    ) -> TripleSet {
+        let option = self
+            .match_but_object(subject, predicate)
             .triples()
-            .find(|&triple| self.triple_object(triple) == object)
+            .find(|&triple| self.triple_object(triple) == object);
+        TripleSet::from_option(self, option)
     }
     fn match_all(&self) -> TripleSet {
         // TODO(feat) Watch out if backends can ever have gaps here.

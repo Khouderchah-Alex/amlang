@@ -20,7 +20,7 @@ pub struct EnvHeader {
 }
 
 impl EnvHeader {
-    pub fn from_env(env: &mut Box<EnvObject>) -> Self {
+    pub fn from_env(env: &Box<EnvObject>) -> Self {
         let node_count = env.all_nodes().len();
         let triple_count = env.match_all().len();
         Self {
@@ -33,7 +33,7 @@ impl EnvHeader {
 }
 
 impl Reflective for EnvHeader {
-    fn reify(&self, agent: &mut Agent) -> Sexp {
+    fn reify(&self, agent: &Agent) -> Sexp {
         let mut list = ConsList::new();
         list.append("header".to_symbol_or_panic(policy_admin));
         list.append(Cons::new(
@@ -56,9 +56,9 @@ impl Reflective for EnvHeader {
         )
     }
 
-    fn reflect<F>(structure: Sexp, agent: &mut Agent, resolve: F) -> Result<Self, Error>
+    fn reflect<F>(structure: Sexp, agent: &Agent, resolve: F) -> Result<Self, Error>
     where
-        F: Fn(&mut Agent, &Primitive) -> Result<Node, Error>,
+        F: Fn(&Agent, &Primitive) -> Result<Node, Error>,
     {
         let (command, cdr) = break_sexp!(structure => (Symbol; remainder), agent)?;
         if command.as_str() != "header" {

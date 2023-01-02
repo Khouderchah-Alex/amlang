@@ -41,7 +41,7 @@ macro_rules! verify_context {
     ) => {
         let ($($node,)+) = {
             let desig_node = $manager.agent().context().designation();
-            let entry = $manager.agent_mut().env().entry(desig_node);
+            let entry = $manager.agent().env().entry(desig_node);
             let table = if let Ok(table) =
                 <&SymNodeTable>::try_from(entry.as_option()) {
                     table
@@ -333,18 +333,19 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         Ok(())
     }
 
-    pub fn serialize_curr_env<P: AsRef<StdPath>>(&mut self, out_path: P) -> std::io::Result<()> {
+    pub fn serialize_curr_env<P: AsRef<StdPath>>(&self, out_path: P) -> std::io::Result<()> {
         let file = File::create(out_path.as_ref())?;
         let mut w = BufWriter::new(file);
 
-        let header = EnvHeader::from_env(self.agent_mut().env()).reify(self.agent_mut());
+        let env = self.agent().env();
+        let header = EnvHeader::from_env(env).reify(self.agent());
         self.serialize_list_internal(&mut w, &header, 0)?;
 
         write!(&mut w, "(nodes")?;
-        for (i, node) in self.agent_mut().env().all_nodes().into_iter().enumerate() {
+        for (i, node) in env.all_nodes().into_iter().enumerate() {
             write!(&mut w, "\n    ")?;
 
-            let s = self.agent_mut().env().entry(node).owned();
+            let s = env.entry(node).owned();
             let (write_structure, add_quote) = match &s {
                 // Serialize self_des as ^1 since it can be reconstructed.
                 _ if i == 1 => (false, false),
@@ -379,9 +380,9 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         write!(&mut w, "\n)\n\n")?;
 
         write!(&mut w, "(triples")?;
-        for triple in self.agent_mut().env().match_all().triples() {
+        for triple in env.match_all().triples() {
             write!(&mut w, "\n    ")?;
-            let s = triple.reify(self.agent_mut());
+            let s = triple.reify(self.agent());
             self.serialize_list_internal(&mut w, &s, 1)?;
         }
         writeln!(&mut w, "\n)")?;
@@ -440,20 +441,17 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
             self.agent().pos().env(),
             in_path.as_ref().to_string_lossy()
         );
-        debug!(
-            "  Node count:    {}",
-            self.agent_mut().env().all_nodes().len()
-        );
+        debug!("  Node count:    {}", self.agent().env().all_nodes().len());
         debug!(
             "  Triple count:  {}",
-            self.agent_mut().env().match_all().len()
+            self.agent().ask(None, None, None).unwrap().len()
         );
         Ok(())
     }
 
 
     fn serialize_list_internal<W: std::io::Write>(
-        &mut self,
+        &self,
         w: &mut W,
         structure: &Sexp,
         depth: usize,
@@ -484,7 +482,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
     }
 
     fn serialize_primitive<W: std::io::Write>(
-        &mut self,
+        &self,
         w: &mut W,
         primitive: &Primitive,
         depth: usize,
@@ -497,20 +495,20 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
             }
             Primitive::BuiltIn(builtin) => write!(w, "(__builtin {})", builtin.name()),
             Primitive::Procedure(proc) => {
-                let proc_sexp = proc.reify(self.agent_mut());
+                let proc_sexp = proc.reify(self.agent());
                 self.serialize_list_internal(w, &proc_sexp, depth)
             }
             Primitive::SymNodeTable(table) => {
-                let sexp = table.reify(self.agent_mut());
+                let sexp = table.reify(self.agent());
                 self.serialize_list_internal(w, &sexp, depth)
             }
             Primitive::LocalNodeTable(table) => {
-                let sexp = table.reify(self.agent_mut());
+                let sexp = table.reify(self.agent());
                 self.serialize_list_internal(w, &sexp, depth)
             }
             Primitive::Node(node) => {
                 if let Some(triple) = self
-                    .agent_mut()
+                    .agent()
                     .access_env(node.env())
                     .unwrap()
                     .node_as_triple(node.local())
@@ -518,7 +516,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
                     if node.env() != self.agent().pos().env() {
                         write!(w, "^{}", node.env().id())?;
                     }
-                    return write!(w, "^t{}", self.agent_mut().env().triple_index(triple));
+                    return write!(w, "^t{}", self.agent().env().triple_index(triple));
                 }
 
                 if node.env() != self.agent().pos().env() {
@@ -572,7 +570,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
             match *entry {
                 Sexp::Primitive(primitive) => {
                     if let Primitive::Symbol(_sym) = primitive {
-                        self.agent_mut().env().insert_atom();
+                        self.agent_mut().define(None)?;
                     } else {
                         return err!(self.agent(), ExpectedSymbol);
                     }
@@ -580,18 +578,18 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
                 Sexp::Cons(_) => {
                     let (_name, command) = break_sexp!(entry => (Symbol, HeapSexp), self.agent())?;
                     let structure = self.eval_structure(command, &builtins)?;
-                    self.agent_mut().env().insert_structure(structure);
+                    self.agent_mut().define(Some(structure))?;
                 }
             }
         }
         Ok(())
     }
 
-    fn parse_node(&mut self, sym: &Symbol) -> Result<Node, Error> {
-        EnvManager::<Policy>::parse_node_inner(self.agent_mut(), sym)
+    fn parse_node(&self, sym: &Symbol) -> Result<Node, Error> {
+        EnvManager::<Policy>::parse_node_inner(self.agent(), sym)
     }
 
-    fn parse_node_inner(agent: &mut Agent, sym: &Symbol) -> Result<Node, Error> {
+    fn parse_node_inner(agent: &Agent, sym: &Symbol) -> Result<Node, Error> {
         match policy_env_serde(sym.as_str()).unwrap() {
             AdminSymbolInfo::Identifier => {
                 err!(agent, LangError::UnboundSymbol(sym.clone()))
@@ -624,18 +622,18 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         // envs, Reflective context nodes are only valid because they're specially
         // set before actual context bootstrapping occurs.
         if let Ok(node) = self.parse_node(&command) {
-            let resolve = |agent: &mut Agent, p: &Primitive| match p {
+            let resolve = |agent: &Agent, p: &Primitive| match p {
                 Primitive::Node(n) => Ok(*n),
                 Primitive::Symbol(s) => EnvManager::<Policy>::parse_node_inner(agent, &s),
                 _ => panic!(),
             };
 
             if Procedure::valid_discriminator(node, self.agent()) {
-                return Ok(Procedure::reflect(*hsexp, self.agent_mut(), resolve)?.into());
+                return Ok(Procedure::reflect(*hsexp, self.agent(), resolve)?.into());
             } else if LocalNodeTable::valid_discriminator(node, self.agent()) {
-                return Ok(LocalNodeTable::reflect(*hsexp, self.agent_mut(), resolve)?.into());
+                return Ok(LocalNodeTable::reflect(*hsexp, self.agent(), resolve)?.into());
             } else if SymNodeTable::valid_discriminator(node, self.agent()) {
-                return Ok(SymNodeTable::reflect(*hsexp, self.agent_mut(), resolve)?.into());
+                return Ok(SymNodeTable::reflect(*hsexp, self.agent(), resolve)?.into());
             }
         }
 
@@ -677,11 +675,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
             let predicate = self.parse_node(&p)?;
             let object = self.parse_node(&o)?;
 
-            self.agent_mut().env().insert_triple(
-                subject.local(),
-                predicate.local(),
-                object.local(),
-            );
+            self.agent_mut().tell(subject, predicate, object)?;
 
             let designation = self.agent().context().designation();
             if predicate.local() == designation && object.local() != designation {
@@ -700,7 +694,10 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
                 };
 
                 if let Ok(table) = <&mut SymNodeTable>::try_from(
-                    self.agent_mut().env().entry_mut(designation).as_option(),
+                    self.agent_mut()
+                        .env_mut()
+                        .entry_mut(designation)
+                        .as_option(),
                 ) {
                     table.insert(name, subject);
                 } else {

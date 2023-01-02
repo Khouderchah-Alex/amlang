@@ -79,7 +79,7 @@ impl<T: Environment + Clone> Environment for RawOverlay<T> {
         subject: LocalNode,
         predicate: LocalNode,
         object: LocalNode,
-    ) -> Option<LocalTriple> {
+    ) -> TripleSet {
         self.base().match_triple(subject, predicate, object)
     }
     fn match_all(&self) -> TripleSet {

@@ -83,6 +83,16 @@ impl<'a> Entry<'a> {
     pub fn owned(self) -> Option<Sexp> {
         self.as_option().cloned()
     }
+
+    /// Return as a &mut Env if posssible. Ownership of the reference ties back
+    /// to that of the Environment which created this Entry.
+    // TODO(func) Modify interface to support Owned.
+    pub fn env(self) -> Option<&'a Box<EnvObject>> {
+        match self.kind() {
+            EntryKind::Borrowed(Sexp::Primitive(Primitive::Env(env))) => Some(env),
+            _ => None,
+        }
+    }
 }
 
 impl<'a> EntryMut<'a> {

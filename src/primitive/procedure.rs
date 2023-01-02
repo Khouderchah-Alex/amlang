@@ -20,7 +20,7 @@ pub enum Procedure {
 
 
 impl Reflective for Procedure {
-    fn reify(&self, agent: &mut Agent) -> Sexp {
+    fn reify(&self, agent: &Agent) -> Sexp {
         let context = agent.context();
         match self {
             Procedure::Application(func, args) => {
@@ -47,9 +47,9 @@ impl Reflective for Procedure {
         }
     }
 
-    fn reflect<F>(structure: Sexp, agent: &mut Agent, resolve: F) -> Result<Self, Error>
+    fn reflect<F>(structure: Sexp, agent: &Agent, resolve: F) -> Result<Self, Error>
     where
-        F: Fn(&mut Agent, &Primitive) -> Result<Node, Error>,
+        F: Fn(&Agent, &Primitive) -> Result<Node, Error>,
     {
         let (command, cdr) = break_sexp!(structure => (Primitive; remainder), agent)?;
         let node = resolve(agent, &command)?;

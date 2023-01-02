@@ -29,7 +29,7 @@ impl CliHelper {
     }
 
     fn designation_prefix(&self, prefix: &str) -> Vec<Symbol> {
-        let mut agent = self.agent.borrow_mut();
+        let agent = self.agent.borrow_mut();
         let designation = agent.context().designation();
 
         let mut res = Vec::<Symbol>::new();

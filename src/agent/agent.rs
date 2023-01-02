@@ -11,6 +11,7 @@ use super::continuation::Continuation;
 use super::env_prelude::EnvPrelude;
 use crate::agent::lang_error::LangError;
 use crate::agent::symbol_policies::policy_admin;
+use crate::environment::entry::EntryMutKind;
 use crate::environment::LocalNode;
 use crate::environment::{EnvObject, TripleSet};
 use crate::error::Error;
@@ -86,7 +87,7 @@ impl Agent {
 
     pub fn history_insert(&mut self, structure: Sexp) -> Node {
         let local = self
-            .access_env(self.history_env)
+            .access_env_mut(self.history_env)
             .unwrap()
             .insert_structure(structure);
         Node::new(self.history_env, local)
@@ -139,7 +140,7 @@ impl Agent {
         &mut self.exec_state
     }
 
-    pub fn concretize(&mut self, node: Node) -> Result<Sexp, Error> {
+    pub fn concretize(&self, node: Node) -> Result<Sexp, Error> {
         for frame in self.exec_state().iter() {
             if let Some(s) = frame.lookup(node) {
                 debug!("concretizing: {} -> {}", node, s);
@@ -162,35 +163,75 @@ impl Agent {
 
 // Core functionality.
 impl Agent {
-    pub fn access_env(&mut self, meta_node: LocalNode) -> Option<&mut Box<EnvObject>> {
+    /// Access arbitrary env.
+    ///
+    /// Prefer env() over this if possible. Unwrapping the Option here is not
+    /// safe a priori.
+    pub fn access_env(&self, meta_node: LocalNode) -> Option<&Box<EnvObject>> {
+        let meta = self.context.meta();
+        if meta_node == LocalNode::default() {
+            return Some(meta);
+        }
+        meta.entry(meta_node).env()
+    }
+
+    /// Access arbitrary env.
+    ///
+    /// Prefer env_mut() over this if possible. Unwrapping the Option here is
+    /// not safe a priori.
+    pub fn access_env_mut(&mut self, meta_node: LocalNode) -> Option<&mut Box<EnvObject>> {
         let meta = self.context.meta_mut();
         if meta_node == LocalNode::default() {
             return Some(meta);
         }
-
         meta.entry_mut(meta_node).env()
     }
 
-    pub fn env(&mut self) -> &mut Box<EnvObject> {
-        // Note(sec) Verification of jumps makes this unwrap safe *if*
-        // we can assume that env nodes will not have their structures
-        // changed to non-envs. If needed, this can be implemented
-        // through EnvPolicy and/or Entry impls.
+    /// Access current env.
+    ///
+    /// Prefer over direct access_env usage, but using
+    /// define/set/concretize/ask/tell is best.
+    ///
+    /// Note(sec) Verification of jumps makes the unwrap safe *if*
+    /// we can assume that env nodes will not have their structures
+    /// changed to non-envs. If needed, this can be implemented
+    /// through EnvPolicy and/or Entry impls.
+    pub fn env(&self) -> &Box<EnvObject> {
         self.access_env(self.pos().env()).unwrap()
+    }
+
+    /// Access current env.
+    ///
+    /// Prefer over direct access_env_mut usage, but using
+    /// define/set/concretize/ask/tell is best.
+    ///
+    /// Note(sec) Verification of jumps makes the unwrap safe *if*
+    /// we can assume that env nodes will not have their structures
+    /// changed to non-envs. If needed, this can be implemented
+    /// through EnvPolicy and/or Entry impls.
+    pub fn env_mut(&mut self) -> &mut Box<EnvObject> {
+        self.access_env_mut(self.pos().env()).unwrap()
     }
 
     /// Get the amlang designator of a Node, which is (contextually) an
     /// injective property.
-    pub fn node_designator(&mut self, node: Node) -> Option<Symbol> {
+    pub fn node_designator(&self, node: Node) -> Option<Symbol> {
         if let Some(prelude) = node.local().as_prelude() {
             return Some(prelude.name().to_symbol_or_panic(policy_admin));
         }
 
         let designation = self.context().designation();
-        let env = self.access_env(node.env()).unwrap();
-        let names = env.match_but_object(node.local(), designation);
+        let names = self
+            .ask_from(
+                node.env(),
+                Some(node),
+                Some(Node::new(node.env(), designation)),
+                None,
+            )
+            .unwrap();
         if let Some(name) = names.objects().next() {
-            if let Ok(sym) = Symbol::try_from(env.entry(name).owned().unwrap()) {
+            if let Ok(sym) = Symbol::try_from(self.concretize(Node::new(node.env(), name)).unwrap())
+            {
                 return Some(sym);
             }
         }
@@ -198,27 +239,27 @@ impl Agent {
     }
 
     /// Get the label of a Node, which need not be injective.
-    pub fn node_label(&mut self, node: Node) -> Option<Symbol> {
-        let pos = self.pos();
-        self.jump(node);
-        let try_import = self.get_imported(amlang_node!(label, self.context()));
-        self.jump(pos);
+    pub fn node_label(&self, node: Node) -> Option<Symbol> {
+        let try_import = self.get_imported(amlang_node!(label, self.context()), node.env());
         let label_predicate = match try_import {
             Some(pred) => pred,
             None => return None,
         };
-        let env = self.access_env(node.env()).unwrap();
 
-        let labels = env.match_but_object(node.local(), label_predicate.local());
+        let labels = self
+            .ask_from(node.env(), Some(node), Some(label_predicate), None)
+            .unwrap();
         if let Some(label) = labels.objects().next() {
-            if let Ok(sym) = Symbol::try_from(env.entry(label).owned().unwrap()) {
+            if let Ok(sym) =
+                Symbol::try_from(self.concretize(Node::new(node.env(), label)).unwrap())
+            {
                 return Some(sym);
             }
         }
         None
     }
 
-    pub fn resolve(&mut self, name: &Symbol) -> Result<Node, Error> {
+    pub fn resolve(&self, name: &Symbol) -> Result<Node, Error> {
         // Always get prelude nodes from current env.
         if let Some(prelude) = EnvPrelude::from_name(name.as_str()) {
             return Ok(Node::new(self.pos().env(), prelude.local()));
@@ -226,9 +267,10 @@ impl Agent {
 
         let designation = self.context().designation();
         for i in 0..self.designation_chain.len() {
-            let env = self.access_env(self.designation_chain[i]).unwrap();
-            let entry = env.entry(designation);
-            let table = <&SymNodeTable>::try_from(entry.as_option()).unwrap();
+            let table = SymNodeTable::try_from(
+                self.concretize(Node::new(self.designation_chain[i], designation))?,
+            )
+            .unwrap();
             if let Some(node) = table.lookup(name) {
                 return Ok(node);
             }
@@ -236,7 +278,7 @@ impl Agent {
         err!(self, LangError::UnboundSymbol(name.clone()))
     }
 
-    pub fn designate(&mut self, designator: Primitive) -> Result<Sexp, Error> {
+    pub fn designate(&self, designator: Primitive) -> Result<Sexp, Error> {
         match designator {
             // Symbol -> Node
             Primitive::Symbol(symbol) => Ok(self.resolve(&symbol)?.into()),
@@ -277,14 +319,14 @@ impl Agent {
             );
         }
 
-        let name_sexp = self.access_env(name.env()).unwrap().entry(name.local());
-        let symbol = match <Symbol>::try_from(name_sexp.owned()) {
+        let name_sexp = self.concretize(name)?;
+        let symbol = match <Symbol>::try_from(name_sexp) {
             Ok(symbol) => symbol,
             Err(sexp) => {
                 return err!(
                     self,
                     LangError::InvalidArgument {
-                        given: sexp.unwrap_or(Sexp::default()),
+                        given: sexp,
                         expected: "Node abstracting Symbol".into(),
                     }
                 );
@@ -302,40 +344,63 @@ impl Agent {
         let designation = self.context().designation();
         // Use designation of current environment.
         if let Ok(table) =
-            <&mut SymNodeTable>::try_from(self.env().entry_mut(designation).as_option())
+            <&mut SymNodeTable>::try_from(self.env_mut().entry_mut(designation).as_option())
         {
             table.insert(symbol, node);
         } else {
             panic!("Env designation isn't a symbol table");
         }
 
-        self.env()
-            .insert_triple(node.local(), designation, name.local());
+        self.tell(node, self.globalize(designation), name)?;
         Ok(node)
     }
 
-    pub fn tell(&mut self, subject: Node, predicate: Node, object: Node) -> Result<Node, Error> {
-        let to_local = |node: Node| {
-            if node.env() != self.pos().env() {
-                return err!(
-                    self,
-                    LangError::Unsupported("Cross-env triples are not currently supported".into())
-                );
-            }
-            Ok(node.local())
+    pub fn define(&mut self, structure: Option<Sexp>) -> Result<Node, Error> {
+        let env = self.env_mut();
+        let local = match structure {
+            None => env.insert_atom(),
+            Some(sexp) => env.insert_structure(sexp),
         };
-        let (s, p, o) = (to_local(subject)?, to_local(predicate)?, to_local(object)?);
+        Ok(self.globalize(local))
+    }
+
+    pub fn set(&mut self, node: Node, structure: Option<Sexp>) -> Result<(), Error> {
+        let mut entry = self
+            .access_env_mut(node.env())
+            .unwrap()
+            .entry_mut(node.local());
+        match structure {
+            None => *entry.kind_mut() = EntryMutKind::Atomic,
+            Some(sexp) => *entry.kind_mut() = EntryMutKind::Owned(sexp),
+        }
+        Ok(())
+    }
+
+    pub fn tell(&mut self, subject: Node, predicate: Node, object: Node) -> Result<Node, Error> {
+        self.tell_to(self.pos().env(), subject, predicate, object)
+    }
+
+    pub fn tell_to(
+        &mut self,
+        env: LocalNode,
+        subject: Node,
+        predicate: Node,
+        object: Node,
+    ) -> Result<Node, Error> {
         let original_pos = self.pos();
 
-        if let Some(triple) = self.env().match_triple(s, p, o).iter().next() {
+        if let Some(triple) = self
+            .ask_from(env, Some(subject), Some(predicate), Some(object))?
+            .triples()
+            .next()
+        {
             return err!(self, LangError::DuplicateTriple(triple.reify(self)));
         }
 
         // If a tell_handler exists for the predicate, ensure it passes before adding triple.
-        let tell_handler = self.context().tell_handler();
+        let tell_handler = Node::new(env, self.context().tell_handler());
         if let Some(handler) = self
-            .env()
-            .match_but_object(p, tell_handler)
+            .ask_from(env, Some(predicate), Some(tell_handler), None)?
             .objects()
             .next()
         {
@@ -356,57 +421,74 @@ impl Agent {
         // local nodes will globalize into the wrong Environment without jumping
         // back to the original env.
         self.jump(original_pos);
-        let triple = self.env().insert_triple(s, p, o);
+        // Ensuring this triple didn't already exist assures that we can call
+        // .local() here without any checks.
+        let triple =
+            self.env_mut()
+                .insert_triple(subject.local(), predicate.local(), object.local());
         Ok(triple.node().globalize(&self))
     }
 
-    pub fn ask(&mut self, subject: Node, predicate: Node, object: Node) -> Result<Sexp, Error> {
-        let to_local = |node: Node| {
-            let placeholder = amlang_node!(placeholder, self.context());
-            if node != placeholder && node.env() != self.pos().env() {
-                return err!(
-                    self,
-                    LangError::Unsupported("Cross-env triples are not currently supported".into())
-                );
+    pub fn ask(
+        &self,
+        subject: Option<Node>,
+        predicate: Option<Node>,
+        object: Option<Node>,
+    ) -> Result<TripleSet, Error> {
+        self.ask_from(self.pos().env(), subject, predicate, object)
+    }
+
+    pub fn ask_from(
+        &self,
+        env: LocalNode,
+        subject: Option<Node>,
+        predicate: Option<Node>,
+        object: Option<Node>,
+    ) -> Result<TripleSet, Error> {
+        let to_local = |arg: Option<Node>| {
+            if let Some(node) = arg {
+                if node.env() != env {
+                    return err!(
+                        self,
+                        LangError::Unsupported(
+                            "Cross-env triples are not currently supported".into()
+                        )
+                    );
+                }
+                return Ok(Some(node.local()));
             }
-            Ok(node.local())
+            Ok(None)
         };
         let (s, p, o) = (to_local(subject)?, to_local(predicate)?, to_local(object)?);
 
-        let res = if s == self.context.placeholder() {
-            if p == self.context.placeholder() {
-                if o == self.context.placeholder() {
-                    self.env().match_all()
-                } else {
-                    self.env().match_object(o)
-                }
-            } else {
-                if o == self.context.placeholder() {
-                    self.env().match_predicate(p)
-                } else {
-                    self.env().match_but_subject(p, o)
-                }
-            }
-        } else {
-            if p == self.context.placeholder() {
-                if o == self.context.placeholder() {
-                    self.env().match_subject(s)
-                } else {
-                    self.env().match_but_predicate(s, o)
-                }
-            } else {
-                if o == self.context.placeholder() {
-                    self.env().match_but_object(s, p)
-                } else {
-                    TripleSet::match_triple(&**self.env(), s, p, o)
-                }
-            }
-        }
-        .triples()
-        .map(|t| t.node().globalize(&self).into())
-        .collect::<Vec<Sexp>>();
-
+        let e = self.access_env(env).unwrap();
+        let res = match s {
+            Some(ss) => match p {
+                Some(pp) => match o {
+                    Some(oo) => e.match_triple(ss, pp, oo),
+                    None => e.match_but_object(ss, pp),
+                },
+                None => match o {
+                    Some(oo) => e.match_but_predicate(ss, oo),
+                    None => e.match_subject(ss),
+                },
+            },
+            None => match p {
+                Some(pp) => match o {
+                    Some(oo) => e.match_but_subject(pp, oo),
+                    None => e.match_predicate(pp),
+                },
+                None => match o {
+                    Some(oo) => e.match_object(oo),
+                    None => e.match_all(),
+                },
+            },
+        };
         Ok(res.into())
+    }
+
+    pub fn ask_any(&self, node: Node) -> Result<TripleSet, Error> {
+        Ok(self.access_env(node.env()).unwrap().match_any(node.local()))
     }
 
     pub fn import(&mut self, original: Node) -> Result<Node, Error> {
@@ -431,17 +513,17 @@ impl Agent {
             );
         };
 
-        let imported = self.env().insert_structure(original.into());
+        let imported = self.define(Some(original.into()))?;
         let success = if let Ok(table) = <&mut LocalNodeTable>::try_from(
             self.context.meta_mut().entry_mut(table_node).as_option(),
         ) {
-            table.insert(original.local(), imported);
+            table.insert(original.local(), imported.local());
             true
         } else {
             false
         };
         if success {
-            Ok(imported.globalize(&self))
+            Ok(imported)
         } else {
             err!(
                 self,
@@ -453,12 +535,12 @@ impl Agent {
         }
     }
 
-    pub fn get_imported(&mut self, original: Node) -> Option<Node> {
-        if original.env() == self.pos().env() {
+    pub fn get_imported(&self, original: Node, target_env: LocalNode) -> Option<Node> {
+        if original.env() == target_env {
             return Some(original);
         }
 
-        let table_node = self.get_import_table(original.env());
+        let table_node = self.get_import_table(original.env(), target_env);
         if table_node.is_none() {
             return None;
         }
@@ -474,8 +556,17 @@ impl Agent {
 
     pub fn find_env<S: AsRef<str>>(&self, s: S) -> Option<LocalNode> {
         let meta = self.context.meta();
-        let triples = meta
-            .match_predicate(self.context.serialize_path())
+        let triples = self
+            .ask_from(
+                LocalNode::default(),
+                None,
+                Some(Node::new(
+                    LocalNode::default(),
+                    self.context().serialize_path(),
+                )),
+                None,
+            )
+            .unwrap()
             .triples();
         for triple in triples {
             let object_node = meta.triple_object(triple);
@@ -507,7 +598,11 @@ impl Agent {
         let env = self.pos().env();
         let import_triple = {
             let meta = self.context.meta_mut();
-            if let Some(triple) = meta.match_triple(env, imports_node, from_env) {
+            if let Some(triple) = meta
+                .match_triple(env, imports_node, from_env)
+                .triples()
+                .next()
+            {
                 triple
             } else {
                 meta.insert_triple(env, imports_node, from_env)
@@ -534,13 +629,16 @@ impl Agent {
         }
     }
 
-    fn get_import_table(&mut self, from_env: LocalNode) -> Option<LocalNode> {
+    fn get_import_table(&self, from_env: LocalNode, target_env: LocalNode) -> Option<LocalNode> {
         let imports_node = self.context.imports();
         let import_table_node = self.context.import_table();
-        let env = self.pos().env();
         let import_triple = {
-            let meta = self.context.meta_mut();
-            if let Some(triple) = meta.match_triple(env, imports_node, from_env) {
+            let meta = self.context.meta();
+            if let Some(triple) = meta
+                .match_triple(target_env, imports_node, from_env)
+                .triples()
+                .next()
+            {
                 triple
             } else {
                 return None;
@@ -581,7 +679,7 @@ impl Agent {
         }
     }
 
-    pub fn print_sexp(&mut self, structure: &Sexp) {
+    pub fn print_sexp(&self, structure: &Sexp) {
         let mut writer = BufWriter::new(stdout());
         if let Err(err) = self.write_sexp(&mut writer, structure, 0, true) {
             println!("print_sexp error: {:?}", err);
@@ -590,7 +688,7 @@ impl Agent {
 
     // TODO(func) Make show_redirects & paren_color configurable & introspectable.
     fn write_sexp<W: std::io::Write>(
-        &mut self,
+        &self,
         w: &mut W,
         structure: &Sexp,
         depth: usize,
@@ -629,7 +727,7 @@ impl Agent {
     }
 
     fn write_primitive<W: std::io::Write>(
-        &mut self,
+        &self,
         w: &mut W,
         primitive: &Primitive,
         depth: usize,

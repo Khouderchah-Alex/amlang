@@ -15,9 +15,9 @@ impl<'a> TripleSet<'a> {
         Self { elements, env }
     }
 
-    pub fn match_triple(env: &'a EnvObject, s: LocalNode, p: LocalNode, o: LocalNode) -> Self {
+    pub(super) fn from_option(env: &'a EnvObject, option: Option<LocalTriple>) -> Self {
         let mut elements = BTreeSet::new();
-        if let Some(triple) = env.match_triple(s, p, o) {
+        if let Some(triple) = option {
             elements.insert(triple);
         }
         Self { elements, env }

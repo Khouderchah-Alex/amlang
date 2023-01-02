@@ -41,7 +41,7 @@ pub trait Environment: DynClone {
         subject: LocalNode,
         predicate: LocalNode,
         object: LocalNode,
-    ) -> Option<LocalTriple>;
+    ) -> TripleSet;
     fn match_all(&self) -> TripleSet;
 
     fn match_any(&self, node: LocalNode) -> TripleSet {
