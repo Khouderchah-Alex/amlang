@@ -31,6 +31,14 @@ impl<'a> TripleSet<'a> {
         self.elements.into_iter()
     }
 
+    pub fn subjects(&self) -> SubjIter {
+        SubjIter::new(self)
+    }
+
+    pub fn predicates(&self) -> PredIter {
+        PredIter::new(self)
+    }
+
     pub fn objects(&self) -> ObjIter {
         ObjIter::new(self)
     }
@@ -51,28 +59,38 @@ impl<'a> TripleSet<'a> {
 
 pub type TripleIter = IntoIter<LocalTriple>;
 
-pub struct ObjIter<'a> {
-    iter: Iter<'a, LocalTriple>,
-    env: &'a EnvObject,
+macro_rules! impl_iters {
+    ($($name:ident -> $method:ident),+ $(,)? ) => {
+        $(
+            pub struct $name<'a> {
+                iter: Iter<'a, LocalTriple>,
+                env: &'a EnvObject,
+            }
+
+            impl<'a> $name<'a> {
+                fn new(set: &'a TripleSet) -> Self {
+                    Self {
+                        iter: set.elements.iter(),
+                        env: set.env,
+                    }
+                }
+            }
+
+            impl<'a> Iterator for $name<'a> {
+                type Item = LocalNode;
+                fn next(&mut self) -> Option<Self::Item> {
+                    if let Some(triple) = self.iter.next() {
+                        Some(self.env.$method(*triple))
+                    } else {
+                        None
+                    }
+                }
+            }
+        )+
+    };
 }
 
-impl<'a> ObjIter<'a> {
-    fn new(set: &'a TripleSet) -> Self {
-        Self {
-            iter: set.elements.iter(),
-            env: set.env,
-        }
-    }
-}
-
-impl<'a> Iterator for ObjIter<'a> {
-    type Item = LocalNode;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if let Some(triple) = self.iter.next() {
-            Some(self.env.triple_object(*triple))
-        } else {
-            None
-        }
-    }
-}
+impl_iters!(SubjIter -> triple_subject,
+            PredIter -> triple_predicate,
+            ObjIter -> triple_object,
+);
