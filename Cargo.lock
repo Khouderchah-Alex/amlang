@@ -20,6 +20,7 @@ dependencies = [
  "dyn-clone",
  "env_logger",
  "lazy_static",
+ "libc",
  "log",
  "regex",
  "rustyline",
