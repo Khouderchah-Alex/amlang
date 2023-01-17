@@ -12,15 +12,13 @@ use self::ParseErrorReason::*;
 
 
 /// Converts stream of TokenInfo into stream of Result<Sexp, Error>.
-pub struct ParseIter<S: Iterator<Item = TokenInfo>> {
-    stream: Peekable<S>,
+pub struct ParseIter<'a, S: Iterator<Item = TokenInfo>> {
+    stream: &'a mut Peekable<S>,
 }
 
-impl<S: Iterator<Item = TokenInfo>> ParseIter<S> {
-    pub fn from_tokens(stream: S) -> Self {
-        Self {
-            stream: stream.peekable(),
-        }
+impl<'a, S: Iterator<Item = TokenInfo>> ParseIter<'a, S> {
+    pub fn from_peekable(peekable: &'a mut Peekable<S>) -> Self {
+        Self { stream: peekable }
     }
 }
 
@@ -161,7 +159,7 @@ pub fn parse_sexp<I: Iterator<Item = TokenInfo>>(
     }
 }
 
-impl<S: Iterator<Item = TokenInfo>> Iterator for ParseIter<S> {
+impl<'a, S: Iterator<Item = TokenInfo>> Iterator for ParseIter<'a, S> {
     type Item = Result<Sexp, Error>;
 
     fn next(&mut self) -> Option<Self::Item> {

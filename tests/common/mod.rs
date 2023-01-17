@@ -30,8 +30,8 @@ pub fn setup() -> Result<(Agent, EnvManager<impl EnvPolicy>), String> {
 }
 
 pub fn results<S: AsRef<str>>(lang_agent: &mut Agent, s: S) -> Vec<Sexp> {
-    let tokens = StringStream::new(s, policy_base).unwrap();
-    let sexps = ParseIter::from_tokens(tokens);
+    let mut tokens = StringStream::new(s, policy_base).unwrap().peekable();
+    let sexps = ParseIter::from_peekable(&mut tokens);
     lang_agent
         .run(sexps, |_, _| {})
         .map(|e| e.unwrap())
@@ -42,7 +42,7 @@ pub fn results_with_errors<S: AsRef<str>>(
     lang_agent: &mut Agent,
     s: S,
 ) -> Vec<Result<Sexp, Error>> {
-    let tokens = StringStream::new(s, policy_base).unwrap();
-    let sexps = ParseIter::from_tokens(tokens);
+    let mut tokens = StringStream::new(s, policy_base).unwrap().peekable();
+    let sexps = ParseIter::from_peekable(&mut tokens);
     lang_agent.run(sexps, |_, _| {}).collect::<Vec<_>>()
 }

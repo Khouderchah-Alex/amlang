@@ -75,8 +75,8 @@ fn main() -> Result<(), String> {
     agent.designation_chain_mut().push_front(lang_env);
 
     // Run agent.
-    let tokens = CliStream::new(agent.clone());
-    let sexps = ParseIter::from_tokens(tokens);
+    let mut tokens = CliStream::new(agent.clone()).peekable();
+    let sexps = ParseIter::from_peekable(&mut tokens);
     for _result in agent.run(sexps, print_result) {}
 
     // Serialize.
