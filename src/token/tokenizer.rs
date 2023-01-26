@@ -2,7 +2,7 @@
 
 use std::collections::VecDeque;
 
-use super::token::{Token, TokenInfo};
+use super::token::{Token, TokenKind};
 use crate::agent::symbol_policies::SymbolPolicy;
 use crate::error::{Error, ErrorKind};
 use crate::primitive::symbol::{SymbolError, ToSymbol};
@@ -27,7 +27,7 @@ pub struct Tokenizer<SymbolInfo> {
     symbol_policy: SymbolPolicy<SymbolInfo>,
 
     line_count: usize,
-    tokens: VecDeque<TokenInfo>,
+    tokens: VecDeque<Token>,
 }
 
 #[derive(Debug)]
@@ -103,8 +103,8 @@ impl<SymbolInfo> Tokenizer<SymbolInfo> {
                         if !empty {
                             self.push_token(&l[start..i], start)?;
                         }
-                        self.tokens.push_back(TokenInfo {
-                            token: Token::Comment(l[i..].to_string()),
+                        self.tokens.push_back(Token {
+                            token: TokenKind::Comment(l[i..].to_string()),
                             line: self.line_count,
                             col: i,
                         });
@@ -125,19 +125,19 @@ impl<SymbolInfo> Tokenizer<SymbolInfo> {
                             let token = match c {
                                 '(' => {
                                     self.depth += 1;
-                                    Token::LeftParen
+                                    TokenKind::LeftParen
                                 }
                                 ')' => {
                                     self.depth = self.depth.saturating_sub(1);
-                                    Token::RightParen
+                                    TokenKind::RightParen
                                 }
                                 '\'' => {
                                     self.started_quote = true;
-                                    Token::Quote
+                                    TokenKind::Quote
                                 }
                                 _ => panic!(),
                             };
-                            self.tokens.push_back(TokenInfo {
+                            self.tokens.push_back(Token {
                                 token,
                                 line: self.line_count,
                                 col: i,
@@ -171,8 +171,8 @@ impl<SymbolInfo> Tokenizer<SymbolInfo> {
                         }
                         '"' => {
                             s.push_str(&line.as_ref()[start..i]);
-                            self.tokens.push_back(TokenInfo {
-                                token: Token::Primitive(LangString(LangString::new(s))),
+                            self.tokens.push_back(Token {
+                                token: TokenKind::Primitive(LangString(LangString::new(s))),
                                 line: self.line_count,
                                 col: *col,
                             });
@@ -219,8 +219,8 @@ impl<SymbolInfo> Tokenizer<SymbolInfo> {
 
     fn push_token(&mut self, ptoken: &str, start: usize) -> Result<(), TokenizeError> {
         if ptoken == "." {
-            self.tokens.push_back(TokenInfo {
-                token: Token::Period,
+            self.tokens.push_back(Token {
+                token: TokenKind::Period,
                 line: self.line_count,
                 col: start,
             });
@@ -229,10 +229,10 @@ impl<SymbolInfo> Tokenizer<SymbolInfo> {
 
         // Try to parse as number before imposing Symbol constraints.
         let token = if let Ok(num) = ptoken.parse::<Num>() {
-            Token::Primitive(Number(num))
+            TokenKind::Primitive(Number(num))
         } else {
             match ptoken.to_symbol(self.symbol_policy) {
-                Ok(symbol) => Token::Primitive(Symbol(symbol)),
+                Ok(symbol) => TokenKind::Primitive(Symbol(symbol)),
                 Err(err) => {
                     return Err(TokenizeError {
                         line: self.line_count,
@@ -243,7 +243,7 @@ impl<SymbolInfo> Tokenizer<SymbolInfo> {
             }
         };
 
-        self.tokens.push_back(TokenInfo {
+        self.tokens.push_back(Token {
             token,
             line: self.line_count,
             col: start,
@@ -253,7 +253,7 @@ impl<SymbolInfo> Tokenizer<SymbolInfo> {
 }
 
 
-impl<S: AsRef<str>, SymbolInfo> Transform<S, TokenInfo> for Tokenizer<SymbolInfo> {
+impl<S: AsRef<str>, SymbolInfo> Transform<S, Token> for Tokenizer<SymbolInfo> {
     fn input(&mut self, input: S) -> Result<bool, Error> {
         if let Err(error) = self.tokenize(input) {
             return Err(Error::no_agent(Box::new(error)));
@@ -261,7 +261,7 @@ impl<S: AsRef<str>, SymbolInfo> Transform<S, TokenInfo> for Tokenizer<SymbolInfo
         Ok(self.tokens.len() > 0)
     }
 
-    fn output(&mut self) -> Option<TokenInfo> {
+    fn output(&mut self) -> Option<Token> {
         self.tokens.pop_front()
     }
 }

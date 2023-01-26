@@ -3,9 +3,9 @@ use super::*;
 use crate::agent::symbol_policies::policy_base;
 use crate::primitive::{Number, ToSymbol};
 use crate::token::string_stream;
-use Token::*;
+use TokenKind::*;
 
-fn nest(mut v: Vec<Token>) -> Vec<Token> {
+fn nest(mut v: Vec<TokenKind>) -> Vec<TokenKind> {
     v.insert(0, LeftParen);
     v.push(RightParen);
     v
@@ -54,7 +54,7 @@ fn newlines() {
 #[test]
 fn ints() {
     let input = "(1 2 -4 33 128)";
-    let mut expected: Vec<Token> = vec![1, 2, -4, 33, 128]
+    let mut expected: Vec<TokenKind> = vec![1, 2, -4, 33, 128]
         .iter_mut()
         .map(|elem| Primitive(Number(Number::I64(*elem))))
         .collect();
@@ -69,7 +69,7 @@ fn ints() {
 #[test]
 fn floats() {
     let input = "(1. 2.2 -4.5 33. 128.128 .2)";
-    let mut expected: Vec<Token> = vec![1., 2.2, -4.5, 33., 128.128, 0.2]
+    let mut expected: Vec<TokenKind> = vec![1., 2.2, -4.5, 33., 128.128, 0.2]
         .iter_mut()
         .map(|elem| Primitive(Number(Number::F64(*elem))))
         .collect();
@@ -84,7 +84,7 @@ fn floats() {
 #[test]
 fn strings() {
     let input = "(\"test.'(est)\" \n\"hello\")";
-    let mut expected: Vec<Token> = vec!["test.'(est)", "hello"]
+    let mut expected: Vec<TokenKind> = vec!["test.'(est)", "hello"]
         .iter_mut()
         .map(|elem| Primitive(LangString(LangString::new(*elem))))
         .collect();

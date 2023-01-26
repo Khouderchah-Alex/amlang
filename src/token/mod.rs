@@ -1,6 +1,6 @@
 // Public exports.
 pub use stream::{fifo_stream, file_stream, string_stream};
-pub use token::{Token, TokenInfo};
+pub use token::{Token, TokenKind};
 pub use tokenizer::TokenizeError;
 
 // Public mods.

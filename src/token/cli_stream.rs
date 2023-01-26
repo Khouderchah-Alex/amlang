@@ -2,7 +2,7 @@ use rustyline::error::ReadlineError;
 use rustyline::Editor;
 
 use super::cli_helper::CliHelper;
-use super::token::TokenInfo;
+use super::token::Token;
 use super::tokenizer::Tokenizer;
 use crate::agent::symbol_policies::policy_base;
 use crate::agent::Agent;
@@ -43,11 +43,11 @@ impl CliStream {
 
 
 impl Iterator for CliStream {
-    type Item = TokenInfo;
+    type Item = Token;
 
-    fn next(&mut self) -> Option<TokenInfo> {
+    fn next(&mut self) -> Option<Token> {
         loop {
-            if let Some(token) = <dyn Transform<String, TokenInfo>>::output(&mut self.tokenizer) {
+            if let Some(token) = <dyn Transform<String, Token>>::output(&mut self.tokenizer) {
                 return Some(token);
             }
 

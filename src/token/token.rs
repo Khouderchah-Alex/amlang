@@ -3,7 +3,7 @@ use std::fmt;
 use crate::primitive::Primitive;
 
 #[derive(Debug, PartialEq)]
-pub enum Token {
+pub enum TokenKind {
     LeftParen,
     RightParen,
     Quote,
@@ -13,16 +13,16 @@ pub enum Token {
 }
 
 #[derive(Debug)]
-pub struct TokenInfo {
-    pub token: Token,
+pub struct Token {
+    pub token: TokenKind,
     pub line: usize,
     pub col: usize,
 }
 
-impl fmt::Display for TokenInfo {
+impl fmt::Display for Token {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self.token {
-            Token::Primitive(p) => write!(f, "{} @ ({}, {})", p, self.line, self.col),
+            TokenKind::Primitive(p) => write!(f, "{} @ ({}, {})", p, self.line, self.col),
             _ => write!(f, "{:?} @ ({}, {})", self.token, self.line, self.col),
         }
     }

@@ -6,17 +6,17 @@ use crate::agent::symbol_policies::policy_base;
 use crate::error::{Error, ErrorKind};
 use crate::primitive::{ToLangString, ToSymbol};
 use crate::sexp::{ConsList, Sexp};
-use crate::token::{Token, TokenInfo};
+use crate::token::{Token, TokenKind};
 
 use self::ParseErrorReason::*;
 
 
-/// Converts stream of TokenInfo into stream of Result<Sexp, Error>.
-pub struct ParseIter<'a, S: Iterator<Item = TokenInfo>> {
+/// Converts stream of Token into stream of Result<Sexp, Error>.
+pub struct ParseIter<'a, S: Iterator<Item = Token>> {
     stream: &'a mut Peekable<S>,
 }
 
-impl<'a, S: Iterator<Item = TokenInfo>> ParseIter<'a, S> {
+impl<'a, S: Iterator<Item = Token>> ParseIter<'a, S> {
     pub fn from_peekable(peekable: &'a mut Peekable<S>) -> Self {
         Self { stream: peekable }
     }
@@ -37,7 +37,7 @@ pub enum ParseErrorReason {
 #[derive(Debug)]
 pub struct ParseError {
     reason: ParseErrorReason,
-    token: TokenInfo,
+    token: Token,
 }
 
 /// Returns None when finished parsing, otherwise returns Some(sexp).
@@ -45,14 +45,14 @@ pub struct ParseError {
 /// This returns a ParseError rather than Error so that clients can
 /// determine what state, if any, to include; this module is too
 /// low-level to make such decisions.
-pub fn parse_sexp<I: Iterator<Item = TokenInfo>>(
+pub fn parse_sexp<I: Iterator<Item = Token>>(
     tokens: &mut Peekable<I>,
     depth: usize,
 ) -> Result<Option<Sexp>, ParseError> {
     // Let's just ignore comments for now.
     let mut current = tokens.next();
-    while let Some(TokenInfo {
-        token: Token::Comment(_),
+    while let Some(Token {
+        token: TokenKind::Comment(_),
         ..
     }) = current
     {
@@ -65,7 +65,7 @@ pub fn parse_sexp<I: Iterator<Item = TokenInfo>>(
 
     let token = current.unwrap();
     match token.token {
-        Token::LeftParen => {
+        TokenKind::LeftParen => {
             if depth >= MAX_LIST_DEPTH {
                 return Err(ParseError {
                     reason: DepthOverflow,
@@ -75,8 +75,8 @@ pub fn parse_sexp<I: Iterator<Item = TokenInfo>>(
 
             let mut list = ConsList::new();
             loop {
-                if let Some(TokenInfo {
-                    token: Token::Period,
+                if let Some(Token {
+                    token: TokenKind::Period,
                     ..
                 }) = tokens.peek()
                 {
@@ -89,8 +89,8 @@ pub fn parse_sexp<I: Iterator<Item = TokenInfo>>(
                             token,
                         });
                     };
-                    if let Some(TokenInfo {
-                        token: Token::RightParen,
+                    if let Some(Token {
+                        token: TokenKind::RightParen,
                         ..
                     }) = tokens.next()
                     {
@@ -103,8 +103,8 @@ pub fn parse_sexp<I: Iterator<Item = TokenInfo>>(
                     return Ok(Some(list.release_with_tail(Some(cdr.into()))));
                 }
 
-                if let Some(TokenInfo {
-                    token: Token::RightParen,
+                if let Some(Token {
+                    token: TokenKind::RightParen,
                     ..
                 }) = tokens.peek()
                 {
@@ -123,7 +123,7 @@ pub fn parse_sexp<I: Iterator<Item = TokenInfo>>(
                 }
             }
         }
-        Token::Quote => {
+        TokenKind::Quote => {
             let sexp = parse_sexp(tokens, depth + 1)?;
             if let Some(val) = sexp {
                 let mut list = ConsList::new();
@@ -138,28 +138,28 @@ pub fn parse_sexp<I: Iterator<Item = TokenInfo>>(
                 });
             }
         }
-        Token::Period => {
+        TokenKind::Period => {
             return Err(ParseError {
                 reason: IsolatedPeriod,
                 token,
             });
         }
-        Token::RightParen => {
+        TokenKind::RightParen => {
             return Err(ParseError {
                 reason: UnmatchedClose,
                 token,
             });
         }
-        Token::Primitive(primitive) => {
+        TokenKind::Primitive(primitive) => {
             return Ok(Some(primitive.into()));
         }
-        Token::Comment(_) => {
+        TokenKind::Comment(_) => {
             unreachable!();
         }
     }
 }
 
-impl<'a, S: Iterator<Item = TokenInfo>> Iterator for ParseIter<'a, S> {
+impl<'a, S: Iterator<Item = Token>> Iterator for ParseIter<'a, S> {
     type Item = Result<Sexp, Error>;
 
     fn next(&mut self) -> Option<Self::Item> {
