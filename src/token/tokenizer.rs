@@ -1,28 +1,31 @@
 //! Module for breaking Amlang text into tokens.
 
 use std::collections::VecDeque;
-use std::fmt;
 
 use super::token::{Token, TokenInfo};
 use crate::agent::symbol_policies::SymbolPolicy;
+use crate::error::{Error, ErrorKind};
 use crate::primitive::symbol::{SymbolError, ToSymbol};
-use crate::primitive::LangString;
 use crate::primitive::Number as Num;
 use crate::primitive::Primitive::*;
+use crate::primitive::{LangString, ToLangString};
+use crate::sexp::Sexp;
+use crate::stream::Transform;
 
 use self::TokenizerState::*;
 
 
 /// Essentially a Mealy machine that outputs and accumulates Tokens
 /// given string-like input.
-#[derive(Debug)]
-pub struct Tokenizer {
+pub struct Tokenizer<SymbolInfo> {
     // Mealy machine state.
     state: TokenizerState,
     depth: usize,
     started_quote: bool,
 
     // Non-control state.
+    symbol_policy: SymbolPolicy<SymbolInfo>,
+
     line_count: usize,
     tokens: VecDeque<TokenInfo>,
 }
@@ -41,22 +44,23 @@ enum TokenizerState {
 pub struct TokenizeError {
     line: usize,
     col: usize,
-    kind: ErrorKind,
+    kind: TokenizeErrorKind,
 }
 
 #[derive(Debug)]
-enum ErrorKind {
+enum TokenizeErrorKind {
     InvalidSymbol(SymbolError),
 }
 
 
-impl Tokenizer {
-    pub fn new() -> Self {
+impl<SymbolInfo> Tokenizer<SymbolInfo> {
+    pub fn new(symbol_policy: SymbolPolicy<SymbolInfo>) -> Self {
         Self {
             state: TokenizerState::Base,
             depth: 0,
             started_quote: false,
 
+            symbol_policy,
             line_count: 0,
             tokens: Default::default(),
         }
@@ -75,22 +79,14 @@ impl Tokenizer {
         std::cmp::max(self.depth, q as usize)
     }
 
-    pub fn tokenize<S: AsRef<str>, SymbolInfo>(
-        &mut self,
-        input: S,
-        symbol_policy: SymbolPolicy<SymbolInfo>,
-    ) -> Result<(), TokenizeError> {
+    pub fn tokenize<S: AsRef<str>>(&mut self, input: S) -> Result<(), TokenizeError> {
         for line in input.as_ref().split('\n') {
-            self.tokenize_line(line, symbol_policy)?;
+            self.tokenize_line(line)?;
         }
         Ok(())
     }
 
-    fn tokenize_line<S: AsRef<str>, SymbolInfo>(
-        &mut self,
-        line: S,
-        symbol_policy: SymbolPolicy<SymbolInfo>,
-    ) -> Result<(), TokenizeError> {
+    fn tokenize_line<S: AsRef<str>>(&mut self, line: S) -> Result<(), TokenizeError> {
         let mut start: usize = 0;
         let mut empty = true;
         let l = line.as_ref();
@@ -99,13 +95,13 @@ impl Tokenizer {
                 Base => {
                     if c.is_whitespace() {
                         if !empty {
-                            self.push_token(&l[start..i], start, symbol_policy)?;
+                            self.push_token(&l[start..i], start)?;
                             empty = true;
                         }
                         continue;
                     } else if c == ';' {
                         if !empty {
-                            self.push_token(&l[start..i], start, symbol_policy)?;
+                            self.push_token(&l[start..i], start)?;
                         }
                         self.tokens.push_back(TokenInfo {
                             token: Token::Comment(l[i..].to_string()),
@@ -122,7 +118,7 @@ impl Tokenizer {
                     match c {
                         '(' | ')' | '\'' => {
                             if !empty {
-                                self.push_token(&l[start..i], start, symbol_policy)?;
+                                self.push_token(&l[start..i], start)?;
                                 empty = true;
                             }
 
@@ -149,7 +145,7 @@ impl Tokenizer {
                         }
                         '"' => {
                             if !empty {
-                                self.push_token(&l[start..i], start, symbol_policy)?;
+                                self.push_token(&l[start..i], start)?;
                             }
                             start = i + 1;
                             self.state = InString(String::default(), start);
@@ -211,7 +207,7 @@ impl Tokenizer {
             }
             _ => {
                 if !empty {
-                    self.push_token(&l[start..], start, symbol_policy)?;
+                    self.push_token(&l[start..], start)?;
                 }
             }
         }
@@ -221,12 +217,7 @@ impl Tokenizer {
     }
 
 
-    fn push_token<SymbolInfo>(
-        &mut self,
-        ptoken: &str,
-        start: usize,
-        symbol_policy: SymbolPolicy<SymbolInfo>,
-    ) -> Result<(), TokenizeError> {
+    fn push_token(&mut self, ptoken: &str, start: usize) -> Result<(), TokenizeError> {
         if ptoken == "." {
             self.tokens.push_back(TokenInfo {
                 token: Token::Period,
@@ -240,13 +231,13 @@ impl Tokenizer {
         let token = if let Ok(num) = ptoken.parse::<Num>() {
             Token::Primitive(Number(num))
         } else {
-            match ptoken.to_symbol(symbol_policy) {
+            match ptoken.to_symbol(self.symbol_policy) {
                 Ok(symbol) => Token::Primitive(Symbol(symbol)),
                 Err(err) => {
                     return Err(TokenizeError {
                         line: self.line_count,
                         col: start,
-                        kind: ErrorKind::InvalidSymbol(err),
+                        kind: TokenizeErrorKind::InvalidSymbol(err),
                     });
                 }
             }
@@ -262,21 +253,29 @@ impl Tokenizer {
 }
 
 
-impl Iterator for Tokenizer {
-    type Item = TokenInfo;
+impl<S: AsRef<str>, SymbolInfo> Transform<S, TokenInfo> for Tokenizer<SymbolInfo> {
+    fn input(&mut self, input: S) -> Result<bool, Error> {
+        if let Err(error) = self.tokenize(input) {
+            return Err(Error::no_agent(Box::new(error)));
+        }
+        Ok(self.tokens.len() > 0)
+    }
 
-    fn next(&mut self) -> Option<TokenInfo> {
+    fn output(&mut self) -> Option<TokenInfo> {
         self.tokens.pop_front()
     }
 }
 
-
-impl fmt::Display for TokenizeError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "[Tokenize Error]: {:?} @ ({}, {})",
-            self.kind, self.line, self.col
+impl ErrorKind for TokenizeError {
+    // TODO(func) Model within env rather than fall back on strings.
+    fn reify(&self) -> Sexp {
+        list!(
+            "TokenizeError".to_lang_string(),
+            format!(
+                "[Tokenize Error]: {:?} @ ({}, {})",
+                self.kind, self.line, self.col
+            )
+            .to_lang_string(),
         )
     }
 }

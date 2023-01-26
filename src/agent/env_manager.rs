@@ -24,7 +24,8 @@ use crate::parser::parse_sexp;
 use crate::primitive::prelude::*;
 use crate::primitive::table::Table;
 use crate::sexp::{HeapSexp, Sexp, SexpIntoIter};
-use crate::token::file_stream::{FileStream, FileStreamError};
+use crate::stream::StreamError;
+use crate::token::file_stream;
 
 
 pub struct EnvManager<Policy: EnvPolicy> {
@@ -209,9 +210,9 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
             LocalNode::default(),
         );
 
-        let stream = match FileStream::new(in_path.as_ref(), policy_env_serde) {
+        let stream = match file_stream(in_path.as_ref(), policy_env_serde) {
             Ok(stream) => stream,
-            Err(err) => return err!(placeholder_agent, FileStreamError(err)),
+            Err(err) => return err!(placeholder_agent, StreamError(err)),
         };
         let mut peekable = stream.peekable();
 
@@ -395,9 +396,9 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
     }
 
     pub fn deserialize_curr_env<P: AsRef<StdPath>>(&mut self, in_path: P) -> Result<(), Error> {
-        let stream = match FileStream::new(in_path.as_ref(), policy_env_serde) {
+        let stream = match file_stream(in_path.as_ref(), policy_env_serde) {
             Ok(stream) => stream,
-            Err(FileStreamError::IoError(ref e)) if e.kind() == std::io::ErrorKind::NotFound => {
+            Err(StreamError::IoError(ref e)) if e.kind() == std::io::ErrorKind::NotFound => {
                 warn!("Env file not found: {}", in_path.as_ref().to_string_lossy());
                 warn!(
                     "Leaving env {} unchanged. If this is intended, then all is well.",
@@ -405,7 +406,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
                 );
                 return Ok(());
             }
-            Err(err) => return err!(self.agent(), FileStreamError(err)),
+            Err(err) => return err!(self.agent(), StreamError(err)),
         };
         let mut peekable = stream.peekable();
 

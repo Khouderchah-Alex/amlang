@@ -38,9 +38,10 @@ use super::fmt_io_adapter::FmtIoAdapter;
 use super::{Cons, ConsList};
 use crate::agent::symbol_policies::policy_base;
 use crate::environment::Environment;
+use crate::error::Error;
 use crate::parser::{parse_sexp, ParseError};
 use crate::primitive::prelude::*;
-use crate::token::string_stream::StringStream;
+use crate::token::string_stream;
 use crate::token::TokenizeError;
 
 
@@ -360,18 +361,18 @@ impl<'a> TryFrom<&'a Sexp> for &'a Primitive {
 
 // From<T> impls.
 impl FromStr for Sexp {
-    type Err = FromStrError;
+    type Err = Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let stream = match StringStream::new(s, policy_base) {
+        let stream = match string_stream(s, policy_base) {
             Ok(stream) => stream,
-            Err(err) => return Err(FromStrError::TokenizeError(err)),
+            Err(err) => return Err(err),
         };
 
         return match parse_sexp(&mut stream.peekable(), 0) {
             Ok(Some(sexp)) => Ok(sexp),
             Ok(None) => Ok(Sexp::default()),
-            Err(err) => Err(FromStrError::ParseError(err)),
+            Err(err) => Err(Error::no_agent(Box::new(err))),
         };
     }
 }

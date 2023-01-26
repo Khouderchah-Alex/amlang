@@ -2,7 +2,7 @@ use super::*;
 
 use crate::agent::symbol_policies::policy_base;
 use crate::primitive::{Number, ToSymbol};
-use crate::token::string_stream::StringStream;
+use crate::token::string_stream;
 use Token::*;
 
 fn nest(mut v: Vec<Token>) -> Vec<Token> {
@@ -25,7 +25,7 @@ fn nested() {
     );
     expected = nest(expected);
 
-    let tokens = StringStream::new(input, policy_base).unwrap();
+    let tokens = string_stream(input, policy_base).unwrap();
     for (i, elem) in tokens.enumerate() {
         assert_eq!(elem.token, expected[i]);
     }
@@ -45,7 +45,7 @@ fn newlines() {
     );
     expected = nest(expected);
 
-    let tokens = StringStream::new(input, policy_base).unwrap();
+    let tokens = string_stream(input, policy_base).unwrap();
     for (i, elem) in tokens.enumerate() {
         assert_eq!(elem.token, expected[i]);
     }
@@ -60,7 +60,7 @@ fn ints() {
         .collect();
     expected = nest(expected);
 
-    let tokens = StringStream::new(input, policy_base).unwrap();
+    let tokens = string_stream(input, policy_base).unwrap();
     for (i, elem) in tokens.enumerate() {
         assert_eq!(elem.token, expected[i]);
     }
@@ -75,7 +75,7 @@ fn floats() {
         .collect();
     expected = nest(expected);
 
-    let tokens = StringStream::new(input, policy_base).unwrap();
+    let tokens = string_stream(input, policy_base).unwrap();
     for (i, elem) in tokens.enumerate() {
         assert_eq!(elem.token, expected[i]);
     }
@@ -90,7 +90,7 @@ fn strings() {
         .collect();
     expected = nest(expected);
 
-    let tokens = StringStream::new(input, policy_base).unwrap();
+    let tokens = string_stream(input, policy_base).unwrap();
     for (i, elem) in tokens.enumerate() {
         assert_eq!(elem.token, expected[i]);
     }

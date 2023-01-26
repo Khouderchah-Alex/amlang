@@ -18,6 +18,7 @@ pub mod environment;
 pub mod model;
 pub mod parser;
 pub mod primitive;
+pub mod stream;
 pub mod token;
 
 pub mod prelude {

@@ -56,6 +56,10 @@ impl Error {
     pub fn agent(&self) -> Option<&Agent> {
         self.agent.as_ref().map(|a| &**a)
     }
+
+    pub fn consume(self) -> Box<dyn ErrorKind> {
+        self.kind
+    }
 }
 
 impl PartialEq for Error {
