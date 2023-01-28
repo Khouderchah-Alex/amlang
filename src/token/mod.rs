@@ -1,10 +1,8 @@
 // Public exports.
-pub use stream::{fifo_stream, file_stream, string_stream};
 pub use token::{Token, TokenKind};
-pub use tokenizer::TokenizeError;
+pub use tokenizer::{TokenizeError, Tokenizer};
 
 // Public mods.
-pub mod stream;
 pub mod token;
 
 #[cfg(feature = "cli")]

@@ -39,10 +39,11 @@ use super::{Cons, ConsList};
 use crate::agent::symbol_policies::policy_base;
 use crate::environment::Environment;
 use crate::error::Error;
-use crate::parser::{parse_sexp, ParseError};
+use crate::parser::parse_sexp;
 use crate::primitive::prelude::*;
-use crate::token::string_stream;
-use crate::token::TokenizeError;
+use crate::stream::input::StringReader;
+use crate::token::Tokenizer;
+use crate::transform;
 
 
 pub type HeapSexp = Box<Sexp>;
@@ -61,12 +62,6 @@ pub enum SexpIntoIter {
     None,
     Stack(Sexp),
     Heap(HeapSexp),
-}
-
-#[derive(Debug)]
-pub enum FromStrError {
-    TokenizeError(TokenizeError),
-    ParseError(ParseError),
 }
 
 impl Sexp {
@@ -364,12 +359,10 @@ impl FromStr for Sexp {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let stream = match string_stream(s, policy_base) {
-            Ok(stream) => stream,
-            Err(err) => return Err(err),
-        };
+        let input = StringReader::new(s);
+        let stream = transform!(input => Tokenizer::new(policy_base))?;
 
-        return match parse_sexp(&mut stream.peekable(), 0) {
+        return match parse_sexp(&mut stream.peekable()) {
             Ok(Some(sexp)) => Ok(sexp),
             Ok(None) => Ok(Sexp::default()),
             Err(err) => Err(Error::no_agent(Box::new(err))),

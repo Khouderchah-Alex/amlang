@@ -24,8 +24,8 @@ use crate::parser::parse_sexp;
 use crate::primitive::prelude::*;
 use crate::primitive::table::Table;
 use crate::sexp::{HeapSexp, Sexp, SexpIntoIter};
-use crate::stream::StreamError;
-use crate::token::file_stream;
+use crate::stream::input::FileReader;
+use crate::token::Tokenizer;
 
 
 pub struct EnvManager<Policy: EnvPolicy> {
@@ -210,13 +210,13 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
             LocalNode::default(),
         );
 
-        let stream = match file_stream(in_path.as_ref(), policy_env_serde) {
-            Ok(stream) => stream,
-            Err(err) => return err!(placeholder_agent, StreamError(err)),
+        let input = match FileReader::new(in_path) {
+            Ok(input) => input,
+            Err(err) => return err!(placeholder_agent, IoError(err)),
         };
-        let mut peekable = stream.peekable();
+        let mut peekable = transform!(input =>> Tokenizer::new(policy_env_serde))?.peekable();
 
-        let s = match parse_sexp(&mut peekable, 0) {
+        let s = match parse_sexp(&mut peekable) {
             Ok(Some(parsed)) => parsed,
             Ok(None) => return err!(placeholder_agent, MissingNodeSection),
             Err(err) => return err!(placeholder_agent, ParseError(err)),
@@ -396,9 +396,9 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
     }
 
     pub fn deserialize_curr_env<P: AsRef<StdPath>>(&mut self, in_path: P) -> Result<(), Error> {
-        let stream = match file_stream(in_path.as_ref(), policy_env_serde) {
-            Ok(stream) => stream,
-            Err(StreamError::IoError(ref e)) if e.kind() == std::io::ErrorKind::NotFound => {
+        let input = match FileReader::new(in_path.as_ref()) {
+            Ok(input) => input,
+            Err(ref e) if e.kind() == std::io::ErrorKind::NotFound => {
                 warn!("Env file not found: {}", in_path.as_ref().to_string_lossy());
                 warn!(
                     "Leaving env {} unchanged. If this is intended, then all is well.",
@@ -406,11 +406,11 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
                 );
                 return Ok(());
             }
-            Err(err) => return err!(self.agent(), StreamError(err)),
+            Err(err) => return err!(self.agent(), IoError(err)),
         };
-        let mut peekable = stream.peekable();
+        let mut peekable = transform!(input =>> Tokenizer::new(policy_env_serde))?.peekable();
 
-        let _header = match parse_sexp(&mut peekable, 0) {
+        let _header = match parse_sexp(&mut peekable) {
             Ok(Some(parsed)) => EnvHeader::reflect(parsed, self.agent_mut(), |_agent, p| {
                 if let Primitive::Node(n) = p {
                     Ok(*n)
@@ -421,17 +421,17 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
             Ok(None) => return err!(self.agent(), MissingHeaderSection),
             Err(err) => return err!(self.agent(), ParseError(err)),
         };
-        match parse_sexp(&mut peekable, 0) {
+        match parse_sexp(&mut peekable) {
             Ok(Some(parsed)) => self.deserialize_nodes(parsed)?,
             Ok(None) => return err!(self.agent(), MissingNodeSection),
             Err(err) => return err!(self.agent(), ParseError(err)),
         };
-        match parse_sexp(&mut peekable, 0) {
+        match parse_sexp(&mut peekable) {
             Ok(Some(parsed)) => self.deserialize_triples(parsed)?,
             Ok(None) => return err!(self.agent(), MissingTripleSection),
             Err(err) => return err!(self.agent(), ParseError(err)),
         };
-        match parse_sexp(&mut peekable, 0) {
+        match parse_sexp(&mut peekable) {
             Ok(Some(_)) => return err!(self.agent(), ExtraneousSection),
             Ok(None) => {}
             Err(err) => return err!(self.agent(), ParseError(err)),

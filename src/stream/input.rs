@@ -3,8 +3,6 @@ use std::io::{BufRead, BufReader};
 use std::os::unix::fs::OpenOptionsExt;
 use std::path::Path;
 
-use super::Read;
-
 
 pub struct FileReader {
     reader: Option<BufReader<File>>,
@@ -21,8 +19,9 @@ impl FileReader {
     }
 }
 
-impl Read<String> for FileReader {
-    fn read(&mut self) -> Option<String> {
+impl Iterator for FileReader {
+    type Item = String;
+    fn next(&mut self) -> Option<String> {
         if let Some(reader) = &mut self.reader {
             let mut out = String::default();
             if reader.read_line(&mut out).unwrap() == 0 {
@@ -57,8 +56,9 @@ impl FifoReader {
     }
 }
 
-impl Read<String> for FifoReader {
-    fn read(&mut self) -> Option<String> {
+impl Iterator for FifoReader {
+    type Item = String;
+    fn next(&mut self) -> Option<String> {
         if let Some(reader) = &mut self.reader {
             let mut out = String::default();
             if reader.read_line(&mut out).unwrap() == 0 {
@@ -83,8 +83,9 @@ impl StringReader {
     }
 }
 
-impl Read<String> for StringReader {
-    fn read(&mut self) -> Option<String> {
+impl Iterator for StringReader {
+    type Item = String;
+    fn next(&mut self) -> Option<String> {
         if let Some(_s) = &mut self.string {
             let mut original = None;
             std::mem::swap(&mut self.string, &mut original);

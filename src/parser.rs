@@ -47,6 +47,12 @@ pub struct ParseError {
 /// low-level to make such decisions.
 pub fn parse_sexp<I: Iterator<Item = Token>>(
     tokens: &mut Peekable<I>,
+) -> Result<Option<Sexp>, ParseError> {
+    parse_sexp_internal(tokens, 0)
+}
+
+fn parse_sexp_internal<I: Iterator<Item = Token>>(
+    tokens: &mut Peekable<I>,
     depth: usize,
 ) -> Result<Option<Sexp>, ParseError> {
     // Let's just ignore comments for now.
@@ -81,7 +87,7 @@ pub fn parse_sexp<I: Iterator<Item = Token>>(
                 }) = tokens.peek()
                 {
                     tokens.next();
-                    let cdr = if let Some(val) = parse_sexp(tokens, depth + 1)? {
+                    let cdr = if let Some(val) = parse_sexp_internal(tokens, depth + 1)? {
                         val
                     } else {
                         return Err(ParseError {
@@ -112,7 +118,7 @@ pub fn parse_sexp<I: Iterator<Item = Token>>(
                     return Ok(Some(list.release()));
                 }
 
-                let sexp = parse_sexp(tokens, depth + 1)?;
+                let sexp = parse_sexp_internal(tokens, depth + 1)?;
                 if let Some(val) = sexp {
                     list.append(val);
                 } else {
@@ -124,7 +130,7 @@ pub fn parse_sexp<I: Iterator<Item = Token>>(
             }
         }
         TokenKind::Quote => {
-            let sexp = parse_sexp(tokens, depth + 1)?;
+            let sexp = parse_sexp_internal(tokens, depth + 1)?;
             if let Some(val) = sexp {
                 let mut list = ConsList::new();
 
@@ -163,7 +169,7 @@ impl<'a, S: Iterator<Item = Token>> Iterator for ParseIter<'a, S> {
     type Item = Result<Sexp, Error>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        match parse_sexp(&mut self.stream, 0) {
+        match parse_sexp(&mut self.stream) {
             Ok(Some(parsed)) => Some(Ok(parsed)),
             Ok(None) => None,
             Err(err) => Some(Err(Error::no_agent(Box::new(err)))),

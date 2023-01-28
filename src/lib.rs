@@ -11,6 +11,8 @@ pub mod amlang_helpers;
 pub mod error;
 #[macro_use]
 pub mod sexp;
+#[macro_use]
+pub mod stream;
 
 pub mod agent;
 pub mod builtins;
@@ -18,7 +20,6 @@ pub mod environment;
 pub mod model;
 pub mod parser;
 pub mod primitive;
-pub mod stream;
 pub mod token;
 
 pub mod prelude {

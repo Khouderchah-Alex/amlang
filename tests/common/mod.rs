@@ -4,7 +4,9 @@ use amlang::agent::{Agent, EnvManager};
 use amlang::error::Error;
 use amlang::parser::ParseIter;
 use amlang::sexp::Sexp;
-use amlang::token::string_stream;
+use amlang::stream::input::StringReader;
+use amlang::token::Tokenizer;
+use amlang::transform;
 use amlang::InitOptions;
 
 
@@ -30,7 +32,9 @@ pub fn setup() -> Result<(Agent, EnvManager<impl EnvPolicy>), String> {
 }
 
 pub fn results<S: AsRef<str>>(lang_agent: &mut Agent, s: S) -> Vec<Sexp> {
-    let mut tokens = string_stream(s, policy_base).unwrap().peekable();
+    let mut tokens = transform!(StringReader::new(s) =>> Tokenizer::new(policy_base))
+        .unwrap()
+        .peekable();
     let sexps = ParseIter::from_peekable(&mut tokens);
     lang_agent
         .run(sexps, |_, _| {})
@@ -42,7 +46,9 @@ pub fn results_with_errors<S: AsRef<str>>(
     lang_agent: &mut Agent,
     s: S,
 ) -> Vec<Result<Sexp, Error>> {
-    let mut tokens = string_stream(s, policy_base).unwrap().peekable();
+    let mut tokens = transform!(StringReader::new(s) =>> Tokenizer::new(policy_base))
+        .unwrap()
+        .peekable();
     let sexps = ParseIter::from_peekable(&mut tokens);
     lang_agent.run(sexps, |_, _| {}).collect::<Vec<_>>()
 }

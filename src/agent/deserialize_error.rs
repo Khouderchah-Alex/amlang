@@ -2,11 +2,10 @@ use crate::error::ErrorKind;
 use crate::parser;
 use crate::primitive::{Symbol, ToLangString};
 use crate::sexp::{Cons, Sexp};
-use crate::stream::StreamError;
 
 #[derive(Debug)]
 pub enum DeserializeError {
-    StreamError(StreamError),
+    IoError(std::io::Error),
     ParseError(parser::ParseError),
     MissingHeaderSection,
     MissingNodeSection,
@@ -22,8 +21,11 @@ impl ErrorKind for DeserializeError {
     // TODO(func) Model within env rather than fall back on strings.
     fn reify(&self) -> Sexp {
         let inner = match self {
-            Self::StreamError(err) => {
-                list!("StreamError".to_lang_string(), err.reify(),)
+            Self::IoError(err) => {
+                list!(
+                    "IoError".to_lang_string(),
+                    format!("{}", err).to_lang_string(),
+                )
             }
             Self::ParseError(err) => err.reify(),
             Self::MissingHeaderSection => {
