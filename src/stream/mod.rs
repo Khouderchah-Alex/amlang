@@ -4,12 +4,13 @@ pub mod input;
 
 pub mod prelude {
     pub use super::input::{FifoReader, FileReader, StringReader};
-    pub use super::strategy::{ErrorHandler, Strategy, StrategyKind, Transform};
+    pub use super::strategy::{Strategy, StrategyKind, Transform};
     pub use super::Stream;
 }
 
-pub use strategy::{ErrorHandler, Strategy, StrategyKind, Transform};
+pub use strategy::{Strategy, StrategyKind, Transform};
 
+use crate::error::Error;
 
 // Benefits:
 //  * "Generic barrier" over Iterators
@@ -21,17 +22,17 @@ pub use strategy::{ErrorHandler, Strategy, StrategyKind, Transform};
 // Notes:
 //  * Data can be stored along the pipeline, but so can Iterators with closures
 pub struct Stream<Output> {
-    strategy: Box<dyn Iterator<Item = Output>>,
+    strategy: Box<dyn Iterator<Item = Result<Output, Error>>>,
 }
 
 impl<Output> Stream<Output> {
-    pub fn new(strategy: Box<dyn Iterator<Item = Output>>) -> Self {
+    pub fn new(strategy: Box<dyn Iterator<Item = Result<Output, Error>>>) -> Self {
         Self { strategy }
     }
 }
 
 impl<Output> Iterator for Stream<Output> {
-    type Item = Output;
+    type Item = Result<Output, Error>;
     fn next(&mut self) -> Option<Self::Item> {
         self.strategy.next()
     }

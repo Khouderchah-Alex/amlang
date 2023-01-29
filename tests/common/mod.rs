@@ -34,6 +34,7 @@ pub fn setup() -> Result<(Agent, EnvManager<impl EnvPolicy>), String> {
 pub fn results<S: AsRef<str>>(lang_agent: &mut Agent, s: S) -> Vec<Sexp> {
     let mut tokens = transform!(StringReader::new(s) =>> Tokenizer::new(policy_base))
         .unwrap()
+        .map(|r| r.unwrap())
         .peekable();
     let sexps = ParseIter::from_peekable(&mut tokens);
     lang_agent
@@ -48,6 +49,7 @@ pub fn results_with_errors<S: AsRef<str>>(
 ) -> Vec<Result<Sexp, Error>> {
     let mut tokens = transform!(StringReader::new(s) =>> Tokenizer::new(policy_base))
         .unwrap()
+        .map(|r| r.unwrap())
         .peekable();
     let sexps = ParseIter::from_peekable(&mut tokens);
     lang_agent.run(sexps, |_, _| {}).collect::<Vec<_>>()

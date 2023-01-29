@@ -26,7 +26,7 @@ fn nested() {
     expected = nest(expected);
 
     let tokens = transform!(StringReader::new(input) =>> Tokenizer::new(policy_base)).unwrap();
-    for (i, elem) in tokens.enumerate() {
+    for (i, elem) in tokens.map(|r| r.unwrap()).enumerate() {
         assert_eq!(elem.token, expected[i]);
     }
 }
@@ -46,7 +46,7 @@ fn newlines() {
     expected = nest(expected);
 
     let tokens = transform!(StringReader::new(input) =>> Tokenizer::new(policy_base)).unwrap();
-    for (i, elem) in tokens.enumerate() {
+    for (i, elem) in tokens.map(|r| r.unwrap()).enumerate() {
         assert_eq!(elem.token, expected[i]);
     }
 }
@@ -61,7 +61,7 @@ fn ints() {
     expected = nest(expected);
 
     let tokens = transform!(StringReader::new(input) =>> Tokenizer::new(policy_base)).unwrap();
-    for (i, elem) in tokens.enumerate() {
+    for (i, elem) in tokens.map(|r| r.unwrap()).enumerate() {
         assert_eq!(elem.token, expected[i]);
     }
 }
@@ -76,7 +76,7 @@ fn floats() {
     expected = nest(expected);
 
     let tokens = transform!(StringReader::new(input) =>> Tokenizer::new(policy_base)).unwrap();
-    for (i, elem) in tokens.enumerate() {
+    for (i, elem) in tokens.map(|r| r.unwrap()).enumerate() {
         assert_eq!(elem.token, expected[i]);
     }
 }
@@ -91,7 +91,7 @@ fn strings() {
     expected = nest(expected);
 
     let tokens = transform!(StringReader::new(input) =>> Tokenizer::new(policy_base)).unwrap();
-    for (i, elem) in tokens.enumerate() {
+    for (i, elem) in tokens.map(|r| r.unwrap()).enumerate() {
         assert_eq!(elem.token, expected[i]);
     }
 }

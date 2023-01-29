@@ -6,7 +6,6 @@ macro_rules! transform {
     (
         $input:expr
             => $transform:expr
-            $(;$err_handler:expr)?
             $(=> ($tail:tt)*)*
     ) => {
         transform!(
@@ -14,14 +13,12 @@ macro_rules! transform {
                 $crate::stream::StrategyKind::Lazy,
                 Box::new($input),
                 Box::new($transform),
-                Box::new(transform!(@error $($err_handler)*)),
             )
                 => $($tail)*)
     };
     (
         $input:expr
             =>> $transform:expr
-            $(;$err_handler:expr)?
             $(=> ($tail:tt)*)*
     ) => {
         transform!(
@@ -29,24 +26,16 @@ macro_rules! transform {
                 $crate::stream::StrategyKind::Eager,
                 Box::new($input),
                 Box::new($transform),
-                Box::new(transform!(@error $($err_handler)*)),
             )
                 => $($tail)*)
     };
     ($input:expr =>) => { $input };
-    (@error) => {
-        |_error: Error| panic!()
-    };
-    (@error $err_handler:expr) => {
-        $err_handler
-    };
 }
 
 pub struct Strategy<Input, Output> {
     kind: StrategyKind,
-    input: Box<dyn Iterator<Item = Input>>,
+    input: Box<dyn Iterator<Item = Result<Input, Error>>>,
     transform: Box<dyn Transform<Input, Output>>,
-    error_handler: Box<ErrorHandler>,
 }
 
 #[derive(PartialEq)]
@@ -57,25 +46,21 @@ pub enum StrategyKind {
 
 
 pub trait Transform<Input, Output> {
-    fn input(&mut self, input: Input) -> Result<bool, Error>; // output_available
-    fn output(&mut self) -> Option<Output>;
+    fn input(&mut self, input: Result<Input, Error>) -> Result<bool, Error>; // output_available
+    fn output(&mut self) -> Option<Result<Output, Error>>;
 }
-
-pub type ErrorHandler = dyn FnMut(Error);
 
 
 impl<Input, Output> Strategy<Input, Output> {
     pub fn new(
         kind: StrategyKind,
-        input: Box<dyn Iterator<Item = Input>>,
+        input: Box<dyn Iterator<Item = Result<Input, Error>>>,
         transform: Box<dyn Transform<Input, Output>>,
-        error_handler: Box<ErrorHandler>,
     ) -> Result<Self, Error> {
         let mut res = Self {
             kind,
             input,
             transform,
-            error_handler,
         };
 
         match res.kind {
@@ -94,21 +79,20 @@ impl<Input, Output> Strategy<Input, Output> {
         Ok(())
     }
 
-    fn output(&mut self) -> Option<Output> {
+    fn output(&mut self) -> Option<Result<Output, Error>> {
         if let Some(output) = self.transform.output() {
             return Some(output);
         }
 
-        if let Err(error) = self.load() {
-            (self.error_handler)(error);
+        match self.load() {
+            Ok(_) => self.transform.output(),
+            Err(err) => Some(Err(err)),
         }
-
-        self.transform.output()
     }
 }
 
 impl<Input, Output> Iterator for Strategy<Input, Output> {
-    type Item = Output;
+    type Item = Result<Output, Error>;
     fn next(&mut self) -> Option<Self::Item> {
         self.output()
     }

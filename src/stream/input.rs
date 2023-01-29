@@ -3,6 +3,8 @@ use std::io::{BufRead, BufReader};
 use std::os::unix::fs::OpenOptionsExt;
 use std::path::Path;
 
+use crate::error::Error;
+
 
 pub struct FileReader {
     reader: Option<BufReader<File>>,
@@ -20,15 +22,15 @@ impl FileReader {
 }
 
 impl Iterator for FileReader {
-    type Item = String;
-    fn next(&mut self) -> Option<String> {
+    type Item = Result<String, Error>;
+    fn next(&mut self) -> Option<Self::Item> {
         if let Some(reader) = &mut self.reader {
             let mut out = String::default();
             if reader.read_line(&mut out).unwrap() == 0 {
                 self.reader = None;
                 return None;
             }
-            return Some(out);
+            return Some(Ok(out));
         }
         None
     }
@@ -57,14 +59,14 @@ impl FifoReader {
 }
 
 impl Iterator for FifoReader {
-    type Item = String;
-    fn next(&mut self) -> Option<String> {
+    type Item = Result<String, Error>;
+    fn next(&mut self) -> Option<Self::Item> {
         if let Some(reader) = &mut self.reader {
             let mut out = String::default();
             if reader.read_line(&mut out).unwrap() == 0 {
                 return None;
             }
-            return Some(out);
+            return Some(Ok(out));
         }
         None
     }
@@ -84,12 +86,12 @@ impl StringReader {
 }
 
 impl Iterator for StringReader {
-    type Item = String;
-    fn next(&mut self) -> Option<String> {
+    type Item = Result<String, Error>;
+    fn next(&mut self) -> Option<Self::Item> {
         if let Some(_s) = &mut self.string {
             let mut original = None;
             std::mem::swap(&mut self.string, &mut original);
-            return original;
+            return Some(Ok(original.unwrap()));
         }
         None
     }

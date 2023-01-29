@@ -75,7 +75,9 @@ fn main() -> Result<(), String> {
     agent.designation_chain_mut().push_front(lang_env);
 
     // Run agent.
-    let mut tokens = CliStream::with_helper(agent.clone()).peekable();
+    let mut tokens = CliStream::with_helper(agent.clone())
+        .map(|r| r.unwrap())
+        .peekable();
     let sexps = ParseIter::from_peekable(&mut tokens);
     for _result in agent.run(sexps, print_result) {}
 

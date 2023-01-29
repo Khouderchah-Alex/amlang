@@ -6,6 +6,7 @@ use super::token::Token;
 use super::tokenizer::Tokenizer;
 use crate::agent::symbol_policies::policy_base;
 use crate::agent::Agent;
+use crate::error::Error;
 use crate::stream::Transform;
 
 
@@ -43,9 +44,9 @@ impl CliStream {
 
 
 impl Iterator for CliStream {
-    type Item = Token;
+    type Item = Result<Token, Error>;
 
-    fn next(&mut self) -> Option<Token> {
+    fn next(&mut self) -> Option<Self::Item> {
         loop {
             if let Some(token) = <dyn Transform<String, Token>>::output(&mut self.tokenizer) {
                 return Some(token);

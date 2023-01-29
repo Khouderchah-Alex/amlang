@@ -214,7 +214,9 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
             Ok(input) => input,
             Err(err) => return err!(placeholder_agent, IoError(err)),
         };
-        let mut peekable = transform!(input =>> Tokenizer::new(policy_env_serde))?.peekable();
+        let mut peekable = transform!(input =>> Tokenizer::new(policy_env_serde))?
+            .map(|r| r.unwrap())
+            .peekable();
 
         let s = match parse_sexp(&mut peekable) {
             Ok(Some(parsed)) => parsed,
@@ -408,7 +410,9 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
             }
             Err(err) => return err!(self.agent(), IoError(err)),
         };
-        let mut peekable = transform!(input =>> Tokenizer::new(policy_env_serde))?.peekable();
+        let mut peekable = transform!(input =>> Tokenizer::new(policy_env_serde))?
+            .map(|r| r.unwrap())
+            .peekable();
 
         let _header = match parse_sexp(&mut peekable) {
             Ok(Some(parsed)) => EnvHeader::reflect(parsed, self.agent_mut(), |_agent, p| {

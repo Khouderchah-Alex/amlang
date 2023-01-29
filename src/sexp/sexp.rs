@@ -360,7 +360,7 @@ impl FromStr for Sexp {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let input = StringReader::new(s);
-        let stream = transform!(input => Tokenizer::new(policy_base))?;
+        let stream = transform!(input => Tokenizer::new(policy_base))?.map(|r| r.unwrap());
 
         return match parse_sexp(&mut stream.peekable()) {
             Ok(Some(sexp)) => Ok(sexp),

@@ -254,15 +254,15 @@ impl<SymbolInfo> Tokenizer<SymbolInfo> {
 
 
 impl<S: AsRef<str>, SymbolInfo> Transform<S, Token> for Tokenizer<SymbolInfo> {
-    fn input(&mut self, input: S) -> Result<bool, Error> {
-        if let Err(error) = self.tokenize(input) {
+    fn input(&mut self, input: Result<S, Error>) -> Result<bool, Error> {
+        if let Err(error) = self.tokenize(input?) {
             return Err(Error::no_agent(Box::new(error)));
         }
         Ok(self.tokens.len() > 0)
     }
 
-    fn output(&mut self) -> Option<Token> {
-        self.tokens.pop_front()
+    fn output(&mut self) -> Option<Result<Token, Error>> {
+        Some(Ok(self.tokens.pop_front()?))
     }
 }
 
