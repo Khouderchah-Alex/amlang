@@ -20,10 +20,11 @@ use std::path::Path;
 use amlang::agent::env_policy::SimplePolicy;
 use amlang::agent::{Agent, EnvManager};
 use amlang::error::Error;
-use amlang::parser::ParseIter;
+use amlang::parser::Parser;
 use amlang::primitive::{Node, Primitive};
 use amlang::sexp::Sexp;
 use amlang::token::cli_stream::CliStream;
+use amlang::transform;
 
 
 const SERIALIZATION_PATH: &str = ".";
@@ -75,10 +76,8 @@ fn main() -> Result<(), String> {
     agent.designation_chain_mut().push_front(lang_env);
 
     // Run agent.
-    let mut tokens = CliStream::with_helper(agent.clone())
-        .map(|r| r.unwrap())
-        .peekable();
-    let sexps = ParseIter::from_peekable(&mut tokens);
+    let tokens = CliStream::with_helper(agent.clone());
+    let sexps = || -> Result<_, Error> { Ok(transform!(tokens => Parser::new())) }().unwrap();
     for _result in agent.run(sexps, print_result) {}
 
     // Serialize.

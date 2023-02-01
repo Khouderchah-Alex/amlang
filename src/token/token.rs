@@ -2,7 +2,7 @@ use std::fmt;
 
 use crate::primitive::Primitive;
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum TokenKind {
     LeftParen,
     RightParen,
@@ -12,7 +12,7 @@ pub enum TokenKind {
     Comment(String),
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Token {
     pub token: TokenKind,
     pub line: usize,

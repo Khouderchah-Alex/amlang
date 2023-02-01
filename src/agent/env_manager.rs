@@ -20,7 +20,7 @@ use crate::environment::environment::Environment;
 use crate::environment::local_node::{LocalId, LocalNode};
 use crate::error::Error;
 use crate::model::Reflective;
-use crate::parser::parse_sexp;
+use crate::parser::Parser;
 use crate::primitive::prelude::*;
 use crate::primitive::table::Table;
 use crate::sexp::{HeapSexp, Sexp, SexpIntoIter};
@@ -214,14 +214,14 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
             Ok(input) => input,
             Err(err) => return err!(placeholder_agent, IoError(err)),
         };
-        let mut peekable = transform!(input =>> Tokenizer::new(policy_env_serde))?
-            .map(|r| r.unwrap())
-            .peekable();
+        let mut stream = transform!(input
+                                    =>> Tokenizer::new(policy_env_serde)
+                                    => Parser::new());
 
-        let s = match parse_sexp(&mut peekable) {
-            Ok(Some(parsed)) => parsed,
-            Ok(None) => return err!(placeholder_agent, MissingNodeSection),
-            Err(err) => return err!(placeholder_agent, ParseError(err)),
+        let s = match stream.next() {
+            Some(Ok(parsed)) => parsed,
+            None => return err!(placeholder_agent, MissingNodeSection),
+            Some(Err(err)) => return Err(err),
         };
         AmlangContext::reflect(s, &mut placeholder_agent, |agent, p| {
             EnvManager::<Policy>::parse_node_inner(
@@ -410,35 +410,47 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
             }
             Err(err) => return err!(self.agent(), IoError(err)),
         };
-        let mut peekable = transform!(input =>> Tokenizer::new(policy_env_serde))?
-            .map(|r| r.unwrap())
-            .peekable();
+        let mut stream = transform!(input
+                                      =>> Tokenizer::new(policy_env_serde)
+                                      => Parser::new());
 
-        let _header = match parse_sexp(&mut peekable) {
-            Ok(Some(parsed)) => EnvHeader::reflect(parsed, self.agent_mut(), |_agent, p| {
+        let _header = match stream.next() {
+            Some(Ok(parsed)) => EnvHeader::reflect(parsed, self.agent_mut(), |_agent, p| {
                 if let Primitive::Node(n) = p {
                     Ok(*n)
                 } else {
                     panic!();
                 }
             })?,
-            Ok(None) => return err!(self.agent(), MissingHeaderSection),
-            Err(err) => return err!(self.agent(), ParseError(err)),
+            None => return err!(self.agent(), MissingHeaderSection),
+            Some(Err(mut err)) => {
+                err.set_agent(self.agent());
+                return Err(err);
+            }
         };
-        match parse_sexp(&mut peekable) {
-            Ok(Some(parsed)) => self.deserialize_nodes(parsed)?,
-            Ok(None) => return err!(self.agent(), MissingNodeSection),
-            Err(err) => return err!(self.agent(), ParseError(err)),
+        match stream.next() {
+            Some(Ok(parsed)) => self.deserialize_nodes(parsed)?,
+            None => return err!(self.agent(), MissingNodeSection),
+            Some(Err(mut err)) => {
+                err.set_agent(self.agent());
+                return Err(err);
+            }
         };
-        match parse_sexp(&mut peekable) {
-            Ok(Some(parsed)) => self.deserialize_triples(parsed)?,
-            Ok(None) => return err!(self.agent(), MissingTripleSection),
-            Err(err) => return err!(self.agent(), ParseError(err)),
+        match stream.next() {
+            Some(Ok(parsed)) => self.deserialize_triples(parsed)?,
+            None => return err!(self.agent(), MissingTripleSection),
+            Some(Err(mut err)) => {
+                err.set_agent(self.agent());
+                return Err(err);
+            }
         };
-        match parse_sexp(&mut peekable) {
-            Ok(Some(_)) => return err!(self.agent(), ExtraneousSection),
-            Ok(None) => {}
-            Err(err) => return err!(self.agent(), ParseError(err)),
+        match stream.next() {
+            Some(Ok(_)) => return err!(self.agent(), ExtraneousSection),
+            None => {}
+            Some(Err(mut err)) => {
+                err.set_agent(self.agent());
+                return Err(err);
+            }
         };
 
         info!(

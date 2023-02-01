@@ -1,6 +1,7 @@
 use super::*;
 
 use crate::agent::symbol_policies::policy_base;
+use crate::error::Error;
 use crate::primitive::{Number, ToSymbol};
 use crate::stream::input::StringReader;
 use TokenKind::*;
@@ -9,6 +10,10 @@ fn nest(mut v: Vec<TokenKind>) -> Vec<TokenKind> {
     v.insert(0, LeftParen);
     v.push(RightParen);
     v
+}
+
+fn stream(input: &str) -> Result<impl Iterator<Item = Result<Token, Error>>, Error> {
+    Ok(transform!(StringReader::new(input) =>> Tokenizer::new(policy_base)))
 }
 
 #[test]
@@ -25,7 +30,7 @@ fn nested() {
     );
     expected = nest(expected);
 
-    let tokens = transform!(StringReader::new(input) =>> Tokenizer::new(policy_base)).unwrap();
+    let tokens = stream(input).unwrap();
     for (i, elem) in tokens.map(|r| r.unwrap()).enumerate() {
         assert_eq!(elem.token, expected[i]);
     }
@@ -45,7 +50,7 @@ fn newlines() {
     );
     expected = nest(expected);
 
-    let tokens = transform!(StringReader::new(input) =>> Tokenizer::new(policy_base)).unwrap();
+    let tokens = stream(input).unwrap();
     for (i, elem) in tokens.map(|r| r.unwrap()).enumerate() {
         assert_eq!(elem.token, expected[i]);
     }
@@ -60,7 +65,7 @@ fn ints() {
         .collect();
     expected = nest(expected);
 
-    let tokens = transform!(StringReader::new(input) =>> Tokenizer::new(policy_base)).unwrap();
+    let tokens = stream(input).unwrap();
     for (i, elem) in tokens.map(|r| r.unwrap()).enumerate() {
         assert_eq!(elem.token, expected[i]);
     }
@@ -75,7 +80,7 @@ fn floats() {
         .collect();
     expected = nest(expected);
 
-    let tokens = transform!(StringReader::new(input) =>> Tokenizer::new(policy_base)).unwrap();
+    let tokens = stream(input).unwrap();
     for (i, elem) in tokens.map(|r| r.unwrap()).enumerate() {
         assert_eq!(elem.token, expected[i]);
     }
@@ -90,7 +95,7 @@ fn strings() {
         .collect();
     expected = nest(expected);
 
-    let tokens = transform!(StringReader::new(input) =>> Tokenizer::new(policy_base)).unwrap();
+    let tokens = stream(input).unwrap();
     for (i, elem) in tokens.map(|r| r.unwrap()).enumerate() {
         assert_eq!(elem.token, expected[i]);
     }

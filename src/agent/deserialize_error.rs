@@ -1,12 +1,10 @@
 use crate::error::ErrorKind;
-use crate::parser;
 use crate::primitive::{Symbol, ToLangString};
 use crate::sexp::{Cons, Sexp};
 
 #[derive(Debug)]
 pub enum DeserializeError {
     IoError(std::io::Error),
-    ParseError(parser::ParseError),
     MissingHeaderSection,
     MissingNodeSection,
     MissingTripleSection,
@@ -27,7 +25,6 @@ impl ErrorKind for DeserializeError {
                     format!("{}", err).to_lang_string(),
                 )
             }
-            Self::ParseError(err) => err.reify(),
             Self::MissingHeaderSection => {
                 list!("MissingHeaderSection".to_lang_string(),)
             }

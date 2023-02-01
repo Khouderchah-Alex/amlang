@@ -60,6 +60,10 @@ impl Error {
     pub fn consume(self) -> Box<dyn ErrorKind> {
         self.kind
     }
+
+    pub fn set_agent(&mut self, agent: &Agent) {
+        self.agent = Some(Box::new(agent.clone()));
+    }
 }
 
 impl PartialEq for Error {

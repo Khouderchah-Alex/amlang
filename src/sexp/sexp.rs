@@ -39,7 +39,7 @@ use super::{Cons, ConsList};
 use crate::agent::symbol_policies::policy_base;
 use crate::environment::Environment;
 use crate::error::Error;
-use crate::parser::parse_sexp;
+use crate::parser::Parser;
 use crate::primitive::prelude::*;
 use crate::stream::input::StringReader;
 use crate::token::Tokenizer;
@@ -360,13 +360,15 @@ impl FromStr for Sexp {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let input = StringReader::new(s);
-        let stream = transform!(input => Tokenizer::new(policy_base))?.map(|r| r.unwrap());
+        let mut stream = transform!(input
+                       => Tokenizer::new(policy_base)
+                       => Parser::new());
 
-        return match parse_sexp(&mut stream.peekable()) {
-            Ok(Some(sexp)) => Ok(sexp),
-            Ok(None) => Ok(Sexp::default()),
-            Err(err) => Err(Error::no_agent(Box::new(err))),
-        };
+        match stream.next() {
+            Some(Ok(sexp)) => Ok(sexp),
+            None => Ok(Default::default()),
+            Some(Err(err)) => Err(err),
+        }
     }
 }
 

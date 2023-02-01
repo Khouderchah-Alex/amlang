@@ -4,30 +4,28 @@ use crate::error::Error;
 #[macro_export]
 macro_rules! transform {
     (
-        $input:expr
-            => $transform:expr
-            $(=> ($tail:tt)*)*
+        $input:expr => $transform:expr
+        $(=> $($tail:tt)*)*
     ) => {
         transform!(
             $crate::stream::Strategy::new(
                 $crate::stream::StrategyKind::Lazy,
                 Box::new($input),
                 Box::new($transform),
-            )
-                => $($tail)*)
+            )?
+            => $($($tail)*)*)
     };
     (
-        $input:expr
-            =>> $transform:expr
-            $(=> ($tail:tt)*)*
+        $input:expr =>> $transform:expr
+        $(=> $($tail:tt)*)*
     ) => {
         transform!(
             $crate::stream::Strategy::new(
                 $crate::stream::StrategyKind::Eager,
                 Box::new($input),
                 Box::new($transform),
-            )
-                => $($tail)*)
+            )?
+            => $($($tail)*)*)
     };
     ($input:expr =>) => { $input };
 }

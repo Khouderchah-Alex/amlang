@@ -9,7 +9,7 @@ use crate::sexp::{Cons, HeapSexp, Sexp};
 
 #[derive(Debug)]
 pub struct ConsList {
-    head: Cons,
+    head: Box<Cons>,
     end: *mut Cons,
     len: usize,
 }
@@ -23,17 +23,17 @@ impl Default for ConsList {
 impl ConsList {
     pub fn new() -> ConsList {
         ConsList {
-            head: Cons::default(),
+            head: Box::new(Cons::default()),
             end: std::ptr::null_mut(),
             len: 0,
         }
     }
 
     pub fn release(self) -> Sexp {
-        self.head.into()
+        (*self.head).into()
     }
 
-    pub fn release_with_tail(mut self, tail: Option<HeapSexp>) -> Sexp {
+    pub fn release_with_tail(self, tail: Option<HeapSexp>) -> Sexp {
         match self.len {
             0 => {
                 if let Some(hsexp) = tail {
@@ -42,17 +42,11 @@ impl ConsList {
                     Sexp::default()
                 }
             }
-            1 => {
-                // If self is moving, then end is not a usable address of
-                // self.head.
-                self.head.set_cdr(tail);
-                self.head.into()
-            }
             _ => {
                 unsafe {
                     (*self.end).set_cdr(tail);
                 }
-                self.head.into()
+                (*self.head).into()
             }
         }
     }

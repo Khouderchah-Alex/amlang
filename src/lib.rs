@@ -16,6 +16,7 @@ pub mod stream;
 
 pub mod agent;
 pub mod builtins;
+pub mod continuation;
 pub mod environment;
 pub mod model;
 pub mod parser;
