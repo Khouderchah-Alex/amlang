@@ -30,6 +30,12 @@ macro_rules! transform {
     ($input:expr =>) => { $input };
 }
 
+
+pub trait Transform<Input, Output> {
+    fn input(&mut self, input: Result<Input, Error>) -> Result<bool, Error>; // output_available
+    fn output(&mut self) -> Option<Result<Output, Error>>;
+}
+
 pub struct Strategy<Input, Output> {
     kind: StrategyKind,
     input: Box<dyn Iterator<Item = Result<Input, Error>>>,
@@ -41,13 +47,6 @@ pub enum StrategyKind {
     Lazy,
     Eager,
 }
-
-
-pub trait Transform<Input, Output> {
-    fn input(&mut self, input: Result<Input, Error>) -> Result<bool, Error>; // output_available
-    fn output(&mut self) -> Option<Result<Output, Error>>;
-}
-
 
 impl<Input, Output> Strategy<Input, Output> {
     pub fn new(

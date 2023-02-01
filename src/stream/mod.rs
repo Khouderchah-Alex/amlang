@@ -1,14 +1,14 @@
 #[macro_use]
-pub mod strategy;
+pub mod transform;
 pub mod input;
 
 pub mod prelude {
     pub use super::input::{FifoReader, FileReader, StringReader};
-    pub use super::strategy::{Strategy, StrategyKind, Transform};
+    pub use super::transform::{Strategy, StrategyKind, Transform};
     pub use super::Stream;
 }
 
-pub use strategy::{Strategy, StrategyKind, Transform};
+pub use transform::{Strategy, StrategyKind, Transform};
 
 use crate::error::Error;
 
