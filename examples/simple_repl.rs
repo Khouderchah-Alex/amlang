@@ -22,9 +22,9 @@ use amlang::agent::{Agent, EnvManager};
 use amlang::error::Error;
 use amlang::parser::Parser;
 use amlang::primitive::{Node, Primitive};
+use amlang::pull_transform;
 use amlang::sexp::Sexp;
 use amlang::token::cli_stream::CliStream;
-use amlang::transform;
 
 
 const SERIALIZATION_PATH: &str = ".";
@@ -77,7 +77,7 @@ fn main() -> Result<(), String> {
 
     // Run agent.
     let tokens = CliStream::with_helper(agent.clone());
-    let sexps = || -> Result<_, Error> { Ok(transform!(tokens => Parser::new())) }().unwrap();
+    let sexps = pull_transform!(?unwrap tokens => Parser::new());
     for _result in agent.run(sexps, print_result) {}
 
     // Serialize.

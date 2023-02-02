@@ -13,7 +13,7 @@ fn nest(mut v: Vec<TokenKind>) -> Vec<TokenKind> {
 }
 
 fn stream(input: &str) -> Result<impl Iterator<Item = Result<Token, Error>>, Error> {
-    Ok(transform!(StringReader::new(input) =>> Tokenizer::new(policy_base)))
+    Ok(pull_transform!(StringReader::new(input) =>> Tokenizer::new(policy_base)))
 }
 
 #[test]

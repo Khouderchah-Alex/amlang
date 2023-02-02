@@ -3,10 +3,10 @@ use amlang::agent::symbol_policies::policy_base;
 use amlang::agent::{Agent, EnvManager};
 use amlang::error::Error;
 use amlang::parser::Parser;
+use amlang::pull_transform;
 use amlang::sexp::Sexp;
 use amlang::stream::input::StringReader;
 use amlang::token::Tokenizer;
-use amlang::transform;
 use amlang::InitOptions;
 
 
@@ -49,7 +49,7 @@ pub fn results_with_errors<S: AsRef<str>>(
 
 
 fn stream<S: AsRef<str>>(input: S) -> Result<impl Iterator<Item = Result<Sexp, Error>>, Error> {
-    Ok(transform!(StringReader::new(input.as_ref())
-                  =>> Tokenizer::new(policy_base)
-                  => Parser::new()))
+    Ok(pull_transform!(StringReader::new(input.as_ref())
+                       =>> Tokenizer::new(policy_base)
+                       => Parser::new()))
 }

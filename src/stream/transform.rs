@@ -2,32 +2,38 @@ use crate::error::Error;
 
 
 #[macro_export]
-macro_rules! transform {
+macro_rules! pull_transform {
     (
+        $(?$unwrap:ident)?
         $input:expr => $transform:expr
         $(=> $($tail:tt)*)*
     ) => {
-        transform!(
-            $crate::stream::Strategy::new(
-                $crate::stream::StrategyKind::Lazy,
-                Box::new($input),
-                Box::new($transform),
-            )?
+        pull_transform!($(?$unwrap)*
+            pull_transform!(@unwrap $($unwrap)*
+                       $crate::stream::Strategy::new(
+                           $crate::stream::StrategyKind::Lazy,
+                           Box::new($input),
+                           Box::new($transform),
+                       ))
             => $($($tail)*)*)
     };
     (
+        $(?$unwrap:ident)?
         $input:expr =>> $transform:expr
         $(=> $($tail:tt)*)*
     ) => {
-        transform!(
-            $crate::stream::Strategy::new(
-                $crate::stream::StrategyKind::Eager,
-                Box::new($input),
-                Box::new($transform),
-            )?
+        pull_transform!($(?$unwrap)*
+            pull_transform!(@unwrap $($unwrap)*
+                       $crate::stream::Strategy::new(
+                           $crate::stream::StrategyKind::Eager,
+                           Box::new($input),
+                           Box::new($transform),
+                       ))
             => $($($tail)*)*)
     };
-    ($input:expr =>) => { $input };
+    ($(?$unwrap:ident)? $input:expr =>) => { $input };
+    (@unwrap unwrap $e:expr) => { $e.unwrap() };
+    (@unwrap $e:expr) => { $e? };
 }
 
 

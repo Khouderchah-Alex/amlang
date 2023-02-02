@@ -41,9 +41,9 @@ use crate::environment::Environment;
 use crate::error::Error;
 use crate::parser::Parser;
 use crate::primitive::prelude::*;
+use crate::pull_transform;
 use crate::stream::input::StringReader;
 use crate::token::Tokenizer;
-use crate::transform;
 
 
 pub type HeapSexp = Box<Sexp>;
@@ -360,8 +360,8 @@ impl FromStr for Sexp {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let input = StringReader::new(s);
-        let mut stream = transform!(input
-                       => Tokenizer::new(policy_base)
+        let mut stream = pull_transform!(input
+                       =>> Tokenizer::new(policy_base)
                        => Parser::new());
 
         match stream.next() {
