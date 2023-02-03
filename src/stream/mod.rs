@@ -8,7 +8,7 @@ pub mod prelude {
     pub use super::Stream;
 }
 
-pub use transform::{Strategy, StrategyKind, Transform};
+pub use transform::{PlainTransform, Strategy, StrategyKind, Transform};
 
 use crate::error::Error;
 
