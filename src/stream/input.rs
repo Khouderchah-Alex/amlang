@@ -1,5 +1,5 @@
 use std::fs::{File, OpenOptions};
-use std::io::{BufRead, BufReader};
+use std::io::{BufRead, BufReader, ErrorKind};
 use std::os::unix::fs::OpenOptionsExt;
 use std::path::Path;
 
@@ -63,10 +63,21 @@ impl Iterator for FifoReader {
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(reader) = &mut self.reader {
             let mut out = String::default();
-            if reader.read_line(&mut out).unwrap() == 0 {
-                return None;
-            }
-            return Some(Ok(out));
+            return match reader.read_line(&mut out) {
+                Ok(size) => {
+                    if size == 0 {
+                        None
+                    } else {
+                        Some(Ok(out))
+                    }
+                }
+                Err(err) => {
+                    if err.kind() == ErrorKind::WouldBlock {
+                        return None;
+                    }
+                    panic!("{:?}", err);
+                }
+            };
         }
         None
     }
