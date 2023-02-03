@@ -4,11 +4,11 @@ pub mod input;
 
 pub mod prelude {
     pub use super::input::{FifoReader, FileReader, StringReader};
-    pub use super::transform::{Strategy, StrategyKind, Transform};
+    pub use super::transform::{Strategy, Transform};
     pub use super::Stream;
 }
 
-pub use transform::{PlainTransform, Strategy, StrategyKind, Transform};
+pub use transform::{PlainTransform, Strategy, Transform};
 
 use crate::error::Error;
 

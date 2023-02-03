@@ -13,10 +13,9 @@ macro_rules! pull_transform {
     ) => {
         pull_transform!($(?$unwrap)*
             pull_transform!(@unwrap $($unwrap)*
-                       $crate::stream::Strategy::new(
-                           $crate::stream::StrategyKind::Lazy,
-                           Box::new($input),
-                           Box::new($transform),
+                       $crate::stream::Strategy::lazy_transform(
+                           $input,
+                           $transform,
                        ))
             => $($($tail)*)*)
     };
@@ -27,10 +26,9 @@ macro_rules! pull_transform {
     ) => {
         pull_transform!($(?$unwrap)*
             pull_transform!(@unwrap $($unwrap)*
-                       $crate::stream::Strategy::new(
-                           $crate::stream::StrategyKind::Eager,
-                           Box::new($input),
-                           Box::new($transform),
+                       $crate::stream::Strategy::eager_transform(
+                           $input,
+                           $transform,
                        ))
             => $($($tail)*)*)
     };
@@ -80,35 +78,46 @@ impl<Input, Output, F: FnMut(Result<Input, Error>) -> Result<Output, Error>>
 }
 
 
-pub struct Strategy<Input, Output> {
+pub struct Strategy<
+    Input,
+    Output,
+    I: Iterator<Item = Result<Input, Error>>,
+    T: Transform<Input, Output>,
+> {
     kind: StrategyKind,
-    input: Box<dyn Iterator<Item = Result<Input, Error>>>,
-    transform: Box<dyn Transform<Input, Output>>,
+    input: I,
+    transform: T,
+    phantom_output: PhantomData<Output>,
 }
 
 #[derive(PartialEq)]
-pub enum StrategyKind {
+enum StrategyKind {
     Lazy,
     Eager,
 }
 
-impl<Input, Output> Strategy<Input, Output> {
-    pub fn new(
-        kind: StrategyKind,
-        input: Box<dyn Iterator<Item = Result<Input, Error>>>,
-        transform: Box<dyn Transform<Input, Output>>,
-    ) -> Result<Self, Error> {
+impl<Input, Output, I: Iterator<Item = Result<Input, Error>>, T: Transform<Input, Output>>
+    Strategy<Input, Output, I, T>
+{
+    pub fn eager_transform(input: I, transform: T) -> Result<Self, Error> {
         let mut res = Self {
-            kind,
+            kind: StrategyKind::Eager,
             input,
             transform,
+            phantom_output: Default::default(),
         };
 
-        match res.kind {
-            StrategyKind::Lazy => {}
-            StrategyKind::Eager => res.load()?,
-        }
+        res.load()?;
         Ok(res)
+    }
+
+    pub fn lazy_transform(input: I, transform: T) -> Result<Self, Error> {
+        Ok(Self {
+            kind: StrategyKind::Lazy,
+            input,
+            transform,
+            phantom_output: Default::default(),
+        })
     }
 
     fn load(&mut self) -> Result<(), Error> {
@@ -132,7 +141,9 @@ impl<Input, Output> Strategy<Input, Output> {
     }
 }
 
-impl<Input, Output> Iterator for Strategy<Input, Output> {
+impl<Input, Output, I: Iterator<Item = Result<Input, Error>>, T: Transform<Input, Output>> Iterator
+    for Strategy<Input, Output, I, T>
+{
     type Item = Result<Output, Error>;
     fn next(&mut self) -> Option<Self::Item> {
         self.output()
