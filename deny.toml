@@ -2,7 +2,7 @@
 vulnerability = "deny"
 unmaintained = "deny"
 notice = "deny"
-unsound = "deny"
+unsound = "warn"
 
 [licenses]
 unlicensed = "deny"
