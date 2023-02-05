@@ -77,7 +77,7 @@ fn main() -> Result<(), String> {
 
     // Run agent.
     let tokens = CliStream::with_helper(agent.clone());
-    let sexps = pull_transform!(?unwrap tokens => Parser::new());
+    let sexps = pull_transform!(?unwrap tokens =>. Parser::new());
     for _result in agent.run(sexps, print_result) {}
 
     // Serialize.

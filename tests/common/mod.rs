@@ -51,5 +51,5 @@ pub fn results_with_errors<S: AsRef<str>>(
 fn stream<S: AsRef<str>>(input: S) -> Result<impl Iterator<Item = Result<Sexp, Error>>, Error> {
     Ok(pull_transform!(StringReader::new(input.as_ref())
                        =>> Tokenizer::new(policy_base)
-                       => Parser::new()))
+                       =>. Parser::new()))
 }

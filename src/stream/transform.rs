@@ -8,33 +8,37 @@ use crate::error::Error;
 macro_rules! pull_transform {
     (
         $(?$unwrap:ident)?
-        $input:expr => $transform:expr
+        $input:expr
+        => $strategy:tt
+        $transform:expr
         $(=> $($tail:tt)*)?
     ) => {
-        pull_transform!($(?$unwrap)*
-            pull_transform!(@unwrap $($unwrap)*
-                       $crate::stream::Strategy::lazy_transform(
-                           $input,
-                           $transform,
-                       ))
-            => $($($tail)*)*)
-    };
-    (
-        $(?$unwrap:ident)?
-        $input:expr =>> $transform:expr
-        $(=> $($tail:tt)*)?
-    ) => {
-        pull_transform!($(?$unwrap)*
-            pull_transform!(@unwrap $($unwrap)*
-                       $crate::stream::Strategy::eager_transform(
-                           $input,
-                           $transform,
-                       ))
+        pull_transform!(
+            $(?$unwrap)*
+            pull_transform!(
+                @unwrap $($unwrap)*
+                pull_transform!(@strategy $strategy $input, $transform)
+            )
             => $($($tail)*)*)
     };
     ($(?$unwrap:ident)? $input:expr =>) => { $input };
     (@unwrap unwrap $e:expr) => { $e.unwrap() };
     (@unwrap $e:expr) => { $e? };
+    (@strategy . $input:expr, $transform:expr) => {
+        $crate::stream::Strategy::lazy_transform($input, $transform)
+    };
+    (@strategy > $input:expr, $transform:expr) => {
+        $crate::stream::Strategy::eager_transform($input, $transform)
+    };
+    (@strategy fn $input:expr, $transform:expr) => {
+        $crate::stream::Strategy::lazy_transform(
+            $input,
+            $crate::stream::PlainTransform::new($transform)
+        )
+    };
+    (@strategy $strategy:ident $input:expr, $transform:expr) => {
+        $strategy::new($input, $transform)
+    };
 }
 
 

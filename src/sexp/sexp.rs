@@ -361,7 +361,7 @@ impl FromStr for Sexp {
         let input = StringReader::new(s);
         let mut stream = pull_transform!(input
                        =>> Tokenizer::new(policy_base)
-                       => Parser::new());
+                       =>. Parser::new());
 
         match stream.next() {
             Some(Ok(sexp)) => Ok(sexp),

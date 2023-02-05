@@ -212,7 +212,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         };
         let mut stream = pull_transform!(input
                                          =>> Tokenizer::new(policy_env_serde)
-                                         => Parser::new());
+                                         =>. Parser::new());
 
         let s = match stream.next() {
             Some(Ok(parsed)) => parsed,
@@ -409,7 +409,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         };
         let mut stream = pull_transform!(input
                                          =>> Tokenizer::new(policy_env_serde)
-                                         => Parser::new());
+                                         =>. Parser::new());
 
         let _header = match stream.next() {
             Some(Ok(parsed)) => EnvHeader::reflect(parsed, self.agent_mut(), |_agent, p| {
