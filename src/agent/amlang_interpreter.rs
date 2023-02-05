@@ -6,7 +6,7 @@ use super::agent_frames::{ExecFrame, InterpreterState};
 use super::amlang_wrappers::*;
 use crate::agent::lang_error::{ExpectedCount, LangError};
 use crate::continuation::Continuation;
-use crate::environment::LocalNode;
+use crate::env::LocalNode;
 use crate::error::Error;
 use crate::model::{Interpreter, Reflective};
 use crate::primitive::prelude::*;

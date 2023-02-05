@@ -8,7 +8,7 @@ pub mod entry;
 pub mod environment;
 pub mod local_node;
 pub mod mem_backend;
-pub mod mem_environment;
+pub mod mem_env;
 pub mod meta_env;
 pub mod raw_overlay;
 pub mod triple_set;

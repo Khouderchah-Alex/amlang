@@ -1,7 +1,7 @@
-use crate::environment::mem_backend::SimpleBackend;
-use crate::environment::mem_environment::MemEnvironment;
-use crate::environment::raw_overlay::RawOverlay;
-use crate::environment::Environment;
+use crate::env::mem_backend::SimpleBackend;
+use crate::env::mem_env::MemEnv;
+use crate::env::raw_overlay::RawOverlay;
+use crate::env::Environment;
 
 
 pub trait EnvPolicy: Default {
@@ -30,7 +30,7 @@ pub trait EnvPolicy: Default {
 pub struct SimplePolicy {}
 
 impl EnvPolicy for SimplePolicy {
-    type BaseEnv = MemEnvironment<SimpleBackend>;
+    type BaseEnv = MemEnv<SimpleBackend>;
     type StoredEnv = Self::Overlay;
     type Overlay = RawOverlay<Self::BaseEnv>;
 

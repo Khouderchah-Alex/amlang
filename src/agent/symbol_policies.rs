@@ -1,7 +1,7 @@
 use lazy_static::lazy_static;
 use regex::Regex;
 
-use crate::environment::local_node::{LocalId, LocalNode};
+use crate::env::local_node::{LocalId, LocalNode};
 use crate::primitive::symbol::SymbolError;
 
 

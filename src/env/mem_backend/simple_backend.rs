@@ -1,5 +1,5 @@
 use super::{index_id_conv::*, Edges, MemBackend, Node, Triple};
-use crate::environment::local_node::LocalNode;
+use crate::env::local_node::LocalNode;
 
 
 /// Simple MemBackend implementation.

@@ -17,7 +17,7 @@ pub mod stream;
 pub mod agent;
 pub mod builtins;
 pub mod continuation;
-pub mod environment;
+pub mod env;
 pub mod model;
 pub mod parser;
 pub mod primitive;
@@ -25,7 +25,7 @@ pub mod token;
 
 pub mod prelude {
     pub use crate::agent::{Agent, EnvManager};
-    pub use crate::environment::{NodeSet, TripleSet};
+    pub use crate::env::{NodeSet, TripleSet};
     pub use crate::error::{Error, ErrorKind};
     pub use crate::primitive::*;
     pub use crate::sexp::{Cons, ConsList, Sexp};

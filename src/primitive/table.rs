@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use super::{Node, Primitive, Symbol};
 use crate::agent::lang_error::LangError;
 use crate::agent::Agent;
-use crate::environment::LocalNode;
+use crate::env::LocalNode;
 use crate::error::Error;
 use crate::model::Reflective;
 use crate::sexp::{Cons, HeapSexp, Sexp, SexpIntoIter};

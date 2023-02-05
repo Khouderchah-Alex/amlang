@@ -1,7 +1,7 @@
 use std::fmt::Debug;
 
 use super::{index_id_conv::*, Edges, Node, Triple};
-use crate::environment::local_node::{LocalId, LocalNode, LocalTriple};
+use crate::env::local_node::{LocalId, LocalNode, LocalTriple};
 use crate::primitive::Primitive;
 use crate::sexp::Sexp;
 

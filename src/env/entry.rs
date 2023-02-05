@@ -6,8 +6,8 @@
 //! Cow semantics, with ownership/borrow semantics that allow for a wide range
 //! of Environment impls.
 
-use crate::environment::environment::EnvObject;
-use crate::environment::LocalNode;
+use crate::env::EnvObject;
+use crate::env::LocalNode;
 use crate::sexp::Sexp;
 
 

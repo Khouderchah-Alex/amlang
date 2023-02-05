@@ -2,8 +2,8 @@ use std::convert::TryFrom;
 
 use super::env_prelude::EnvPrelude;
 use crate::agent::Agent;
-use crate::environment::meta_env::MetaEnv;
-use crate::environment::LocalNode;
+use crate::env::meta_env::MetaEnv;
+use crate::env::LocalNode;
 use crate::error::Error;
 use crate::model::Reflective;
 use crate::primitive::{Node, Primitive};

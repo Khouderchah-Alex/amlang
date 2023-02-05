@@ -1,7 +1,7 @@
 use std::collections::btree_set::{BTreeSet, IntoIter, Iter};
 
-use super::environment::EnvObject;
 use super::local_node::{LocalNode, LocalTriple};
+use super::EnvObject;
 
 
 #[derive(Clone)]

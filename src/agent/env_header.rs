@@ -4,7 +4,7 @@ use std::convert::{TryFrom, TryInto};
 use crate::agent::lang_error::LangError;
 use crate::agent::symbol_policies::policy_admin;
 use crate::agent::Agent;
-use crate::environment::environment::EnvObject;
+use crate::env::EnvObject;
 use crate::error::Error;
 use crate::model::Reflective;
 use crate::primitive::symbol::ToSymbol;

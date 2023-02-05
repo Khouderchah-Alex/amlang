@@ -11,19 +11,19 @@ use crate::sexp::Sexp;
 
 
 #[derive(Debug, Default)]
-pub struct MemEnvironment<Backend: MemBackend + 'static> {
+pub struct MemEnv<Backend: MemBackend + 'static> {
     backend: Backend,
 }
 
-impl<Backend: MemBackend> MemEnvironment<Backend> {
+impl<Backend: MemBackend> MemEnv<Backend> {
     pub fn new() -> Self {
         Default::default()
     }
 }
 
-impl<Backend: MemBackend> Environment for MemEnvironment<Backend> {
+impl<Backend: MemBackend> Environment for MemEnv<Backend> {
     fn type_name(&self) -> &'static str {
-        "MemEnvironment"
+        "MemEnv"
     }
 
     fn all_nodes(&self) -> NodeSet {
@@ -192,17 +192,17 @@ impl<Backend: MemBackend> Environment for MemEnvironment<Backend> {
 }
 
 // We need this for Environment: DynClone. Just return a new env.
-impl<Backend: MemBackend> Clone for MemEnvironment<Backend> {
+impl<Backend: MemBackend> Clone for MemEnv<Backend> {
     fn clone(&self) -> Self {
         warn!(
             "Env @ {} being empty-cloned.",
             self.entry(LocalNode::default()).structure(),
         );
-        MemEnvironment::new()
+        MemEnv::new()
     }
 }
 
 
 #[cfg(test)]
-#[path = "./mem_environment_test.rs"]
-mod mem_environment_test;
+#[path = "./mem_env_test.rs"]
+mod mem_env_test;

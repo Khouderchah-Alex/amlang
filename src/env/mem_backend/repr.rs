@@ -1,6 +1,6 @@
 use std::collections::BTreeSet;
 
-use crate::environment::local_node::{LocalNode, LocalTriple};
+use crate::env::local_node::{LocalNode, LocalTriple};
 use crate::sexp::Sexp;
 
 
@@ -27,9 +27,9 @@ pub struct Triple {
 
 
 // Not putting this functionality in local_node because this behavior is
-// MemEnvironment-specific.
+// MemEnv-specific.
 pub mod index_id_conv {
-    use crate::environment::local_node::{LocalId, LocalTriple};
+    use crate::env::local_node::{LocalId, LocalTriple};
 
     pub const fn is_triple_id(id: LocalId) -> bool {
         id.leading_ones() > 0
