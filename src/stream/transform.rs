@@ -9,7 +9,7 @@ macro_rules! pull_transform {
     (
         $(?$unwrap:ident)?
         $input:expr => $transform:expr
-        $(=> $($tail:tt)*)*
+        $(=> $($tail:tt)*)?
     ) => {
         pull_transform!($(?$unwrap)*
             pull_transform!(@unwrap $($unwrap)*
@@ -22,7 +22,7 @@ macro_rules! pull_transform {
     (
         $(?$unwrap:ident)?
         $input:expr =>> $transform:expr
-        $(=> $($tail:tt)*)*
+        $(=> $($tail:tt)*)?
     ) => {
         pull_transform!($(?$unwrap)*
             pull_transform!(@unwrap $($unwrap)*

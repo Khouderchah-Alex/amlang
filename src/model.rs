@@ -19,6 +19,9 @@ use crate::sexp::Sexp;
 ///
 /// In a sense, adding internalize() allows for what would normally just be some
 /// form of contemplate (or eval/call/etc) to reify some form of internal theory.
+/// This is similar to how Transform forces control state to be explicit and
+/// consequently can dictate policy (push vs pull streams, Write vs
+/// BufWrite type policy using same underlying code, etc).
 pub trait Interpreter {
     /// Meaning of external Structure as internal Structure.
     fn internalize(&mut self, structure: Sexp) -> Result<Sexp, Error>;

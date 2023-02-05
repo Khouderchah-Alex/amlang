@@ -1,13 +1,16 @@
 #[macro_use]
 pub mod transform;
 pub mod input;
+pub mod output;
 
 pub mod prelude {
     pub use super::input::{FifoReader, FileReader, StringReader};
+    pub use super::output::Writer;
     pub use super::transform::{Strategy, Transform};
     pub use super::Stream;
 }
 
+pub use output::Writer;
 pub use transform::{PlainTransform, Strategy, Transform};
 
 use crate::error::Error;
@@ -22,11 +25,11 @@ use crate::error::Error;
 // Notes:
 //  * Data can be stored along the pipeline, but so can Iterators with closures
 pub struct Stream<Output> {
-    strategy: Box<dyn Iterator<Item = Result<Output, Error>>>,
+    strategy: Box<dyn Iterator<Item = Result<Output, Error>> + Send + Sync>,
 }
 
 impl<Output> Stream<Output> {
-    pub fn new(strategy: Box<dyn Iterator<Item = Result<Output, Error>>>) -> Self {
+    pub fn new(strategy: Box<dyn Iterator<Item = Result<Output, Error>> + Send + Sync>) -> Self {
         Self { strategy }
     }
 }

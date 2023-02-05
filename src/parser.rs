@@ -16,6 +16,8 @@ const MAX_DEPTH: usize = 128;
 
 
 pub struct Parser {
+    // Control state of ' (as currently the only special instruction
+    // for the parser).
     state: Continuation<(ParserState, usize)>, // All but root are in quotes.
     current: Vec<ConsList>,
     max_current_len: usize,
