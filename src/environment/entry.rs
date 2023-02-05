@@ -8,7 +8,6 @@
 
 use crate::environment::environment::EnvObject;
 use crate::environment::LocalNode;
-use crate::primitive::Primitive;
 use crate::sexp::Sexp;
 
 
@@ -83,16 +82,6 @@ impl<'a> Entry<'a> {
     pub fn owned(self) -> Option<Sexp> {
         self.as_option().cloned()
     }
-
-    /// Return as a &mut Env if posssible. Ownership of the reference ties back
-    /// to that of the Environment which created this Entry.
-    // TODO(func) Modify interface to support Owned.
-    pub fn env(self) -> Option<&'a Box<EnvObject>> {
-        match self.kind() {
-            EntryKind::Borrowed(Sexp::Primitive(Primitive::Env(env))) => Some(env),
-            _ => None,
-        }
-    }
 }
 
 impl<'a> EntryMut<'a> {
@@ -139,18 +128,6 @@ impl<'a> EntryMut<'a> {
             EntryMutKind::Atomic => None,
             EntryMutKind::Borrowed(sexp) => Some(sexp),
             EntryMutKind::Owned(sexp) => Some(sexp),
-        }
-    }
-
-    /// Return as a &mut Env if posssible. Ownership of the reference ties back
-    /// to that of the Environment which created this Entry.
-    // TODO(func) Modify interface to support Owned.
-    pub fn env(self) -> Option<&'a mut Box<EnvObject>> {
-        // Skip update-on-drop.
-        let (_, kind, _env) = self.consume();
-        match kind {
-            EntryMutKind::Borrowed(Sexp::Primitive(Primitive::Env(env))) => Some(env),
-            _ => None,
         }
     }
 }

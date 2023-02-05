@@ -37,7 +37,6 @@ use serde::{Deserialize, Serialize};
 use super::fmt_io_adapter::FmtIoAdapter;
 use super::{Cons, ConsList};
 use crate::agent::symbol_policies::policy_base;
-use crate::environment::Environment;
 use crate::error::Error;
 use crate::parser::Parser;
 use crate::primitive::prelude::*;
@@ -486,12 +485,6 @@ sexp_from!(
     LocalNodeTable,
     Procedure,
 );
-
-impl<T: 'static + Environment> From<Box<T>> for Sexp {
-    fn from(env: Box<T>) -> Self {
-        Sexp::Primitive(Primitive::Env(env))
-    }
-}
 
 
 #[cfg(test)]

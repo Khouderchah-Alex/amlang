@@ -9,7 +9,6 @@ use serde::{Deserialize, Serialize};
 mod try_from_helper;
 
 pub mod builtin;
-pub mod env;
 pub mod node;
 pub mod number;
 pub mod path;
@@ -33,7 +32,6 @@ pub mod prelude {
     pub use super::symbol::{Symbol, ToSymbol};
     pub use super::table::{LocalNodeTable, SymNodeTable, SymSexpTable};
     pub use super::vector::Vector;
-    pub use crate::environment::environment::EnvObject;
 }
 /// All other clients can simply pick out what to use as normal.
 pub use prelude::*;
@@ -53,12 +51,6 @@ pub enum Primitive {
     LocalNodeTable(LocalNodeTable),
     Vector(Vector),
     Procedure(Procedure),
-
-    // Presumably only present in meta env Nodes, but this comes down
-    // to how base Agents are implemented.
-    //
-    // TODO(flex) Use newtype.
-    Env(Box<EnvObject>),
 }
 
 
@@ -77,7 +69,6 @@ impl fmt::Display for Primitive {
             Primitive::LocalNodeTable(table) => write!(f, "{:?}", table),
             Primitive::Procedure(proc) => write!(f, "{:?}", proc),
             Primitive::Vector(vector) => write!(f, "{:?}", vector),
-            Primitive::Env(env) => write!(f, "{:?}", env),
         }
     }
 }
@@ -122,8 +113,6 @@ impl PartialEq for Primitive {
                     (&Primitive::Vector(ref this), &Primitive::Vector(ref that)) => {
                         (*this) == (*that)
                     }
-                    // Consider all envs to be different a priori.
-                    (&Primitive::Env(_), &Primitive::Env(_)) => false,
                     _ => {
                         panic!();
                     }
@@ -136,7 +125,7 @@ impl PartialEq for Primitive {
 }
 
 
-// Impl From<T> over Primitive subtypes (except Env).
+// Impl From<T> over Primitive subtypes.
 macro_rules! primitive_from {
     ($from:ident, $($tail:tt)*) => {
         impl From<$from> for Primitive {

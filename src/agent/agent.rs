@@ -170,9 +170,9 @@ impl Agent {
     pub fn access_env(&self, meta_node: LocalNode) -> Option<&Box<EnvObject>> {
         let meta = self.context.meta();
         if meta_node == LocalNode::default() {
-            return Some(meta);
+            return Some(meta.base());
         }
-        meta.entry(meta_node).env()
+        meta.env(meta_node)
     }
 
     /// Access arbitrary env.
@@ -182,9 +182,9 @@ impl Agent {
     pub fn access_env_mut(&mut self, meta_node: LocalNode) -> Option<&mut Box<EnvObject>> {
         let meta = self.context.meta_mut();
         if meta_node == LocalNode::default() {
-            return Some(meta);
+            return Some(meta.base_mut());
         }
-        meta.entry_mut(meta_node).env()
+        meta.env_mut(meta_node)
     }
 
     /// Access current env.
@@ -498,7 +498,7 @@ impl Agent {
 
         let table_node = self.get_or_create_import_table(original.env());
         if let Ok(table) =
-            <&LocalNodeTable>::try_from(self.context.meta().entry(table_node).as_option())
+            <&LocalNodeTable>::try_from(self.context.meta().base().entry(table_node).as_option())
         {
             if let Some(imported) = table.lookup(&original.local()) {
                 return Ok(imported.globalize(&self));
@@ -515,7 +515,11 @@ impl Agent {
 
         let imported = self.define(Some(original.into()))?;
         let success = if let Ok(table) = <&mut LocalNodeTable>::try_from(
-            self.context.meta_mut().entry_mut(table_node).as_option(),
+            self.context
+                .meta_mut()
+                .base_mut()
+                .entry_mut(table_node)
+                .as_option(),
         ) {
             table.insert(original.local(), imported.local());
             true
@@ -544,9 +548,13 @@ impl Agent {
         if table_node.is_none() {
             return None;
         }
-        if let Ok(table) =
-            <&LocalNodeTable>::try_from(self.context.meta().entry(table_node.unwrap()).as_option())
-        {
+        if let Ok(table) = <&LocalNodeTable>::try_from(
+            self.context
+                .meta()
+                .base()
+                .entry(table_node.unwrap())
+                .as_option(),
+        ) {
             if let Some(imported) = table.lookup(&original.local()) {
                 return Some(imported.globalize(&self));
             }
@@ -555,7 +563,7 @@ impl Agent {
     }
 
     pub fn find_env<S: AsRef<str>>(&self, s: S) -> Option<LocalNode> {
-        let meta = self.context.meta();
+        let meta = self.context.meta().base();
         let triples = self
             .ask_from(
                 LocalNode::default(),
@@ -597,7 +605,7 @@ impl Agent {
         let import_table_node = self.context.import_table();
         let env = self.pos().env();
         let import_triple = {
-            let meta = self.context.meta_mut();
+            let meta = self.context.meta_mut().base_mut();
             if let Some(triple) = meta
                 .match_triple(env, imports_node, from_env)
                 .triples()
@@ -612,12 +620,13 @@ impl Agent {
         let matches = self
             .context
             .meta()
+            .base()
             .match_but_object(import_triple.node(), import_table_node);
         match matches.len() {
             0 => {
                 let table = LocalNodeTable::in_env(LocalNode::default()).into();
-                let table_node = self.context.meta_mut().insert_structure(table);
-                self.context.meta_mut().insert_triple(
+                let table_node = self.context.meta_mut().base_mut().insert_structure(table);
+                self.context.meta_mut().base_mut().insert_triple(
                     import_triple.node(),
                     import_table_node,
                     table_node,
@@ -635,6 +644,7 @@ impl Agent {
         let import_triple = {
             let meta = self.context.meta();
             if let Some(triple) = meta
+                .base()
                 .match_triple(target_env, imports_node, from_env)
                 .triples()
                 .next()
@@ -648,6 +658,7 @@ impl Agent {
         let matches = self
             .context
             .meta()
+            .base()
             .match_but_object(import_triple.node(), import_table_node);
         match matches.len() {
             0 => None,

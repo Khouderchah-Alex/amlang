@@ -2,7 +2,7 @@ use std::convert::TryFrom;
 
 use super::env_prelude::EnvPrelude;
 use crate::agent::Agent;
-use crate::environment::environment::EnvObject;
+use crate::environment::meta_env::MetaEnv;
 use crate::environment::LocalNode;
 use crate::error::Error;
 use crate::model::Reflective;
@@ -54,7 +54,7 @@ macro_rules! generate_context {
         // (e.g. changing build flag to select Overlay class).
         #[derive(Clone, Debug)]
         pub struct AmlangContext {
-            meta: Box<EnvObject>,
+            meta: MetaEnv,
 
             // Relative to meta env.
             $($meta_node: LocalNode,)+
@@ -64,7 +64,7 @@ macro_rules! generate_context {
 
 
         impl AmlangContext {
-            pub(super) fn new(meta: Box<EnvObject>) -> Self {
+            pub(super) fn new(meta: MetaEnv) -> Self {
                 let placeholder = LocalNode::new(1);
                 Self {
                     meta,
@@ -122,10 +122,10 @@ macro_rules! generate_context {
 }
 
 impl AmlangContext {
-    pub fn meta(&self) -> &Box<EnvObject> {
+    pub fn meta(&self) -> &MetaEnv {
         &self.meta
     }
-    pub fn meta_mut(&mut self) -> &mut Box<EnvObject> {
+    pub fn meta_mut(&mut self) -> &mut MetaEnv {
         &mut self.meta
     }
 

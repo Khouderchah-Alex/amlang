@@ -15,9 +15,9 @@ use super::Agent;
 use crate::agent::lang_error::LangError;
 use crate::agent::symbol_policies::{policy_admin, policy_env_serde, AdminSymbolInfo};
 use crate::builtins::generate_builtin_map;
-use crate::environment::entry::EntryMutKind;
 use crate::environment::environment::Environment;
 use crate::environment::local_node::{LocalId, LocalNode};
+use crate::environment::meta_env::MetaEnv;
 use crate::error::Error;
 use crate::model::Reflective;
 use crate::parser::Parser;
@@ -72,7 +72,7 @@ macro_rules! verify_context {
 impl<Policy: EnvPolicy> EnvManager<Policy> {
     pub fn bootstrap<P: AsRef<StdPath>>(in_path: P) -> Result<Self, Error> {
         let mut policy = Policy::default();
-        let meta = EnvManager::create_env(&mut policy, LocalNode::default());
+        let meta = MetaEnv::new(EnvManager::create_env(&mut policy, LocalNode::default()));
 
         let mut context_path = in_path.as_ref().to_path_buf();
         context_path.push("context.bootstrap");
@@ -185,11 +185,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
 
     pub fn insert_new_env<P: AsRef<StdPath>>(&mut self, path: P) -> LocalNode {
         let serialize_path = self.agent().context().serialize_path();
-        let env_node = self
-            .agent_mut()
-            .context_mut()
-            .meta_mut()
-            .insert_structure(Sexp::default());
+        let env_node = self.agent_mut().context_mut().meta_mut().insert_atom();
         self.initialize_env_node(env_node);
 
         let meta = self.agent_mut().context_mut().meta_mut();
@@ -200,7 +196,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
     }
 
     fn bootstrap_context<P: AsRef<StdPath>>(
-        meta: Box<Policy::StoredEnv>,
+        meta: MetaEnv,
         in_path: P,
     ) -> Result<AmlangContext, Error> {
         let placeholder_context = AmlangContext::new(meta);
@@ -279,8 +275,10 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
 
     fn initialize_env_node(&mut self, env_node: LocalNode) {
         let env = EnvManager::create_env(&mut self.policy, env_node);
-        let meta = self.agent_mut().context_mut().meta_mut();
-        *meta.entry_mut(env_node).kind_mut() = EntryMutKind::Owned(env.into());
+        self.agent_mut()
+            .context_mut()
+            .meta_mut()
+            .insert_env(env_node, env);
     }
 }
 
@@ -359,7 +357,6 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
                     Sexp::Primitive(Primitive::BuiltIn(_)) => (true, false),
                     Sexp::Primitive(Primitive::Procedure(_)) => (true, false),
                     Sexp::Primitive(Primitive::Node(_)) => (true, false),
-                    Sexp::Primitive(Primitive::Env(_)) => (false, false),
                     Sexp::Primitive(Primitive::Path(_)) => (true, false),
                     Sexp::Primitive(Primitive::LangString(_)) => (true, false),
                     _ => (true, true),
@@ -541,7 +538,6 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
                 }
                 write!(w, "^{}", node.local().id())
             }
-            Primitive::Env(_) => Ok(()),
             _ => write!(w, "{}", primitive),
         }
     }
