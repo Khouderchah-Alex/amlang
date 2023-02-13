@@ -4,10 +4,11 @@ use std::collections::VecDeque;
 use std::convert::TryFrom;
 use std::io::{self, stdout, BufWriter};
 
-use super::agent_frames::{EnvFrame, ExecFrame, InterpreterState};
+use super::agent_frames::{EnvFrame, ExecFrame};
 use super::amlang_context::AmlangContext;
 use super::amlang_interpreter::AmlangState;
 use super::env_prelude::EnvPrelude;
+use super::interpreter::InterpreterState;
 use crate::agent::lang_error::LangError;
 use crate::agent::symbol_policies::policy_admin;
 use crate::continuation::Continuation;
@@ -155,8 +156,25 @@ impl Agent {
     pub fn interpreter_state(&self) -> &Continuation<Box<dyn InterpreterState>> {
         &self.interpreter_state
     }
-    pub fn interpreter_state_mut(&mut self) -> &mut Continuation<Box<dyn InterpreterState>> {
-        &mut self.interpreter_state
+    fn top_interpret(&mut self, sexp: Sexp) -> Result<Sexp, Error> {
+        // TODO(perf) Can we avoid cloning InterpreterState by storing continuation
+        // out of Agent?
+        let mut interpreter_state = self.interpreter_state().top().clone();
+        let mut interpreter = interpreter_state.borrow_agent(self);
+
+        let ir = interpreter.internalize(sexp);
+        interpreter.contemplate(ir?)
+    }
+    pub fn sub_interpret(
+        &mut self,
+        sexp: Sexp,
+        interpreter: Box<dyn InterpreterState>,
+        _context: Node,
+    ) -> Result<Sexp, Error> {
+        self.interpreter_state.push(interpreter);
+        let res = self.top_interpret(sexp);
+        self.interpreter_state.pop();
+        res
     }
 }
 
@@ -814,7 +832,6 @@ where
     F: FnMut(&mut Agent, &Result<Sexp, Error>),
 {
     type Item = Result<Sexp, Error>;
-
     fn next(&mut self) -> Option<Self::Item> {
         let sexp = match self.stream.next() {
             None => return None,
@@ -825,23 +842,7 @@ where
             }
         };
 
-        // Clone InterpreterState to reborrow the Agent. Modifying
-        // |interpreter_state| is left to Interpreter impls.
-        let mut state = self.agent.interpreter_state.top().clone();
-        let mut interpreter = state.borrow_agent(self.agent);
-        let res = match interpreter.internalize(sexp) {
-            Ok(meaning) => interpreter.contemplate(meaning),
-            err @ _ => err,
-        };
-
-        // Normally, rustc is happy reasoning that |interpreter| should be
-        // dropped here to allow for another mut borrow on self to happen below.
-        // IIUC, this isn't happening here because the Interpreter impl may impl
-        // Drop as well, which prevents the compiler from dropping anywhere it
-        // likes. Without negative trait bounds, we either need to explicitly
-        // drop or scope |interpreter|.
-        std::mem::drop(interpreter);
-
+        let res = self.agent.top_interpret(sexp);
         (self.handler)(&mut self.agent, &res);
         Some(res)
     }

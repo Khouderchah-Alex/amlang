@@ -2,13 +2,14 @@ use log::debug;
 use std::convert::TryFrom;
 
 use super::agent::Agent;
-use super::agent_frames::{ExecFrame, InterpreterState};
+use super::agent_frames::ExecFrame;
 use super::amlang_wrappers::*;
+use super::interpreter::{Interpreter, InterpreterState};
 use crate::agent::lang_error::{ExpectedCount, LangError};
 use crate::continuation::Continuation;
 use crate::env::LocalNode;
 use crate::error::Error;
-use crate::model::{Interpreter, Reflective};
+use crate::model::Reflective;
 use crate::primitive::prelude::*;
 use crate::primitive::table::Table;
 use crate::sexp::{Cons, ConsList, HeapSexp, Sexp};
@@ -273,6 +274,7 @@ impl<'a> AmlangInterpreter<'a> {
                 }
             }
             _ if context.def() == special_node => {
+                let interpreter_context = amlang_node!(def, context);
                 let (name, val) = def_wrapper(&arg_nodes, &self.agent())?;
                 self.agent_mut().designate(name.into())?;
                 if name.env() != self.agent().pos().env() {
@@ -282,6 +284,7 @@ impl<'a> AmlangInterpreter<'a> {
                 let val_node = if let Some(s) = val {
                     // Ensure internalize maps name to this node.
                     let val_node = self.agent_mut().define(None)?;
+
                     let mut frame = SymNodeTable::default();
                     if let Ok(sym) =
                         Symbol::try_from(self.agent_mut().designate(Primitive::Node(name))?)
@@ -289,13 +292,16 @@ impl<'a> AmlangInterpreter<'a> {
                         frame.insert(sym, val_node);
                     }
 
-                    // Construe, relying on self-evaluation of val_node.
+                    // Interpret value, relying on self-evaluation of val_node.
                     let original = self.agent_mut().designate(Primitive::Node(s))?;
-                    self.eval_state.push(frame);
-                    let meaning = self.internalize(original.into());
-                    self.eval_state.pop();
+                    let mut sub_interpreter = Box::new(AmlangState::default());
+                    sub_interpreter.eval_state.push(frame);
+                    let final_sexp = self.agent_mut().sub_interpret(
+                        original,
+                        sub_interpreter,
+                        interpreter_context,
+                    )?;
 
-                    let final_sexp = self.contemplate(meaning?)?;
                     // If final result is a Node, we name that rather
                     // than nesting abstractions. Perhaps nested
                     // abstraction is right here?
@@ -317,9 +323,13 @@ impl<'a> AmlangInterpreter<'a> {
                 // Note that unlike def, set! follows normal internalization during evlis.
                 let (node, val) = def_wrapper(&arg_nodes, &self.agent())?;
                 let node = Node::try_from(node).unwrap();
+                let interpreter_context = amlang_node!(set, context);
                 if let Some(s) = val {
-                    let meaning = self.internalize(s.into());
-                    let final_sexp = self.contemplate(meaning?)?;
+                    let final_sexp = self.agent_mut().sub_interpret(
+                        s.into(),
+                        Box::new(AmlangState::default()),
+                        interpreter_context,
+                    )?;
                     self.agent_mut().set(node, Some(final_sexp))?;
                 } else {
                     self.agent_mut().set(node, None)?;
@@ -432,11 +442,16 @@ impl<'a> AmlangInterpreter<'a> {
                     );
                 }
                 let is_eval = context.eval() == special_node;
+                let interpreter_context = amlang_node!(eval, context);
                 let arg = self.agent_mut().designate(arg_nodes[0].into())?;
                 if is_eval {
                     debug!("applying (eval {})", arg);
                     let to_inner = self.contemplate(arg)?;
-                    self.internalize(to_inner)
+                    self.agent_mut().sub_interpret(
+                        to_inner,
+                        Box::new(AmlangState::default()),
+                        interpreter_context,
+                    )
                 } else {
                     debug!("applying (exec {})", arg);
                     self.contemplate(arg)

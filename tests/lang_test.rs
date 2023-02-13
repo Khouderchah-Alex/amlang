@@ -275,16 +275,14 @@ fn eval() {
         &mut lang_agent,
         "(eval (car '(lambda)))
 
-         (car
-           (eval  ;; Reify.
-             (eval '(+ 1 2))))  ;; Create Procedure::Application.",
+         (eval '(+ 1 2))",
     );
 
     assert_eq!(
         results[0],
         amlang_node!(lambda, lang_agent.context()).into()
     );
-    assert_eq!(results[1], amlang_node!(apply, lang_agent.context()).into());
+    assert_eq!(results[1], Number::I64(3).into());
 }
 
 #[test]
