@@ -1,6 +1,5 @@
 use std::collections::VecDeque;
 
-use super::interpreter::InterpreterState;
 use super::Agent;
 use crate::error::Error;
 use crate::sexp::Sexp;
@@ -15,24 +14,20 @@ pub struct TransformExecutor<'a> {
 }
 
 impl<'a> TransformExecutor<'a> {
-    pub fn direct<I: InterpreterState + 'static>(
-        agent: &'a mut Agent,
-        base_interpreter: I,
-    ) -> Self {
+    pub fn direct(agent: &'a mut Agent) -> Self {
         Self {
-            agent: agent.run(base_interpreter),
+            agent: agent,
             cache: Default::default(),
             handler: Self::default_handler,
         }
     }
 
-    pub fn with_handler<I: InterpreterState + 'static>(
+    pub fn with_handler(
         agent: &'a mut Agent,
-        base_interpreter: I,
         handler: fn(&mut Agent, Sexp) -> Result<Sexp, Error>,
     ) -> Self {
         Self {
-            agent: agent.run(base_interpreter),
+            agent: agent,
             cache: Default::default(),
             handler: handler,
         }

@@ -18,7 +18,7 @@ use std::convert::TryFrom;
 use std::path::Path;
 
 use amlang::agent::env_policy::SimplePolicy;
-use amlang::agent::{Agent, AmlangState, EnvManager, TransformExecutor};
+use amlang::agent::{Agent, AmlangState, EnvManager, NullInterpreter, TransformExecutor};
 use amlang::error::Error;
 use amlang::parser::Parser;
 use amlang::primitive::{Node, Primitive};
@@ -65,7 +65,7 @@ fn main() -> Result<(), String> {
     };
 
     // Prep agent.
-    let mut agent = manager.agent().clone();
+    let mut agent = manager.agent().fork(AmlangState::default());
     let working_env = agent.find_env("working.env").unwrap();
     agent.jump_env(working_env);
     agent.designation_chain_mut().push_back(working_env);
@@ -76,13 +76,12 @@ fn main() -> Result<(), String> {
     agent.designation_chain_mut().push_front(lang_env);
 
     // Run agent.
-    let tokens = CliStream::with_helper(agent.clone());
+    let tokens = CliStream::with_helper(agent.fork(NullInterpreter::default()));
     let sexps = pull_transform!(?unwrap
                                 tokens
                                 =>. Parser::new()
                                 =>. TransformExecutor::with_handler(
                                     &mut agent,
-                                    AmlangState::default(),
                                     agent_handler));
     for _result in sexps {}
 

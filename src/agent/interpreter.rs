@@ -42,3 +42,21 @@ pub trait InterpreterState: DynClone + fmt::Debug {
 }
 
 dyn_clone::clone_trait_object!(InterpreterState);
+
+
+/// Base metacontinuation state for non-running (i.e. manually driven) Agent.
+#[derive(Clone, Debug, Default)]
+pub struct NullInterpreter {}
+impl Interpreter for NullInterpreter {
+    fn internalize(&mut self, structure: Sexp) -> Result<Sexp, Error> {
+        Ok(structure)
+    }
+    fn contemplate(&mut self, structure: Sexp) -> Result<Sexp, Error> {
+        Ok(structure)
+    }
+}
+impl InterpreterState for NullInterpreter {
+    fn borrow_agent<'a>(&'a mut self, _agent: &'a mut Agent) -> Box<dyn Interpreter + 'a> {
+        Box::new(NullInterpreter {})
+    }
+}

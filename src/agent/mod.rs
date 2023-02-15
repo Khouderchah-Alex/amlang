@@ -4,6 +4,7 @@ pub use amlang_interpreter::AmlangState;
 pub use base_serializer::BaseSerializer;
 pub use env_manager::EnvManager;
 pub use executor::TransformExecutor;
+pub use interpreter::NullInterpreter;
 
 // Public mods.
 pub mod agent;

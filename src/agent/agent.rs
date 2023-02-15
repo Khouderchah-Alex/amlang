@@ -7,7 +7,7 @@ use std::io::{self, stdout, BufWriter};
 use super::agent_frames::{EnvFrame, ExecFrame};
 use super::amlang_context::AmlangContext;
 use super::env_prelude::EnvPrelude;
-use super::interpreter::{Interpreter, InterpreterState};
+use super::interpreter::{InterpreterState, NullInterpreter};
 use super::AmlangState;
 use crate::agent::lang_error::LangError;
 use crate::agent::symbol_policies::policy_admin;
@@ -22,7 +22,7 @@ use crate::primitive::table::Table;
 use crate::sexp::Sexp;
 
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct Agent {
     env_state: Continuation<EnvFrame>,
     exec_state: Continuation<ExecFrame>,
@@ -35,14 +35,14 @@ pub struct Agent {
 }
 
 impl Agent {
-    pub fn new(pos: Node, context: AmlangContext, history_env: LocalNode) -> Self {
+    pub(super) fn new(pos: Node, context: AmlangContext, history_env: LocalNode) -> Self {
         let env_state = Continuation::new(EnvFrame { pos });
         // TODO(func) Provide better root node.
         let exec_state = Continuation::new(ExecFrame::new(pos));
         Self {
             env_state,
             exec_state,
-            interpreter_state: Continuation::new(Box::new(NullInterpreter {})),
+            interpreter_state: Continuation::new(Box::new(NullInterpreter::default())),
             designation_chain: VecDeque::new(),
             // TODO(sec) Verify as env node.
             history_env,
@@ -50,9 +50,10 @@ impl Agent {
         }
     }
 
-    pub fn run<I: InterpreterState + 'static>(&mut self, base_interpreter: I) -> &mut Self {
-        self.interpreter_state = Continuation::new(Box::new(base_interpreter));
-        self
+    pub fn fork<I: InterpreterState + 'static>(&self, base_interpreter: I) -> Self {
+        let mut res = Self::new(self.pos(), self.context.clone(), self.history_env);
+        res.interpreter_state = Continuation::new(Box::new(base_interpreter));
+        res
     }
 
     pub fn context(&self) -> &AmlangContext {
@@ -816,23 +817,5 @@ impl Agent {
             }
             _ => write!(w, "{}", primitive),
         }
-    }
-}
-
-
-/// Base metacontinuation state for non-running (i.e. manually driven) Agent.
-#[derive(Clone, Debug)]
-struct NullInterpreter {}
-impl Interpreter for NullInterpreter {
-    fn internalize(&mut self, structure: Sexp) -> Result<Sexp, Error> {
-        Ok(structure)
-    }
-    fn contemplate(&mut self, structure: Sexp) -> Result<Sexp, Error> {
-        Ok(structure)
-    }
-}
-impl InterpreterState for NullInterpreter {
-    fn borrow_agent<'a>(&'a mut self, _agent: &'a mut Agent) -> Box<dyn Interpreter + 'a> {
-        Box::new(NullInterpreter {})
     }
 }

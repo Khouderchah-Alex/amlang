@@ -23,7 +23,7 @@ pub fn setup() -> Result<(Agent, EnvManager<impl EnvPolicy>), String> {
     };
 
     // Prep agent.
-    let mut agent = manager.agent().clone();
+    let mut agent = manager.agent().fork(AmlangState::default());
     let working_env = agent.find_env("working.env").unwrap();
     agent.jump_env(working_env);
     agent.designation_chain_mut().push_back(working_env);
@@ -36,7 +36,7 @@ pub fn results<S: AsRef<str>>(lang_agent: &mut Agent, s: S) -> Vec<Sexp> {
                     StringReader::new(s.as_ref())
                     =>> Tokenizer::new(policy_base)
                     =>. Parser::new()
-                    =>. TransformExecutor::direct(lang_agent, AmlangState::default()))
+                    =>. TransformExecutor::direct(lang_agent))
     .map(|e| e.unwrap())
     .collect::<Vec<_>>()
 }
@@ -49,6 +49,6 @@ pub fn results_with_errors<S: AsRef<str>>(
                     StringReader::new(s.as_ref())
                     =>> Tokenizer::new(policy_base)
                     =>. Parser::new()
-                    =>. TransformExecutor::direct(lang_agent, AmlangState::default()))
+                    =>. TransformExecutor::direct(lang_agent))
     .collect::<Vec<_>>()
 }
