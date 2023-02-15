@@ -18,13 +18,13 @@ macro_rules! break_sexp {
             // Generate stateful or stateless error depending on existence of $agent.
             let err = |kind| {
                 $(
-                    return Err($crate::error::Error::with_agent(
-                        $agent.clone(),
+                    return Err($crate::error::Error::with_cont(
+                        $agent.exec_state().clone(),
                         Box::new(kind)
                     ));
                 )*
                 #[allow(unreachable_code)]
-                Err($crate::error::Error::no_agent(Box::new(kind)))
+                Err($crate::error::Error::no_cont(Box::new(kind)))
             };
             let mut iter = $sexp.into_iter();
             let tuple = || {

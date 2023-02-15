@@ -54,7 +54,7 @@ macro_rules! verify_context {
                 if let Some(node) = table.lookup(s) {
                     Ok(node.local())
                 } else {
-                    Err(Error::no_agent(
+                    Err(Error::no_cont(
                         Box::new(LangError::UnboundSymbol(s.to_symbol_or_panic(policy_admin)))))?
                 }
             };
@@ -421,7 +421,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
             })?,
             None => return err!(self.agent(), MissingHeaderSection),
             Some(Err(mut err)) => {
-                err.set_agent(self.agent());
+                err.set_cont(self.agent().exec_state().clone());
                 return Err(err);
             }
         };
@@ -429,7 +429,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
             Some(Ok(parsed)) => self.deserialize_nodes(parsed)?,
             None => return err!(self.agent(), MissingNodeSection),
             Some(Err(mut err)) => {
-                err.set_agent(self.agent());
+                err.set_cont(self.agent().exec_state().clone());
                 return Err(err);
             }
         };
@@ -437,7 +437,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
             Some(Ok(parsed)) => self.deserialize_triples(parsed)?,
             None => return err!(self.agent(), MissingTripleSection),
             Some(Err(mut err)) => {
-                err.set_agent(self.agent());
+                err.set_cont(self.agent().exec_state().clone());
                 return Err(err);
             }
         };
@@ -445,7 +445,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
             Some(Ok(_)) => return err!(self.agent(), ExtraneousSection),
             None => {}
             Some(Err(mut err)) => {
-                err.set_agent(self.agent());
+                err.set_cont(self.agent().exec_state().clone());
                 return Err(err);
             }
         };

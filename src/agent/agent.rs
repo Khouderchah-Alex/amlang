@@ -683,12 +683,12 @@ impl Agent {
 // Print functionality.
 impl Agent {
     pub fn trace_error(&mut self, err: &Error) {
-        if let Some(agent) = err.agent() {
-            let mut original_agent = std::mem::replace(self, agent.clone());
+        if let Some(cont) = err.cont() {
+            let mut original_cont = std::mem::replace(&mut self.exec_state, cont.clone());
             println!("");
             println!("  --TRACE--");
-            let end = agent.exec_state().depth() - 1;
-            for (i, frame) in agent.exec_state().iter().enumerate() {
+            let end = cont.depth() - 1;
+            for (i, frame) in cont.iter().enumerate() {
                 if i == end {
                     break;
                 }
@@ -697,7 +697,7 @@ impl Agent {
                 self.print_sexp(&frame.context().into());
                 println!("");
             }
-            std::mem::swap(self, &mut original_agent);
+            std::mem::swap(&mut self.exec_state, &mut original_cont);
         }
     }
 

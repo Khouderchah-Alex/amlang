@@ -8,7 +8,8 @@ use std::fmt;
 
 use serde::{de, ser};
 
-use crate::agent::Agent;
+use crate::agent::agent_frames::ExecFrame;
+use crate::continuation::Continuation;
 use crate::sexp::Sexp;
 
 
@@ -16,16 +17,18 @@ use crate::sexp::Sexp;
 #[macro_export]
 macro_rules! err {
     ($agent:expr, $($kind:tt)+) => {
-        Err($crate::error::Error::with_agent(
-            $agent.clone(),
+        Err($crate::error::Error::with_cont(
+            $agent.exec_state().clone(),
             Box::new($($kind)+),
         ))
     };
 }
 
-#[derive(Debug)]
+
+pub type ErrorCont = Continuation<ExecFrame>;
+
 pub struct Error {
-    agent: Option<Box<Agent>>,
+    cont: Option<ErrorCont>,
     kind: Box<dyn ErrorKind>,
 }
 
@@ -37,32 +40,32 @@ pub trait ErrorKind: fmt::Debug /* fmt::Display auto-impled below */ {
 
 impl Error {
     /// Prefer using err! for convenience.
-    pub fn with_agent(agent: Agent, kind: Box<dyn ErrorKind>) -> Self {
+    pub fn with_cont(cont: ErrorCont, kind: Box<dyn ErrorKind>) -> Self {
         Self {
-            agent: Some(Box::new(agent)),
+            cont: Some(cont),
             kind,
         }
     }
 
     /// Prefer using stateful Error when possible.
-    pub fn no_agent(kind: Box<dyn ErrorKind>) -> Self {
-        Self { agent: None, kind }
+    pub fn no_cont(kind: Box<dyn ErrorKind>) -> Self {
+        Self { cont: None, kind }
     }
 
     pub fn kind(&self) -> &dyn ErrorKind {
         &*self.kind
     }
 
-    pub fn agent(&self) -> Option<&Agent> {
-        self.agent.as_ref().map(|a| &**a)
+    pub fn cont(&self) -> Option<&ErrorCont> {
+        self.cont.as_ref()
     }
 
     pub fn consume(self) -> Box<dyn ErrorKind> {
         self.kind
     }
 
-    pub fn set_agent(&mut self, agent: &Agent) {
-        self.agent = Some(Box::new(agent.clone()));
+    pub fn set_cont(&mut self, cont: ErrorCont) {
+        self.cont = Some(cont)
     }
 }
 
@@ -82,6 +85,16 @@ impl fmt::Display for dyn ErrorKind + '_ {
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.kind())
+    }
+}
+
+impl fmt::Debug for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}: ", self.kind())?;
+        for frame in &self.cont {
+            write!(f, "{:?}; ", frame)?;
+        }
+        Ok(())
     }
 }
 
