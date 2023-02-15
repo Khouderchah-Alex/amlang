@@ -6,6 +6,7 @@ use super::Agent;
 use crate::error::Error;
 use crate::sexp::Sexp;
 
+
 /// Meaning of Structure, according to (possibly implicit) metamodel.
 ///
 /// The meaning of Structures in the methods below can be represented by the
@@ -33,7 +34,7 @@ pub trait Interpreter {
 }
 
 
-/// State which Agent can use to create an Interpreter.
+/// State which can borrow Execution to create an Interpreter.
 /// Can be stored in Continuation and facilitates reifying metacontinuations.
 // TODO(func) Allow storage in Env.
 pub trait InterpreterState: DynClone + fmt::Debug {

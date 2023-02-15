@@ -6,9 +6,9 @@ use std::io::{self, stdout, BufWriter};
 
 use super::agent_frames::{EnvFrame, ExecFrame};
 use super::amlang_context::AmlangContext;
-use super::amlang_interpreter::AmlangState;
 use super::env_prelude::EnvPrelude;
-use super::interpreter::InterpreterState;
+use super::interpreter::{Interpreter, InterpreterState};
+use super::AmlangState;
 use crate::agent::lang_error::LangError;
 use crate::agent::symbol_policies::policy_admin;
 use crate::continuation::Continuation;
@@ -34,27 +34,15 @@ pub struct Agent {
     context: AmlangContext,
 }
 
-pub struct RunIter<'a, S, F>
-where
-    F: FnMut(&mut Agent, &Result<Sexp, Error>),
-{
-    agent: &'a mut Agent,
-    stream: S,
-    handler: F,
-}
-
 impl Agent {
     pub fn new(pos: Node, context: AmlangContext, history_env: LocalNode) -> Self {
         let env_state = Continuation::new(EnvFrame { pos });
         // TODO(func) Provide better root node.
         let exec_state = Continuation::new(ExecFrame::new(pos));
-        // Base interpretation as amlang.
-        let interpreter_state: Continuation<Box<dyn InterpreterState>> =
-            Continuation::new(Box::new(AmlangState::default()));
         Self {
             env_state,
             exec_state,
-            interpreter_state,
+            interpreter_state: Continuation::new(Box::new(NullInterpreter {})),
             designation_chain: VecDeque::new(),
             // TODO(sec) Verify as env node.
             history_env,
@@ -62,16 +50,9 @@ impl Agent {
         }
     }
 
-    pub fn run<'a, S, F>(&'a mut self, stream: S, handler: F) -> RunIter<'a, S, F>
-    where
-        S: Iterator<Item = Result<Sexp, Error>>,
-        F: FnMut(&mut Agent, &Result<Sexp, Error>),
-    {
-        RunIter {
-            agent: self,
-            stream,
-            handler,
-        }
+    pub fn run<I: InterpreterState + 'static>(&mut self, base_interpreter: I) -> &mut Self {
+        self.interpreter_state = Continuation::new(Box::new(base_interpreter));
+        self
     }
 
     pub fn context(&self) -> &AmlangContext {
@@ -156,9 +137,9 @@ impl Agent {
     pub fn interpreter_state(&self) -> &Continuation<Box<dyn InterpreterState>> {
         &self.interpreter_state
     }
-    fn top_interpret(&mut self, sexp: Sexp) -> Result<Sexp, Error> {
-        // TODO(perf) Can we avoid cloning InterpreterState by storing continuation
-        // out of Agent?
+
+    pub fn top_interpret(&mut self, sexp: Sexp) -> Result<Sexp, Error> {
+        // TODO(perf) Can we avoid this clone plz?
         let mut interpreter_state = self.interpreter_state().top().clone();
         let mut interpreter = interpreter_state.borrow_agent(self);
 
@@ -173,6 +154,26 @@ impl Agent {
     ) -> Result<Sexp, Error> {
         self.interpreter_state.push(interpreter);
         let res = self.top_interpret(sexp);
+        self.interpreter_state.pop();
+        res
+    }
+
+
+    pub fn top_exec(&mut self, sexp: Sexp) -> Result<Sexp, Error> {
+        // TODO(perf) Can we avoid this clone plz?
+        let mut interpreter_state = self.interpreter_state().top().clone();
+        let mut interpreter = interpreter_state.borrow_agent(self);
+
+        interpreter.contemplate(sexp)
+    }
+    pub fn sub_exec(
+        &mut self,
+        sexp: Sexp,
+        interpreter: Box<dyn InterpreterState>,
+        _context: Node,
+    ) -> Result<Sexp, Error> {
+        self.interpreter_state.push(interpreter);
+        let res = self.top_exec(sexp);
         self.interpreter_state.pop();
         res
     }
@@ -422,9 +423,12 @@ impl Agent {
             .objects()
             .next()
         {
-            let res = self.amlang_exec(
+            // TODO(feat) Decouple from AmlangState?
+            let res = self.sub_exec(
                 Procedure::Application(handler.globalize(self), vec![subject, predicate, object])
                     .into(),
+                Box::new(AmlangState::default()),
+                amlang_node!(tell, self.context()),
             )?;
             // Only allow insertion to continue if the handler returns true.
             if res != amlang_node!(t, self.context()).into() {
@@ -605,17 +609,6 @@ impl Agent {
             }
         }
         None
-    }
-
-    /// Execute |structure| as internal Amlang structure.
-    ///
-    /// Allows Agents broadly to leverage previous internalize() execution of
-    /// AmlangInterpreters.
-    pub fn amlang_exec(&mut self, structure: Sexp) -> Result<Sexp, Error> {
-        // TODO(func) Push & pop on interpreter_state?
-        let mut state = AmlangState::default();
-        let mut amlang = state.borrow_agent(self);
-        amlang.contemplate(structure)
     }
 
     fn get_or_create_import_table(&mut self, from_env: LocalNode) -> LocalNode {
@@ -826,24 +819,20 @@ impl Agent {
     }
 }
 
-impl<'a, S, F> Iterator for RunIter<'a, S, F>
-where
-    S: Iterator<Item = Result<Sexp, Error>>,
-    F: FnMut(&mut Agent, &Result<Sexp, Error>),
-{
-    type Item = Result<Sexp, Error>;
-    fn next(&mut self) -> Option<Self::Item> {
-        let sexp = match self.stream.next() {
-            None => return None,
-            Some(Ok(sexp)) => sexp,
-            Some(err) => {
-                (self.handler)(&mut self.agent, &err);
-                return Some(err);
-            }
-        };
 
-        let res = self.agent.top_interpret(sexp);
-        (self.handler)(&mut self.agent, &res);
-        Some(res)
+/// Base metacontinuation state for non-running (i.e. manually driven) Agent.
+#[derive(Clone, Debug)]
+struct NullInterpreter {}
+impl Interpreter for NullInterpreter {
+    fn internalize(&mut self, structure: Sexp) -> Result<Sexp, Error> {
+        Ok(structure)
+    }
+    fn contemplate(&mut self, structure: Sexp) -> Result<Sexp, Error> {
+        Ok(structure)
+    }
+}
+impl InterpreterState for NullInterpreter {
+    fn borrow_agent<'a>(&'a mut self, _agent: &'a mut Agent) -> Box<dyn Interpreter + 'a> {
+        Box::new(NullInterpreter {})
     }
 }

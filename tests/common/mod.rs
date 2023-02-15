@@ -1,6 +1,6 @@
 use amlang::agent::env_policy::{EnvPolicy, SimplePolicy};
 use amlang::agent::symbol_policies::policy_base;
-use amlang::agent::{Agent, EnvManager};
+use amlang::agent::{Agent, AmlangState, EnvManager, TransformExecutor};
 use amlang::error::Error;
 use amlang::parser::Parser;
 use amlang::pull_transform;
@@ -32,24 +32,23 @@ pub fn setup() -> Result<(Agent, EnvManager<impl EnvPolicy>), String> {
 }
 
 pub fn results<S: AsRef<str>>(lang_agent: &mut Agent, s: S) -> Vec<Sexp> {
-    let sexps = stream(s).unwrap();
-    lang_agent
-        .run(sexps, |_, _| {})
-        .map(|e| e.unwrap())
-        .collect::<Vec<_>>()
+    pull_transform!(?unwrap
+                    StringReader::new(s.as_ref())
+                    =>> Tokenizer::new(policy_base)
+                    =>. Parser::new()
+                    =>. TransformExecutor::direct(lang_agent, AmlangState::default()))
+    .map(|e| e.unwrap())
+    .collect::<Vec<_>>()
 }
 
 pub fn results_with_errors<S: AsRef<str>>(
     lang_agent: &mut Agent,
     s: S,
 ) -> Vec<Result<Sexp, Error>> {
-    let sexps = stream(s).unwrap();
-    lang_agent.run(sexps, |_, _| {}).collect::<Vec<_>>()
-}
-
-
-fn stream<S: AsRef<str>>(input: S) -> Result<impl Iterator<Item = Result<Sexp, Error>>, Error> {
-    Ok(pull_transform!(StringReader::new(input.as_ref())
-                       =>> Tokenizer::new(policy_base)
-                       =>. Parser::new()))
+    pull_transform!(?unwrap
+                    StringReader::new(s.as_ref())
+                    =>> Tokenizer::new(policy_base)
+                    =>. Parser::new()
+                    =>. TransformExecutor::direct(lang_agent, AmlangState::default()))
+    .collect::<Vec<_>>()
 }

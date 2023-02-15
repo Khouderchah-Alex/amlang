@@ -1,10 +1,10 @@
 use log::debug;
 use std::convert::TryFrom;
 
-use super::agent::Agent;
 use super::agent_frames::ExecFrame;
 use super::amlang_wrappers::*;
 use super::interpreter::{Interpreter, InterpreterState};
+use super::Agent;
 use crate::agent::lang_error::{ExpectedCount, LangError};
 use crate::continuation::Continuation;
 use crate::env::LocalNode;
@@ -54,13 +54,12 @@ impl<'a> AmlangInterpreter<'a> {
         }
     }
 
-    pub fn agent(&self) -> &Agent {
+    fn agent(&self) -> &Agent {
         &self.agent
     }
-    pub fn agent_mut(&mut self) -> &mut Agent {
+    fn agent_mut(&mut self) -> &mut Agent {
         &mut self.agent
     }
-
 
     fn make_lambda(
         &mut self,

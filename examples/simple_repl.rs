@@ -18,7 +18,7 @@ use std::convert::TryFrom;
 use std::path::Path;
 
 use amlang::agent::env_policy::SimplePolicy;
-use amlang::agent::{Agent, EnvManager};
+use amlang::agent::{Agent, AmlangState, EnvManager, TransformExecutor};
 use amlang::error::Error;
 use amlang::parser::Parser;
 use amlang::primitive::{Node, Primitive};
@@ -77,8 +77,14 @@ fn main() -> Result<(), String> {
 
     // Run agent.
     let tokens = CliStream::with_helper(agent.clone());
-    let sexps = pull_transform!(?unwrap tokens =>. Parser::new());
-    for _result in agent.run(sexps, print_result) {}
+    let sexps = pull_transform!(?unwrap
+                                tokens
+                                =>. Parser::new()
+                                =>. TransformExecutor::with_handler(
+                                    &mut agent,
+                                    AmlangState::default(),
+                                    agent_handler));
+    for _result in sexps {}
 
     // Serialize.
     if let Err(err) = manager.serialize_full(SERIALIZATION_PATH) {
@@ -88,8 +94,9 @@ fn main() -> Result<(), String> {
     Ok(())
 }
 
-fn print_result(agent: &mut Agent, result: &Result<Sexp, Error>) {
-    match result {
+fn agent_handler(agent: &mut Agent, sexp: Sexp) -> Result<Sexp, Error> {
+    let result = agent.top_interpret(sexp);
+    match &result {
         Ok(val) => {
             print!("-> ");
             if let Ok(node) = <Node>::try_from(val) {
@@ -108,4 +115,5 @@ fn print_result(agent: &mut Agent, result: &Result<Sexp, Error>) {
         }
     };
     println!("");
+    result
 }
