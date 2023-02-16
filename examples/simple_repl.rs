@@ -18,7 +18,7 @@ use std::convert::TryFrom;
 use std::path::Path;
 
 use amlang::agent::env_policy::SimplePolicy;
-use amlang::agent::{Agent, AmlangState, EnvManager, NullInterpreter, TransformExecutor};
+use amlang::agent::{Agent, AmlangInterpreter, EnvManager, NullInterpreter, TransformExecutor};
 use amlang::error::Error;
 use amlang::parser::Parser;
 use amlang::primitive::{Node, Primitive};
@@ -65,7 +65,7 @@ fn main() -> Result<(), String> {
     };
 
     // Prep agent.
-    let mut agent = manager.agent().fork(AmlangState::default());
+    let mut agent = manager.agent().fork(AmlangInterpreter::default());
     let working_env = agent.find_env("working.env").unwrap();
     agent.jump_env(working_env);
     agent.designation_chain_mut().push_back(working_env);

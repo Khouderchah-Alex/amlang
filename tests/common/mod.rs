@@ -1,6 +1,6 @@
 use amlang::agent::env_policy::{EnvPolicy, SimplePolicy};
 use amlang::agent::symbol_policies::policy_base;
-use amlang::agent::{Agent, AmlangState, EnvManager, TransformExecutor};
+use amlang::agent::{Agent, AmlangInterpreter, EnvManager, TransformExecutor};
 use amlang::error::Error;
 use amlang::parser::Parser;
 use amlang::pull_transform;
@@ -23,7 +23,7 @@ pub fn setup() -> Result<(Agent, EnvManager<impl EnvPolicy>), String> {
     };
 
     // Prep agent.
-    let mut agent = manager.agent().fork(AmlangState::default());
+    let mut agent = manager.agent().fork(AmlangInterpreter::default());
     let working_env = agent.find_env("working.env").unwrap();
     agent.jump_env(working_env);
     agent.designation_chain_mut().push_back(working_env);

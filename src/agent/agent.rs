@@ -8,7 +8,7 @@ use super::agent_frames::{EnvFrame, ExecFrame};
 use super::amlang_context::AmlangContext;
 use super::env_prelude::EnvPrelude;
 use super::interpreter::{InterpreterState, NullInterpreter};
-use super::AmlangState;
+use super::AmlangInterpreter;
 use crate::agent::lang_error::LangError;
 use crate::agent::symbol_policies::policy_admin;
 use crate::continuation::Continuation;
@@ -424,11 +424,11 @@ impl Agent {
             .objects()
             .next()
         {
-            // TODO(feat) Decouple from AmlangState?
+            // TODO(feat) Decouple from AmlangInterpreter?
             let res = self.sub_exec(
                 Procedure::Application(handler.globalize(self), vec![subject, predicate, object])
                     .into(),
-                Box::new(AmlangState::default()),
+                Box::new(AmlangInterpreter::default()),
                 amlang_node!(tell, self.context()),
             )?;
             // Only allow insertion to continue if the handler returns true.

@@ -1,6 +1,6 @@
 // Public exports.
 pub use agent::Agent;
-pub use amlang_interpreter::AmlangState;
+pub use amlang_interpreter::AmlangInterpreter;
 pub use base_serializer::BaseSerializer;
 pub use env_manager::EnvManager;
 pub use executor::TransformExecutor;

@@ -16,11 +16,11 @@ use crate::sexp::{Cons, ConsList, HeapSexp, Sexp};
 
 
 #[derive(Clone, Debug)]
-pub struct AmlangState {
+pub struct AmlangInterpreter {
     eval_state: Continuation<SymNodeTable>,
 }
 
-impl Default for AmlangState {
+impl Default for AmlangInterpreter {
     fn default() -> Self {
         Self {
             eval_state: Continuation::new(SymNodeTable::default()),
@@ -28,20 +28,20 @@ impl Default for AmlangState {
     }
 }
 
-impl InterpreterState for AmlangState {
+impl InterpreterState for AmlangInterpreter {
     fn borrow_agent<'a>(&'a mut self, agent: &'a mut Agent) -> Box<dyn Interpreter + 'a> {
-        Box::new(AmlangInterpreter::from_state(self, agent))
+        Box::new(ExecutingInterpreter::from_state(self, agent))
     }
 }
 
 
-pub struct AmlangInterpreter<'a> {
+struct ExecutingInterpreter<'a> {
     eval_state: &'a mut Continuation<SymNodeTable>,
     agent: &'a mut Agent,
 }
 
-impl<'a> AmlangInterpreter<'a> {
-    fn from_state(state: &'a mut AmlangState, agent: &'a mut Agent) -> Self {
+impl<'a> ExecutingInterpreter<'a> {
+    fn from_state(state: &'a mut AmlangInterpreter, agent: &'a mut Agent) -> Self {
         // Ensure agent designates amlang nodes first.
         let lang_env = agent.context().lang_env();
         if agent.designation_chain().front().cloned() != Some(lang_env) {
@@ -293,7 +293,7 @@ impl<'a> AmlangInterpreter<'a> {
 
                     // Interpret value, relying on self-evaluation of val_node.
                     let original = self.agent_mut().designate(Primitive::Node(s))?;
-                    let mut sub_interpreter = Box::new(AmlangState::default());
+                    let mut sub_interpreter = Box::new(AmlangInterpreter::default());
                     sub_interpreter.eval_state.push(frame);
                     let final_sexp = self.agent_mut().sub_interpret(
                         original,
@@ -326,7 +326,7 @@ impl<'a> AmlangInterpreter<'a> {
                 if let Some(s) = val {
                     let final_sexp = self.agent_mut().sub_interpret(
                         s.into(),
-                        Box::new(AmlangState::default()),
+                        Box::new(AmlangInterpreter::default()),
                         interpreter_context,
                     )?;
                     self.agent_mut().set(node, Some(final_sexp))?;
@@ -448,7 +448,7 @@ impl<'a> AmlangInterpreter<'a> {
                     let to_inner = self.contemplate(arg)?;
                     self.agent_mut().sub_interpret(
                         to_inner,
-                        Box::new(AmlangState::default()),
+                        Box::new(AmlangInterpreter::default()),
                         interpreter_context,
                     )
                 } else {
@@ -516,7 +516,7 @@ impl<'a> AmlangInterpreter<'a> {
     }
 }
 
-impl<'a> Interpreter for AmlangInterpreter<'a> {
+impl<'a> Interpreter for ExecutingInterpreter<'a> {
     fn contemplate(&mut self, structure: Sexp) -> Result<Sexp, Error> {
         let node = if let Ok(node) = <Node>::try_from(&structure) {
             node
