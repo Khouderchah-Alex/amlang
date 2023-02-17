@@ -15,7 +15,7 @@ use crate::primitive::table::Table;
 use crate::sexp::{Cons, ConsList, HeapSexp, Sexp};
 
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct AmlangInterpreter {
     eval_state: Continuation<SymNodeTable>,
 }

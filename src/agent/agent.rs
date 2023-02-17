@@ -1,8 +1,10 @@
 use colored::*;
 use log::debug;
+use std::cell::RefCell;
 use std::collections::VecDeque;
 use std::convert::TryFrom;
 use std::io::{self, stdout, BufWriter};
+use std::rc::Rc;
 
 use super::agent_frames::{EnvFrame, ExecFrame};
 use super::amlang_context::AmlangContext;
@@ -26,7 +28,7 @@ use crate::sexp::Sexp;
 pub struct Agent {
     env_state: Continuation<EnvFrame>,
     exec_state: Continuation<ExecFrame>,
-    interpreter_state: Continuation<Box<dyn InterpreterState>>,
+    interpreter_state: Continuation<Rc<RefCell<Box<dyn InterpreterState>>>>,
     designation_chain: VecDeque<LocalNode>,
 
     history_env: LocalNode,
@@ -42,7 +44,9 @@ impl Agent {
         Self {
             env_state,
             exec_state,
-            interpreter_state: Continuation::new(Box::new(NullInterpreter::default())),
+            interpreter_state: Continuation::new(Rc::new(RefCell::new(Box::new(
+                NullInterpreter::default(),
+            )))),
             designation_chain: VecDeque::new(),
             // TODO(sec) Verify as env node.
             history_env,
@@ -52,7 +56,8 @@ impl Agent {
 
     pub fn fork<I: InterpreterState + 'static>(&self, base_interpreter: I) -> Self {
         let mut res = Self::new(self.pos(), self.context.clone(), self.history_env);
-        res.interpreter_state = Continuation::new(Box::new(base_interpreter));
+        res.interpreter_state =
+            Continuation::new(Rc::new(RefCell::new(Box::new(base_interpreter))));
         res
     }
 
@@ -135,13 +140,13 @@ impl Agent {
         self.designate(node.into())
     }
 
-    pub fn interpreter_state(&self) -> &Continuation<Box<dyn InterpreterState>> {
+    pub fn interpreter_state(&self) -> &Continuation<Rc<RefCell<Box<dyn InterpreterState>>>> {
         &self.interpreter_state
     }
 
     pub fn top_interpret(&mut self, sexp: Sexp) -> Result<Sexp, Error> {
-        // TODO(perf) Can we avoid this clone plz?
-        let mut interpreter_state = self.interpreter_state().top().clone();
+        let interpreter_state_rc = self.interpreter_state().top().clone();
+        let mut interpreter_state = interpreter_state_rc.borrow_mut();
         let mut interpreter = interpreter_state.borrow_agent(self);
 
         let ir = interpreter.internalize(sexp);
@@ -153,7 +158,8 @@ impl Agent {
         interpreter: Box<dyn InterpreterState>,
         _context: Node,
     ) -> Result<Sexp, Error> {
-        self.interpreter_state.push(interpreter);
+        self.interpreter_state
+            .push(Rc::new(RefCell::new(interpreter)));
         let res = self.top_interpret(sexp);
         self.interpreter_state.pop();
         res
@@ -161,8 +167,8 @@ impl Agent {
 
 
     pub fn top_exec(&mut self, sexp: Sexp) -> Result<Sexp, Error> {
-        // TODO(perf) Can we avoid this clone plz?
-        let mut interpreter_state = self.interpreter_state().top().clone();
+        let interpreter_state_rc = self.interpreter_state().top().clone();
+        let mut interpreter_state = interpreter_state_rc.borrow_mut();
         let mut interpreter = interpreter_state.borrow_agent(self);
 
         interpreter.contemplate(sexp)
@@ -173,7 +179,8 @@ impl Agent {
         interpreter: Box<dyn InterpreterState>,
         _context: Node,
     ) -> Result<Sexp, Error> {
-        self.interpreter_state.push(interpreter);
+        self.interpreter_state
+            .push(Rc::new(RefCell::new(interpreter)));
         let res = self.top_exec(sexp);
         self.interpreter_state.pop();
         res

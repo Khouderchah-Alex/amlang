@@ -1,5 +1,3 @@
-use dyn_clone::DynClone;
-
 use std::fmt;
 
 use super::Agent;
@@ -37,15 +35,13 @@ pub trait Interpreter {
 /// State which can borrow Execution to create an Interpreter.
 /// Can be stored in Continuation and facilitates reifying metacontinuations.
 // TODO(func) Allow storage in Env.
-pub trait InterpreterState: DynClone + fmt::Debug {
+pub trait InterpreterState: fmt::Debug {
     fn borrow_agent<'a>(&'a mut self, agent: &'a mut Agent) -> Box<dyn Interpreter + 'a>;
 }
 
-dyn_clone::clone_trait_object!(InterpreterState);
-
 
 /// Base metacontinuation state for non-running (i.e. manually driven) Agent.
-#[derive(Clone, Debug, Default)]
+#[derive(Debug, Default)]
 pub struct NullInterpreter {}
 impl Interpreter for NullInterpreter {
     fn internalize(&mut self, structure: Sexp) -> Result<Sexp, Error> {
