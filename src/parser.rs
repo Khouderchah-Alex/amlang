@@ -1,9 +1,9 @@
 //! Module for parsing Amlang tokens into an AST.
 use std::collections::VecDeque;
 
-use crate::agent::symbol_policies::policy_base;
 use crate::continuation::Continuation;
 use crate::error::{Error, ErrorKind};
+use crate::primitive::symbol_policies::policy_base;
 use crate::primitive::{ToLangString, ToSymbol};
 use crate::sexp::{ConsList, Sexp};
 use crate::stream::Transform;

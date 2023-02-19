@@ -15,6 +15,7 @@ pub mod path;
 pub mod procedure;
 pub mod string;
 pub mod symbol;
+pub mod symbol_policies;
 pub mod table;
 pub mod vector;
 
@@ -30,7 +31,8 @@ pub mod prelude {
     pub use super::procedure::Procedure;
     pub use super::string::{LangString, ToLangString};
     pub use super::symbol::{Symbol, ToSymbol};
-    pub use super::table::{LocalNodeTable, SymNodeTable, SymSexpTable};
+    pub use super::symbol_policies::{policy_admin, policy_base, AdminSymbolInfo, SymbolPolicy};
+    pub use super::table::{LocalNodeTable, SymNodeTable, SymSexpTable, Table};
     pub use super::vector::Vector;
 }
 /// All other clients can simply pick out what to use as normal.

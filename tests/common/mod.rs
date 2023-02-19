@@ -1,8 +1,8 @@
 use amlang::agent::env_policy::{EnvPolicy, SimplePolicy};
-use amlang::agent::symbol_policies::policy_base;
 use amlang::agent::{Agent, AmlangInterpreter, EnvManager, TransformExecutor};
 use amlang::error::Error;
 use amlang::parser::Parser;
+use amlang::primitive::symbol_policies::policy_base;
 use amlang::pull_transform;
 use amlang::sexp::Sexp;
 use amlang::stream::input::StringReader;

@@ -3,9 +3,9 @@
 use std::collections::VecDeque;
 
 use super::token::{Token, TokenKind};
-use crate::agent::symbol_policies::SymbolPolicy;
 use crate::error::{Error, ErrorKind};
 use crate::primitive::symbol::{SymbolError, ToSymbol};
+use crate::primitive::symbol_policies::SymbolPolicy;
 use crate::primitive::Number as Num;
 use crate::primitive::Primitive::*;
 use crate::primitive::{LangString, ToLangString};

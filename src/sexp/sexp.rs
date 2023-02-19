@@ -36,7 +36,6 @@ use serde::{Deserialize, Serialize};
 
 use super::fmt_io_adapter::FmtIoAdapter;
 use super::{Cons, ConsList};
-use crate::agent::symbol_policies::policy_base;
 use crate::error::Error;
 use crate::parser::Parser;
 use crate::primitive::prelude::*;

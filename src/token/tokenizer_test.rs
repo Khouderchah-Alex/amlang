@@ -1,7 +1,7 @@
 use super::*;
 
-use crate::agent::symbol_policies::policy_base;
 use crate::error::Error;
+use crate::primitive::symbol_policies::policy_base;
 use crate::primitive::{Number, ToSymbol};
 use crate::stream::input::StringReader;
 use TokenKind::*;

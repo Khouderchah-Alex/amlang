@@ -4,9 +4,9 @@ use rustyline::Editor;
 use super::cli_helper::CliHelper;
 use super::token::Token;
 use super::tokenizer::Tokenizer;
-use crate::agent::symbol_policies::policy_base;
 use crate::agent::Agent;
 use crate::error::Error;
+use crate::primitive::symbol_policies::policy_base;
 use crate::stream::Transform;
 
 

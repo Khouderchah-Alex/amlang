@@ -12,7 +12,6 @@ use super::env_prelude::EnvPrelude;
 use super::interpreter::{InterpreterState, NullInterpreter};
 use super::AmlangInterpreter;
 use crate::agent::lang_error::LangError;
-use crate::agent::symbol_policies::policy_admin;
 use crate::continuation::Continuation;
 use crate::env::entry::EntryMutKind;
 use crate::env::LocalNode;

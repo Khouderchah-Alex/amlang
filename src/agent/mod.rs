@@ -19,7 +19,6 @@ pub mod env_prelude;
 pub mod executor;
 pub mod interpreter;
 pub mod lang_error;
-pub mod symbol_policies;
 
 // Private mods.
 mod amlang_wrappers;

@@ -8,7 +8,6 @@ use std::collections::VecDeque;
 use log::debug;
 use serde::{ser, Serialize};
 
-use crate::agent::symbol_policies::policy_base;
 use crate::agent::Agent;
 use crate::error::Error;
 use crate::primitive::prelude::*;
