@@ -26,28 +26,28 @@ impl ErrorKind for DeserializeError {
                 )
             }
             Self::MissingHeaderSection => {
-                list!("MissingHeaderSection".to_lang_string(),)
+                list!("MissingHeaderSection".to_lang_string())
             }
             Self::MissingNodeSection => {
-                list!("MissingNodeSection".to_lang_string(),)
+                list!("MissingNodeSection".to_lang_string())
             }
             Self::MissingTripleSection => {
-                list!("MissingTripleSection".to_lang_string(),)
+                list!("MissingTripleSection".to_lang_string())
             }
             Self::ExtraneousSection => {
-                list!("ExtraneousSection".to_lang_string(),)
+                list!("ExtraneousSection".to_lang_string())
             }
             Self::UnexpectedCommand(sexp) => {
-                list!("UnexpectedCommand".to_lang_string(), sexp.clone(),)
+                list!("UnexpectedCommand".to_lang_string(), sexp.clone())
             }
             Self::ExpectedSymbol => {
-                list!("ExpectedSymbol".to_lang_string(),)
+                list!("ExpectedSymbol".to_lang_string())
             }
             Self::UnrecognizedBuiltIn(symbol) => {
-                list!("UnrecognizedBuiltIn".to_lang_string(), symbol.clone(),)
+                list!("UnrecognizedBuiltIn".to_lang_string(), symbol.clone())
             }
             Self::InvalidNodeEntry(sexp) => {
-                list!("InvalidNodeEntry".to_lang_string(), sexp.clone(),)
+                list!("InvalidNodeEntry".to_lang_string(), sexp.clone())
             }
         };
         Cons::new("DeserializeError".to_lang_string(), inner).into()

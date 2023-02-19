@@ -89,7 +89,7 @@ macro_rules! generate_context {
                 let lang: Sexp = vec![
                     $(Node::new(self.lang_env, self.$lang_node),)+
                 ].into();
-                list!(meta, lang,)
+                list!(meta, lang)
             }
 
             fn reflect<F>(structure: Sexp, agent: &Agent, resolve: F) -> Result<Self, Error>

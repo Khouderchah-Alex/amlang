@@ -442,7 +442,7 @@ impl Agent {
             if res != amlang_node!(t, self.context()).into() {
                 return err!(
                     self,
-                    LangError::RejectedTriple(list!(subject, predicate, object,), res)
+                    LangError::RejectedTriple(list!(subject, predicate, object), res)
                 );
             }
         }

@@ -368,9 +368,9 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
             let line = if write_structure {
                 let mut structure = s.unwrap();
                 if add_quote {
-                    structure = list!("quote".to_symbol_or_panic(policy_admin), structure,);
+                    structure = list!("quote".to_symbol_or_panic(policy_admin), structure);
                 }
-                list!(node, structure,)
+                list!(node, structure)
             } else {
                 write!(&mut w, " ")?; // Add space to align with structured lines.
                 node.into()

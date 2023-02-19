@@ -74,7 +74,7 @@ impl Reflective for LocalTriple {
         let s = Node::new(e, env.triple_subject(*self));
         let p = Node::new(e, env.triple_predicate(*self));
         let o = Node::new(e, env.triple_object(*self));
-        list!(s, p, o,)
+        list!(s, p, o)
     }
 
     fn reflect<F>(_structure: Sexp, _agent: &Agent, _resolve: F) -> Result<Self, Error> {

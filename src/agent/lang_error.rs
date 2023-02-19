@@ -54,7 +54,7 @@ impl ErrorKind for LangError {
                     ("expected".to_lang_string(), expected.to_lang_string(),),
                 )
             }
-            Self::InvalidSexp(val) => list!("Invalid sexp".to_lang_string(), val.clone(),),
+            Self::InvalidSexp(val) => list!("Invalid sexp".to_lang_string(), val.clone()),
             Self::WrongArgumentCount { given, expected } => list!(
                 "Wrong argument count".to_lang_string(),
                 ("given".to_lang_string(), Number::USize(*given),),
@@ -64,13 +64,13 @@ impl ErrorKind for LangError {
                 ),
             ),
             Self::UnboundSymbol(symbol) => {
-                list!("Unbound symbol".to_lang_string(), symbol.clone(),)
+                list!("Unbound symbol".to_lang_string(), symbol.clone())
             }
             Self::AlreadyBoundSymbol(symbol) => {
-                list!("Already bound symbol".to_lang_string(), symbol.clone(),)
+                list!("Already bound symbol".to_lang_string(), symbol.clone())
             }
             Self::DuplicateTriple(sexp) => {
-                list!("Duplicate triple".to_lang_string(), sexp.clone(),)
+                list!("Duplicate triple".to_lang_string(), sexp.clone())
             }
             Self::RejectedTriple(triple, reason) => {
                 list!(
@@ -79,7 +79,7 @@ impl ErrorKind for LangError {
                     reason.clone(),
                 )
             }
-            Self::Unsupported(msg) => list!("Unsupported".to_lang_string(), msg.to_lang_string(),),
+            Self::Unsupported(msg) => list!("Unsupported".to_lang_string(), msg.to_lang_string()),
         };
         Cons::new("LangError".to_lang_string(), inner).into()
     }

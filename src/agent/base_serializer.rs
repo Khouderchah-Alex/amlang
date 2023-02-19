@@ -166,7 +166,7 @@ impl<'a, 'b> ser::Serializer for &'a mut BaseSerializer<'b> {
         debug!("Serializing newtype_variant {}::{}", name, variant);
         let name = BaseSerializer::<'b>::serialize_symbol(name)?;
         let v = value.serialize(&mut *self)?;
-        Ok(list!(name, v,).into())
+        Ok(list!(name, v).into())
     }
 
     fn serialize_seq(self, _len: Option<usize>) -> Result<Self::SerializeSeq, Self::Error> {

@@ -30,7 +30,8 @@ pub mod prelude {
     pub use crate::primitive::*;
     pub use crate::sexp::{Cons, ConsList, Sexp};
     pub use crate::InitOptions;
-    pub use crate::{pull_transform, push_transform};
+    // Macros.
+    pub use crate::{break_sexp, err, list, pull_transform, push_transform};
 }
 
 

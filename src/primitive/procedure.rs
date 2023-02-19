@@ -25,7 +25,7 @@ impl Reflective for Procedure {
         match self {
             Procedure::Application(func, args) => {
                 let apply_node = amlang_node!(apply, context);
-                list!(apply_node, *func, args,)
+                list!(apply_node, *func, args)
             }
             Procedure::Abstraction(params, body, reflect) => {
                 let special_node = if *reflect {
@@ -33,7 +33,7 @@ impl Reflective for Procedure {
                 } else {
                     amlang_node!(lambda, context)
                 };
-                list!(special_node, params, *body,)
+                list!(special_node, params, *body)
             }
             Procedure::Sequence(seq) => {
                 let progn_node = amlang_node!(progn, context);
@@ -42,7 +42,7 @@ impl Reflective for Procedure {
             Procedure::Branch(t) => {
                 let branch_node = amlang_node!(branch, context);
                 let (pred, a, b) = **t;
-                list!(branch_node, pred, a, b,)
+                list!(branch_node, pred, a, b)
             }
         }
     }

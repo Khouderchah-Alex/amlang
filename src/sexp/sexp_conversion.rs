@@ -100,39 +100,34 @@ macro_rules! break_sexp {
 /// Returns the elements as a Sexp list.
 ///
 /// Provided Primitive elements must implement Into<Sexp>.
-/// Trailing commas currently must be used.
 ///
 /// Example:
 ///   list!(a, b, (c, (d)), e)
 #[macro_export]
 macro_rules! list {
-    ($($tail:tt)*) => {
-        list_inner!($($tail)*)
-    }
-}
-
-// Should not be used directly. Use list! below.
-macro_rules! list_inner {
-    () => { None as Option<$crate::sexp::HeapSexp> };
     (@cons $car:expr, $cdr:expr) => {
         <$crate::sexp::Sexp>::from(
             $crate::sexp::Cons::new($car, $cdr))
     };
-    (($elem:expr, $($sub_tail:tt)*), $($tail:tt)*) => {
+    (@inner) => { None as Option<$crate::sexp::HeapSexp> };
+    (@inner ($elem:expr $(, $($sub_tail:tt)*)?) $(, $($tail:tt)*)?) => {
         {
-            list_inner!(@cons
-                  list_inner!(@cons
+            list!(@cons
+                  list!(@cons
                     Some($crate::sexp::HeapSexp::new($elem.into())),
-                    list_inner!($($sub_tail)*)),
-                list_inner!($($tail)*))
+                    list!(@inner $($($sub_tail)*)*)),
+                list!(@inner $($($tail)*)*))
         }
     };
-    ($elem:expr, $($tail:tt)*) => {
+    (@inner $elem:expr $(, $($tail:tt)*)?) => {
         {
-            list_inner!(@cons
+            list!(@cons
                 Some($crate::sexp::HeapSexp::new($elem.into())),
-                list_inner!($($tail)*))
+                list!(@inner $($($tail)*)*))
         }
+    };
+    ($($tail:tt)*) => {
+        list!(@inner $($tail)*)
     };
 }
 

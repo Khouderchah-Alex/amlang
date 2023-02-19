@@ -109,7 +109,7 @@ fn missing_arguments() {
 #[test]
 fn simple_list() {
     let original: Sexp = "(1 2)".parse().unwrap();
-    let l = list!(Number::I64(1), Number::I64(2),);
+    let l = list!(Number::I64(1), Number::I64(2));
     let (a, b) = break_sexp!(original => (Number, Number)).unwrap();
     let (aa, bb) = break_sexp!(l => (Number, Number)).unwrap();
     assert_eq!(a, aa);
@@ -119,7 +119,7 @@ fn simple_list() {
 #[test]
 fn multi_type_list() {
     let original: Sexp = "(1 \"test\")".parse().unwrap();
-    let l = list!(Number::I64(1), "test".to_lang_string(),);
+    let l = list!(Number::I64(1), "test".to_lang_string());
     let (a, b) = break_sexp!(original => (Number, LangString)).unwrap();
     let (aa, bb) = break_sexp!(l => (Number, LangString)).unwrap();
     assert_eq!(a, aa);
@@ -130,7 +130,7 @@ fn multi_type_list() {
 fn simple_list_vars() {
     let a = Number::I64(1);
     let b = Number::I64(2);
-    let l = list!(a, b,);
+    let l = list!(a, b);
     let (aa, bb) = break_sexp!(l => (Number, Number)).unwrap();
     assert_eq!(a, aa);
     assert_eq!(b, bb);
@@ -141,7 +141,7 @@ fn nested_list_vars() {
     let a = Number::I64(1);
     let b = Number::I64(2);
     let c = Number::I64(3);
-    let l = list!(a, (b, c,),);
+    let l = list!(a, (b, c));
     let (aa, sub) = break_sexp!(l => (Number, HeapSexp)).unwrap();
     let (bb, cc) = break_sexp!(sub => (Number, Number)).unwrap();
     assert_eq!(a, aa);
