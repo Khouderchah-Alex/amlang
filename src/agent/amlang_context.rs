@@ -10,6 +10,16 @@ use crate::primitive::{Node, Primitive};
 use crate::sexp::{HeapSexp, Sexp, SexpIntoIter};
 
 
+/// Creates a primitive::Node referencing something in the lang_env.
+#[macro_export]
+macro_rules! amlang_node {
+    ($local:ident, $context:expr) => {{
+        let ctx = $context;
+        $crate::primitive::Node::new(ctx.lang_env(), ctx.$local())
+    }};
+}
+
+// Instantiate meta-class with context Nodes.
 generate_context!(
     (lang_env, imports, import_table, serialize_path),
     (

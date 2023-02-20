@@ -8,9 +8,10 @@ pub use interpreter::NullInterpreter;
 pub use lang_error::{ExpectedCount, LangError};
 
 // Public mods.
+#[macro_use]
+pub mod amlang_context;
 pub mod agent;
 pub mod agent_frames;
-pub mod amlang_context;
 pub mod amlang_interpreter;
 pub mod base_serializer;
 pub mod env_manager;
