@@ -57,6 +57,7 @@ impl Agent {
         let mut res = Self::new(self.pos(), self.context.clone(), self.history_env);
         res.interpreter_state =
             Continuation::new(Rc::new(RefCell::new(Box::new(base_interpreter))));
+        res.designation_chain = self.designation_chain.clone();
         res
     }
 
