@@ -157,6 +157,20 @@ pub fn def_wrapper(args: &Vec<Node>, agent: &Agent) -> Result<(Node, Option<Node
     Ok((name, structure))
 }
 
+pub fn defa_wrapper(args: &Vec<Node>, agent: &Agent) -> Result<Option<Node>, Error> {
+    if args.len() > 1 {
+        return err!(
+            agent,
+            LangError::WrongArgumentCount {
+                given: args.len(),
+                expected: ExpectedCount::AtMost(1),
+            }
+        );
+    }
+
+    Ok(args.iter().next().copied())
+}
+
 pub fn apply_wrapper(args: &Vec<Node>, agent: &Agent) -> Result<(Node, Node), Error> {
     if args.len() != 2 {
         return err!(

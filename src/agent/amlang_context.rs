@@ -49,7 +49,9 @@ generate_context!(
         local_node_table,
         label,
         vector,
-        set
+        set,
+        node,
+        anon
     )
 );
 

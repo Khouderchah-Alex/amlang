@@ -2,7 +2,7 @@ mod common;
 
 use std::convert::TryFrom;
 
-use amlang::primitive::{LangString, Node, Number, Primitive};
+use amlang::primitive::prelude::*;
 use amlang::sexp::{Cons, Sexp};
 use amlang::{amlang_node, break_sexp};
 
@@ -221,6 +221,49 @@ fn def_recursive_lambda() {
          (fact 4)",
     );
     assert_eq!(results[1], Number::I64(24).into());
+}
+
+
+#[test]
+fn node_atom() {
+    let (mut lang_agent, _manager) = common::setup().unwrap();
+
+    let results = common::results(&mut lang_agent, "(node)");
+    // Atom should designate to itself.
+    assert_eq!(
+        lang_agent
+            .designate(Primitive::try_from(results[0].clone()).unwrap())
+            .unwrap(),
+        results[0],
+    );
+}
+
+#[test]
+fn node_apply() {
+    let (mut lang_agent, _manager) = common::setup().unwrap();
+
+    let results = common::results(&mut lang_agent, "(node (+ 1 2))");
+    assert_eq!(
+        lang_agent
+            .designate(Primitive::try_from(results[0].clone()).unwrap())
+            .unwrap(),
+        Number::I64(3).into()
+    );
+}
+
+#[test]
+fn node_recursive() {
+    let (mut lang_agent, _manager) = common::setup().unwrap();
+
+    let results = common::results(&mut lang_agent, "(node (cons 'a $))");
+    let infinite = lang_agent
+        .designate(Primitive::try_from(results[0].clone()).unwrap())
+        .unwrap();
+
+    // Node should be infinite list of 'a, with circularity traversed through `eval`.
+    let (car, cdr) = break_sexp!(infinite.clone() => (Symbol; remainder)).unwrap();
+    assert_eq!(car, "a".to_symbol_or_panic(policy_base));
+    assert_eq!(lang_agent.top_interpret(*cdr.unwrap()).unwrap(), infinite);
 }
 
 #[test]

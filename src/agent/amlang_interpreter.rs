@@ -272,22 +272,26 @@ impl<'a> ExecutingInterpreter<'a> {
                         .into())
                 }
             }
-            _ if context.def() == special_node => {
+            _ if context.def() == special_node || context.node() == special_node => {
                 let interpreter_context = amlang_node!(def, context);
-                let (name, val) = def_wrapper(&arg_nodes, &self.agent())?;
-                self.agent_mut().designate(name.into())?;
-                if name.env() != self.agent().pos().env() {
-                    panic!("Cross-env triples are not yet supported");
-                }
+                let is_named = special_node == context.def();
+                let (name, val) = if is_named {
+                    let (name, val) = def_wrapper(&arg_nodes, &self.agent())?;
+                    if name.env() != self.agent().pos().env() {
+                        panic!("Cross-env triples are not yet supported");
+                    }
+                    (name, val)
+                } else {
+                    let val = defa_wrapper(&arg_nodes, &self.agent())?;
+                    (Node::new(context.lang_env(), context.anon()), val)
+                };
 
-                let val_node = if let Some(s) = val {
+                let mut val_node = if let Some(s) = val {
                     // Ensure internalize maps name to this node.
                     let val_node = self.agent_mut().define(None)?;
 
                     let mut frame = SymNodeTable::default();
-                    if let Ok(sym) =
-                        Symbol::try_from(self.agent_mut().designate(Primitive::Node(name))?)
-                    {
+                    if let Ok(sym) = Symbol::try_from(self.agent_mut().designate(name.into())?) {
                         frame.insert(sym, val_node);
                     }
 
@@ -316,7 +320,11 @@ impl<'a> ExecutingInterpreter<'a> {
                 } else {
                     self.agent_mut().define(None)?
                 };
-                Ok(self.agent_mut().name_node(name, val_node)?.into())
+
+                if is_named {
+                    val_node = self.agent_mut().name_node(name, val_node)?;
+                }
+                Ok(val_node.into())
             }
             _ if context.set() == special_node => {
                 // Note that unlike def, set! follows normal internalization during evlis.
@@ -616,6 +624,7 @@ impl<'a> Interpreter for ExecutingInterpreter<'a> {
                     }
                     _ => {
                         let def_node = amlang_node!(def, context);
+                        let node_node = amlang_node!(node, context);
                         let should_internalize = match self.agent_mut().designate(node.into())? {
                             // Don't evaluate args of reflective Abstractions.
                             Sexp::Primitive(Primitive::Procedure(Procedure::Abstraction(
@@ -623,7 +632,7 @@ impl<'a> Interpreter for ExecutingInterpreter<'a> {
                                 _,
                                 true,
                             ))) => false,
-                            _ => node != def_node,
+                            _ => node != def_node && node != node_node,
                         };
                         let args = self.evlis(cdr, should_internalize)?;
                         return Ok(Procedure::Application(node, args).into());

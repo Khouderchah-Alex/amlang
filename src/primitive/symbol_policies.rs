@@ -8,7 +8,7 @@ use crate::primitive::symbol::SymbolError;
 /// De-facto specification of amlang identifier format.
 fn is_amlang_identifier(s: &str) -> bool {
     match s {
-        "+" | "-" | "*" | "/" => true,
+        "+" | "-" | "*" | "/" | "$" => true,
         _ if s
             .chars()
             .all(|c| c.is_alphabetic() || c == '_' || c == '-' || c == '*' || c == '!') =>
