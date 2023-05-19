@@ -14,7 +14,7 @@ pub struct TransformExecutor<'a> {
 }
 
 impl<'a> TransformExecutor<'a> {
-    pub fn direct(agent: &'a mut Agent) -> Self {
+    pub fn top_interpret(agent: &'a mut Agent) -> Self {
         Self {
             agent: agent,
             cache: Default::default(),
@@ -22,7 +22,7 @@ impl<'a> TransformExecutor<'a> {
         }
     }
 
-    pub fn with_handler(
+    pub fn custom(
         agent: &'a mut Agent,
         handler: fn(&mut Agent, Sexp) -> Result<Sexp, Error>,
     ) -> Self {

@@ -3,6 +3,7 @@ pub use agent::Agent;
 pub use amlang_interpreter::AmlangInterpreter;
 pub use base_serializer::BaseSerializer;
 pub use env_manager::EnvManager;
+pub use env_prelude::EnvPrelude;
 pub use executor::TransformExecutor;
 pub use interpreter::NullInterpreter;
 pub use lang_error::{ExpectedCount, LangError};

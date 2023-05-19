@@ -80,7 +80,7 @@ fn main() -> Result<(), String> {
     let sexps = pull_transform!(?unwrap
                                 tokens
                                 =>. Parser::new()
-                                =>. TransformExecutor::with_handler(
+                                =>. TransformExecutor::custom(
                                     &mut agent,
                                     agent_handler));
     for _result in sexps {}

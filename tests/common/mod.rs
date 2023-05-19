@@ -36,7 +36,7 @@ pub fn results<S: AsRef<str>>(lang_agent: &mut Agent, s: S) -> Vec<Sexp> {
                     StringReader::new(s.as_ref())
                     =>> Tokenizer::new(policy_base)
                     =>. Parser::new()
-                    =>. TransformExecutor::direct(lang_agent))
+                    =>. TransformExecutor::top_interpret(lang_agent))
     .map(|e| e.unwrap())
     .collect::<Vec<_>>()
 }
@@ -49,6 +49,6 @@ pub fn results_with_errors<S: AsRef<str>>(
                     StringReader::new(s.as_ref())
                     =>> Tokenizer::new(policy_base)
                     =>. Parser::new()
-                    =>. TransformExecutor::direct(lang_agent))
+                    =>. TransformExecutor::top_interpret(lang_agent))
     .collect::<Vec<_>>()
 }
