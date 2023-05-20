@@ -18,12 +18,16 @@ use crate::sexp::{Cons, ConsList, HeapSexp, Sexp};
 #[derive(Debug)]
 pub struct AmlangInterpreter {
     eval_state: Continuation<SymNodeTable>,
+    history_env: LocalNode,
+    impl_env: LocalNode,
 }
 
-impl Default for AmlangInterpreter {
-    fn default() -> Self {
+impl AmlangInterpreter {
+    pub fn new(history_env: LocalNode, impl_env: LocalNode) -> Self {
         Self {
             eval_state: Continuation::new(SymNodeTable::default()),
+            history_env,
+            impl_env,
         }
     }
 }
@@ -37,6 +41,9 @@ impl InterpreterState for AmlangInterpreter {
 
 struct ExecutingInterpreter<'a> {
     eval_state: &'a mut Continuation<SymNodeTable>,
+    history_env: LocalNode,
+    impl_env: LocalNode,
+
     agent: &'a mut Agent,
 }
 
@@ -50,6 +57,9 @@ impl<'a> ExecutingInterpreter<'a> {
 
         Self {
             eval_state: &mut state.eval_state,
+            history_env: state.history_env,
+            impl_env: state.impl_env,
+
             agent,
         }
     }
@@ -297,7 +307,8 @@ impl<'a> ExecutingInterpreter<'a> {
 
                     // Interpret value, relying on self-evaluation of val_node.
                     let original = self.agent_mut().designate(Primitive::Node(s))?;
-                    let mut sub_interpreter = Box::new(AmlangInterpreter::default());
+                    let mut sub_interpreter =
+                        Box::new(AmlangInterpreter::new(self.history_env, self.impl_env));
                     sub_interpreter.eval_state.push(frame);
                     let final_sexp = self.agent_mut().sub_interpret(
                         original,
@@ -332,9 +343,10 @@ impl<'a> ExecutingInterpreter<'a> {
                 let node = Node::try_from(node).unwrap();
                 let interpreter_context = amlang_node!(set, context);
                 if let Some(s) = val {
+                    let (henv, ienv) = (self.history_env, self.impl_env);
                     let final_sexp = self.agent_mut().sub_interpret(
                         s.into(),
-                        Box::new(AmlangInterpreter::default()),
+                        Box::new(AmlangInterpreter::new(henv, ienv)),
                         interpreter_context,
                     )?;
                     self.agent_mut().set(node, Some(final_sexp))?;
@@ -454,9 +466,10 @@ impl<'a> ExecutingInterpreter<'a> {
                 if is_eval {
                     debug!("applying (eval {})", arg);
                     let to_inner = self.contemplate(arg)?;
+                    let (henv, ienv) = (self.history_env, self.impl_env);
                     self.agent_mut().sub_interpret(
                         to_inner,
-                        Box::new(AmlangInterpreter::default()),
+                        Box::new(AmlangInterpreter::new(henv, ienv)),
                         interpreter_context,
                     )
                 } else {
@@ -481,7 +494,8 @@ impl<'a> ExecutingInterpreter<'a> {
         if let Ok(node) = <Node>::try_from(&sexp) {
             Ok(node)
         } else {
-            self.agent_mut().define(Some(sexp))
+            let env = self.impl_env;
+            self.agent_mut().define_to(env, Some(sexp))
         }
     }
 
@@ -513,6 +527,34 @@ impl<'a> ExecutingInterpreter<'a> {
         Ok(args)
     }
 
+    fn evlis_def(
+        &mut self,
+        structures: Option<HeapSexp>,
+        first_interface: bool,
+    ) -> Result<Vec<Node>, Error> {
+        if structures.is_none() {
+            return Ok(vec![]);
+        }
+
+        // TODO(perf) Return Cow.
+        let s = structures.unwrap();
+        let mut args = Vec::<Node>::with_capacity(s.iter().count());
+        for (i, (structure, proper)) in s.into_iter().enumerate() {
+            if !proper {
+                return err!(self.agent(), LangError::InvalidSexp(*structure));
+            }
+
+            let arg_node = if i == 0 && first_interface {
+                self.agent_mut().define(Some(*structure))?
+            } else {
+                let env = self.impl_env;
+                self.agent_mut().define_to(env, Some(*structure))?
+            };
+            args.push(arg_node);
+        }
+        Ok(args)
+    }
+
     fn print_curr_triples(&mut self) {
         let triples = self.agent().ask_any(self.agent().pos()).unwrap();
         for triple in triples.triples() {
@@ -529,7 +571,8 @@ impl<'a> Interpreter for ExecutingInterpreter<'a> {
         let node = if let Ok(node) = <Node>::try_from(&structure) {
             node
         } else {
-            self.agent_mut().history_insert(structure)
+            let env = self.history_env;
+            self.agent_mut().define_to(env, Some(structure))?
         };
         self.exec(node)
     }
@@ -623,8 +666,12 @@ impl<'a> Interpreter for ExecutingInterpreter<'a> {
                         return Ok(Procedure::Sequence(args).into());
                     }
                     _ => {
-                        let def_node = amlang_node!(def, context);
-                        let node_node = amlang_node!(node, context);
+                        if node == amlang_node!(def, context) || node == amlang_node!(node, context)
+                        {
+                            let args = self.evlis_def(cdr, node == amlang_node!(def, context))?;
+                            return Ok(Procedure::Application(node, args).into());
+                        }
+
                         let should_internalize = match self.agent_mut().designate(node.into())? {
                             // Don't evaluate args of reflective Abstractions.
                             Sexp::Primitive(Primitive::Procedure(Procedure::Abstraction(
@@ -632,7 +679,7 @@ impl<'a> Interpreter for ExecutingInterpreter<'a> {
                                 _,
                                 true,
                             ))) => false,
-                            _ => node != def_node && node != node_node,
+                            _ => true,
                         };
                         let args = self.evlis(cdr, should_internalize)?;
                         return Ok(Procedure::Application(node, args).into());

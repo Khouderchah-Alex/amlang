@@ -10,7 +10,6 @@ use super::agent_frames::{EnvFrame, ExecFrame};
 use super::amlang_context::AmlangContext;
 use super::env_prelude::EnvPrelude;
 use super::interpreter::{InterpreterState, NullInterpreter};
-use super::AmlangInterpreter;
 use crate::agent::lang_error::LangError;
 use crate::continuation::Continuation;
 use crate::env::entry::EntryMutKind;
@@ -30,13 +29,11 @@ pub struct Agent {
     interpreter_state: Continuation<Rc<RefCell<Box<dyn InterpreterState>>>>,
     designation_chain: VecDeque<LocalNode>,
 
-    history_env: LocalNode,
-
     context: AmlangContext,
 }
 
 impl Agent {
-    pub(super) fn new(pos: Node, context: AmlangContext, history_env: LocalNode) -> Self {
+    pub(super) fn new(pos: Node, context: AmlangContext) -> Self {
         let env_state = Continuation::new(EnvFrame { pos });
         // TODO(func) Provide better root node.
         let exec_state = Continuation::new(ExecFrame::new(pos));
@@ -47,14 +44,12 @@ impl Agent {
                 NullInterpreter::default(),
             )))),
             designation_chain: VecDeque::new(),
-            // TODO(sec) Verify as env node.
-            history_env,
             context,
         }
     }
 
     pub fn fork<I: InterpreterState + 'static>(&self, base_interpreter: I) -> Self {
-        let mut res = Self::new(self.pos(), self.context.clone(), self.history_env);
+        let mut res = Self::new(self.pos(), self.context.clone());
         res.interpreter_state =
             Continuation::new(Rc::new(RefCell::new(Box::new(base_interpreter))));
         res.designation_chain = self.designation_chain.clone();
@@ -66,19 +61,6 @@ impl Agent {
     }
     pub fn context_mut(&mut self) -> &mut AmlangContext {
         &mut self.context
-    }
-
-    pub(super) fn set_history_env(&mut self, history_env: LocalNode) {
-        // TODO(sec) Verify as env node.
-        self.history_env = history_env;
-    }
-
-    pub fn history_insert(&mut self, structure: Sexp) -> Node {
-        let local = self
-            .access_env_mut(self.history_env)
-            .unwrap()
-            .insert_structure(structure);
-        Node::new(self.history_env, local)
     }
 }
 
@@ -391,6 +373,19 @@ impl Agent {
         Ok(self.globalize(local))
     }
 
+    pub fn define_to(
+        &mut self,
+        env_node: LocalNode,
+        structure: Option<Sexp>,
+    ) -> Result<Node, Error> {
+        let env = self.access_env_mut(env_node).unwrap();
+        let local = match structure {
+            None => env.insert_atom(),
+            Some(sexp) => env.insert_structure(sexp),
+        };
+        Ok(Node::new(env_node, local))
+    }
+
     pub fn set(&mut self, node: Node, structure: Option<Sexp>) -> Result<(), Error> {
         let mut entry = self
             .access_env_mut(node.env())
@@ -425,27 +420,29 @@ impl Agent {
         }
 
         // If a tell_handler exists for the predicate, ensure it passes before adding triple.
+        // TODO(feat) Decouple from AmlangInterpreter
+        /*
         let tell_handler = Node::new(env, self.context().tell_handler());
-        if let Some(handler) = self
-            .ask_from(env, Some(predicate), Some(tell_handler), None)?
-            .objects()
-            .next()
-        {
-            // TODO(feat) Decouple from AmlangInterpreter?
-            let res = self.sub_exec(
-                Procedure::Application(handler.globalize(self), vec![subject, predicate, object])
-                    .into(),
-                Box::new(AmlangInterpreter::default()),
-                amlang_node!(tell, self.context()),
-            )?;
-            // Only allow insertion to continue if the handler returns true.
-            if res != amlang_node!(t, self.context()).into() {
-                return err!(
-                    self,
-                    LangError::RejectedTriple(list!(subject, predicate, object), res)
-                );
-            }
+            if let Some(handler) = self
+                .ask_from(env, Some(predicate), Some(tell_handler), None)?
+                .objects()
+                .next()
+            {
+                let res = self.sub_exec(
+                    Procedure::Application(handler.globalize(self), vec![subject, predicate, object])
+                        .into(),
+                    Box::new(AmlangInterpreter::default()),
+                    amlang_node!(tell, self.context()),
+                )?;
+                // Only allow insertion to continue if the handler returns true.
+                if res != amlang_node!(t, self.context()).into() {
+                    return err!(
+                        self,
+                        LangError::RejectedTriple(list!(subject, predicate, object), res)
+                    );
+                }
         }
+            */
 
         // Note(sec) If the tell handler jumps to a different environment, the
         // local nodes will globalize into the wrong Environment without jumping

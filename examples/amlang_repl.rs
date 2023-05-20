@@ -65,7 +65,10 @@ fn main() -> Result<(), String> {
     };
 
     // Prep agent.
-    let mut agent = manager.agent().fork(AmlangInterpreter::default());
+    let pre_agent = manager.agent();
+    let history_env = pre_agent.find_env("history.env").unwrap();
+    let impl_env = pre_agent.find_env("impl.env").unwrap();
+    let mut agent = pre_agent.fork(AmlangInterpreter::new(history_env, impl_env));
     let working_env = agent.find_env("working.env").unwrap();
     agent.jump_env(working_env);
     agent.designation_chain_mut().push_back(working_env);

@@ -412,6 +412,7 @@ fn tell_dupe() {
     assert_eq!(kind.as_str(), "Duplicate triple");
 }
 
+/*
 #[test]
 fn tell_handler_reject() {
     let (mut lang_agent, _manager) = common::setup().unwrap();
@@ -457,3 +458,4 @@ fn tell_handler_as_eq() {
     assert_eq!(kind.as_str(), "Rejected triple");
     assert_eq!(ret, amlang_node!(f, lang_agent.context()).into());
 }
+*/

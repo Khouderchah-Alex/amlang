@@ -83,8 +83,6 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         let meta_agent = Agent::new(
             Node::new(LocalNode::default(), context.self_node()),
             context.clone(),
-            // Subtle: Can't use history_env until meta env has been bootstrapped.
-            LocalNode::default(),
         );
         let mut manager = Self {
             agent: meta_agent,
@@ -99,8 +97,6 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
                         import_table: "__import_table",
                         serialize_path: "__serialize_path",
         );
-        let history_env = manager.agent().find_env("history.env").unwrap();
-        manager.agent_mut().set_history_env(history_env);
         info!("Meta env bootstrapping complete.");
 
         // Bootstrap lang env.
@@ -205,7 +201,6 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         let mut placeholder_agent = Agent::new(
             Node::new(LocalNode::default(), placeholder_context.self_node()),
             placeholder_context,
-            LocalNode::default(),
         );
 
         let input = match FileReader::new(in_path) {
