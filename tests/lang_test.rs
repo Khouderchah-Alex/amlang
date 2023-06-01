@@ -2,6 +2,7 @@ mod common;
 
 use std::convert::TryFrom;
 
+use amlang::env::LocalNode;
 use amlang::primitive::prelude::*;
 use amlang::sexp::{Cons, Sexp};
 use amlang::{amlang_node, break_sexp};
@@ -415,15 +416,15 @@ fn tell_dupe() {
 /*
 #[test]
 fn tell_handler_reject() {
-    let (mut lang_agent, _manager) = common::setup().unwrap();
+let (mut lang_agent, _manager) = common::setup().unwrap();
 
-    let results = common::results_with_errors(
-        &mut lang_agent,
-        "(def is)
-         (tell is tell_handler (lambda (s p o) false))
+let results = common::results_with_errors(
+&mut lang_agent,
+"(def is)
+(tell is tell_handler (lambda (s p o) false))
 
-         (def a)
-         (tell a is a)",
+(def a)
+(tell a is a)",
     );
 
     let err = results[3].as_ref().unwrap_err().kind().reify();
@@ -459,3 +460,16 @@ fn tell_handler_as_eq() {
     assert_eq!(ret, amlang_node!(f, lang_agent.context()).into());
 }
 */
+
+#[test]
+fn env_find() {
+    let (mut lang_agent, _manager) = common::setup().unwrap();
+
+    let results = common::results(&mut lang_agent, r##"(env-find "lang.env")"##);
+
+    let context = lang_agent.context();
+    assert_eq!(
+        results[0],
+        Node::new(LocalNode::default(), context.lang_env()).into()
+    );
+}

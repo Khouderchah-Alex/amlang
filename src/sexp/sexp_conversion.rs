@@ -13,7 +13,7 @@
 #[macro_export]
 macro_rules! break_sexp {
     (@ignore $_ignored:ty) => {};
-    ($sexp:expr => ($($type:ty),+ $(;$remainder:tt)?) $(,$agent:expr)?) => {
+    ($sexp:expr => ($($type:ty),* $(;$remainder:tt)?) $(,$agent:expr)?) => {
         {
             // Generate stateful or stateless error depending on existence of $agent.
             let err = |kind| {
@@ -28,11 +28,15 @@ macro_rules! break_sexp {
             };
             let mut iter = $sexp.into_iter();
             let tuple = || {
+                // Ignore warnings for case with empty component tuple.
+                #[allow(unused_mut, unused_variables)]
                 let mut expected: usize = 0;
                 $(
                     break_sexp!(@ignore $type);
                     expected += 1;
-                )+
+                )*
+                // Ignore warnings for case with empty component tuple.
+                #[allow(unused_mut, unused_variables)]
                 let mut i: usize = 0;
                 let ret = Ok((
                     $(
@@ -70,7 +74,7 @@ macro_rules! break_sexp {
                                 });
                             }
                         },
-                    )+
+                    )*
                     $(
                         {
                             break_sexp!(@ignore $remainder);

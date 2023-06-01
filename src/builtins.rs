@@ -3,8 +3,9 @@ use std::mem;
 
 use crate::agent::lang_error::LangError;
 use crate::agent::Agent;
+use crate::env::LocalNode;
 use crate::error::Error;
-use crate::primitive::{BuiltIn, Node, Number};
+use crate::primitive::prelude::*;
 use crate::sexp::{Cons, HeapSexp, Sexp};
 
 
@@ -23,7 +24,9 @@ pub fn generate_builtin_map() -> HashMap<&'static str, BuiltIn> {
         };
     }
 
-    builtins![car, cdr, cons, list_len, println, eq, add, sub, mul, div]
+    builtins![
+        car, cdr, cons, list_len, println, eq, curr, jump, env_find, add, sub, mul, div
+    ]
 }
 
 // Auto-gen builtins from raw rust functions.
@@ -33,6 +36,9 @@ wrap_builtin!(cons_(HeapSexp, HeapSexp) => cons);
 wrap_builtin!(list_len_(HeapSexp) => list_len);
 wrap_builtin!(println_(Sexp) => println);
 wrap_builtin!(eq_(Sexp, Sexp) => eq);
+wrap_builtin!(curr_() => curr);
+wrap_builtin!(jump_(Node) => jump);
+wrap_builtin!(env_find_(LangString) => env_find);
 
 
 fn car_(cons: Cons, _agent: &mut Agent) -> Result<Sexp, Error> {
@@ -87,6 +93,24 @@ fn eq_(a: Sexp, b: Sexp, agent: &mut Agent) -> Result<Node, Error> {
         agent.context().f()
     };
     Ok(Node::new(agent.context().lang_env(), local))
+}
+
+fn curr_(agent: &mut Agent) -> Result<Node, Error> {
+    Ok(agent.pos().into())
+}
+
+fn jump_(node: Node, agent: &mut Agent) -> Result<Node, Error> {
+    agent.jump(node);
+    Ok(node)
+}
+
+fn env_find_(path: LangString, agent: &mut Agent) -> Result<Sexp, Error> {
+    let res = if let Some(lnode) = agent.find_env(path.as_str()) {
+        Node::new(LocalNode::default(), lnode).into()
+    } else {
+        Sexp::default()
+    };
+    Ok(res)
 }
 
 
@@ -177,6 +201,12 @@ fn div(args: Sexp, agent: &mut Agent) -> Result<Sexp, Error> {
 
 /// Autogen function taking args: Vec<Sexp> from one taking specific subtypes.
 macro_rules! wrap_builtin {
+    ($raw:ident() => $wrapped:ident) => {
+        fn $wrapped(args: Sexp, agent: &mut Agent) -> Result<Sexp, Error> {
+            break_sexp!(args => (), agent)?;
+            Ok($raw(agent)?.into())
+        }
+    };
     ($raw:ident($ta:ident) => $wrapped:ident) => {
         fn $wrapped(args: Sexp, agent: &mut Agent) -> Result<Sexp, Error> {
             let (a,) = break_sexp!(args => ($ta), agent)?;

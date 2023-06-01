@@ -9,7 +9,6 @@ use crate::agent::lang_error::{ExpectedCount, LangError};
 use crate::continuation::Continuation;
 use crate::env::LocalNode;
 use crate::error::Error;
-use crate::model::Reflective;
 use crate::primitive::prelude::*;
 use crate::primitive::table::Table;
 use crate::sexp::{Cons, ConsList, HeapSexp, Sexp};
@@ -355,36 +354,6 @@ impl<'a> ExecutingInterpreter<'a> {
                 }
                 Ok(node.into())
             }
-            _ if context.curr() == special_node => {
-                if arg_nodes.len() > 0 {
-                    return err!(
-                        self.agent(),
-                        LangError::WrongArgumentCount {
-                            given: arg_nodes.len(),
-                            expected: ExpectedCount::Exactly(0),
-                        }
-                    );
-                }
-                self.print_curr_triples();
-                Ok(self.agent().pos().into())
-            }
-            _ if context.jump() == special_node => {
-                if arg_nodes.len() != 1 {
-                    return err!(
-                        self.agent(),
-                        LangError::WrongArgumentCount {
-                            given: arg_nodes.len(),
-                            expected: ExpectedCount::Exactly(1),
-                        }
-                    );
-                }
-
-                // If original expr internalize + exec -> Node, use that.
-                let dest = self.exec_to_node(arg_nodes[0])?;
-                self.agent_mut().jump(dest);
-                self.print_curr_triples();
-                Ok(self.agent().pos().into())
-            }
             _ if context.import() == special_node => {
                 if arg_nodes.len() != 1 {
                     return err!(
@@ -400,38 +369,6 @@ impl<'a> ExecutingInterpreter<'a> {
                 let original = self.exec_to_node(arg_nodes[0])?;
                 let imported = self.agent_mut().import(original)?;
                 Ok(imported.into())
-            }
-            _ if context.env_find() == special_node => {
-                if arg_nodes.len() != 1 {
-                    return err!(
-                        self.agent(),
-                        LangError::WrongArgumentCount {
-                            given: arg_nodes.len(),
-                            expected: ExpectedCount::Exactly(1),
-                        }
-                    );
-                }
-
-                let des = self.agent_mut().designate(arg_nodes[0].into())?;
-                let path = match <&LangString>::try_from(&des) {
-                    Ok(path) => path,
-                    _ => {
-                        return err!(
-                            self.agent(),
-                            LangError::InvalidArgument {
-                                given: des.into(),
-                                expected: "Node containing string".into(),
-                            }
-                        );
-                    }
-                };
-
-                let res = if let Some(lnode) = self.agent().find_env(path.as_str()) {
-                    Node::new(LocalNode::default(), lnode).into()
-                } else {
-                    Sexp::default()
-                };
-                Ok(res)
             }
             _ if context.apply() == special_node => {
                 let (proc_node, args_node) = apply_wrapper(&arg_nodes, &self.agent())?;
@@ -553,16 +490,6 @@ impl<'a> ExecutingInterpreter<'a> {
             args.push(arg_node);
         }
         Ok(args)
-    }
-
-    fn print_curr_triples(&mut self) {
-        let triples = self.agent().ask_any(self.agent().pos()).unwrap();
-        for triple in triples.triples() {
-            print!("    ");
-            let structure = triple.reify(self.agent_mut());
-            self.agent_mut().print_sexp(&structure);
-            println!("");
-        }
     }
 }
 
