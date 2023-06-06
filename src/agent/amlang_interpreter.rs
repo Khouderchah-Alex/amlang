@@ -78,8 +78,9 @@ impl<'a> ExecutingInterpreter<'a> {
     ) -> Result<(Procedure, SymNodeTable), Error> {
         let mut surface = Vec::new();
         let mut frame = SymNodeTable::default();
+        let impl_env = self.impl_env;
         for symbol in params {
-            let node = self.agent_mut().define(None)?;
+            let node = self.agent_mut().define_to(impl_env, None)?;
             if frame.contains_key(&symbol) {
                 return err!(
                     self.agent(),
@@ -91,11 +92,12 @@ impl<'a> ExecutingInterpreter<'a> {
             }
             frame.insert(symbol.clone(), node);
             surface.push(node);
-            let name = self.agent_mut().define(Some(symbol.into()))?;
-            // Unlike amlang designation, label predicate must be imported.
-            let raw_predicate = amlang_node!(label, self.agent().context());
-            let label_predicate = self.agent_mut().import(raw_predicate)?;
-            self.agent_mut().tell(node, label_predicate, name)?;
+            let _name = self.agent_mut().define_to(impl_env, Some(symbol.into()))?;
+            // TODO(feat) Bring back when we have multi-env triples.
+            // // Unlike amlang designation, label predicate must be imported.
+            // let raw_predicate = amlang_node!(label, self.agent().context());
+            // let label_predicate = self.agent_mut().import(raw_predicate)?;
+            // self.agent_mut().tell(node, label_predicate, name)?;
         }
 
         self.eval_state.push(frame);
@@ -115,7 +117,7 @@ impl<'a> ExecutingInterpreter<'a> {
             } else {
                 let seq_node = self
                     .agent_mut()
-                    .define(Some(Procedure::Sequence(body_nodes).into()))?;
+                    .define_to(impl_env, Some(Procedure::Sequence(body_nodes).into()))?;
                 Ok(Procedure::Abstraction(surface, seq_node, reflect))
             }
         })();
@@ -457,7 +459,8 @@ impl<'a> ExecutingInterpreter<'a> {
                 let val = self.internalize(*structure)?;
                 self.node_or_insert(val)?
             } else {
-                self.agent_mut().define(Some(*structure))?
+                let env = self.impl_env;
+                self.agent_mut().define_to(env, Some(*structure))?
             };
             args.push(arg_node);
         }
