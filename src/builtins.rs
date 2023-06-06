@@ -25,7 +25,7 @@ pub fn generate_builtin_map() -> HashMap<&'static str, BuiltIn> {
     }
 
     builtins![
-        car, cdr, cons, list_len, println, eq, curr, jump, env_find, add, sub, mul, div
+        car, cdr, cons, list_len, println, eq, curr, jump, env_find, env_jump, add, sub, mul, div
     ]
 }
 
@@ -39,6 +39,7 @@ wrap_builtin!(eq_(Sexp, Sexp) => eq);
 wrap_builtin!(curr_() => curr);
 wrap_builtin!(jump_(Node) => jump);
 wrap_builtin!(env_find_(LangString) => env_find);
+wrap_builtin!(env_jump_(Node) => env_jump);
 
 
 fn car_(cons: Cons, _agent: &mut Agent) -> Result<Sexp, Error> {
@@ -101,6 +102,21 @@ fn curr_(agent: &mut Agent) -> Result<Node, Error> {
 
 fn jump_(node: Node, agent: &mut Agent) -> Result<Node, Error> {
     agent.jump(node);
+    Ok(node)
+}
+
+fn env_jump_(node: Node, agent: &mut Agent) -> Result<Node, Error> {
+    if node.env().id() != 0 {
+        return err!(
+            agent,
+            LangError::InvalidArgument {
+                given: node.into(),
+                expected: "Env node".into()
+            }
+        );
+    }
+
+    agent.jump_env(node.local());
     Ok(node)
 }
 

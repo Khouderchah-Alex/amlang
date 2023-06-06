@@ -135,6 +135,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
                         let_basic: "let",
                         let_rec: "letrec",
                         env_find: "env-find",
+                        env_jump: "env-jump",
                         t: "true",
                         f: "false",
                         eq: "eq",

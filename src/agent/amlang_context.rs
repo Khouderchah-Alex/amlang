@@ -41,6 +41,7 @@ generate_context!(
         let_basic,
         let_rec,
         env_find,
+        env_jump,
         t,
         f,
         eq,
