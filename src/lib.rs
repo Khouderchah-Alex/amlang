@@ -3,7 +3,6 @@ use std::env::set_current_dir;
 use std::fs::{copy, read_dir, remove_file};
 use std::io;
 use std::path::{Path, PathBuf};
-use std::process::Command;
 
 #[macro_use]
 pub mod error;
@@ -80,10 +79,6 @@ pub fn init(options: InitOptions) -> Result<(), String> {
                     return Err(format!("Copying meta.env failed: {}", err));
                 }
             }
-            // Always copy context.bootstrap to easily handle new lang additions.
-            if let Err(err) = copy_context(&amlang_root, &env_path) {
-                return Err(format!("Copying context.bootstrap failed: {}", err));
-            }
         }
         InitOptions::RootRun => {
             if let Err(err) = set_current_dir(amlang_root.join("envs")) {
@@ -115,34 +110,5 @@ fn copy_meta(amlang_root: &Path, env_path: &Path) -> io::Result<()> {
     let amlang_meta = amlang_root.join("envs/meta.env");
     let target_meta = env_path.join("meta.env");
     copy(amlang_meta, target_meta.clone())?;
-
-    // Monkeypatch amlang's lang.env.
-    let a = Command::new("sh")
-        .arg("-c")
-        .arg(format!(
-            "{}{}{}",
-            r#"sed -i 's|"lang.env"|"#,
-            format!(
-                "\"{}\"",
-                amlang_root.join("envs/lang.env").to_string_lossy()
-            ),
-            r#"|g' meta.env"#
-        ))
-        .status()
-        .expect("failed to monkeypatch lang.env path");
-    if !a.success() {
-        remove_file(target_meta)?;
-        return Err(io::Error::new(
-            io::ErrorKind::Other,
-            "Failed to monkeypatch paths",
-        ));
-    }
     Ok(())
-}
-
-fn copy_context(amlang_root: &Path, env_path: &Path) -> io::Result<u64> {
-    info!("Copying context bootstrap from envs/.");
-    let amlang_context = amlang_root.join("envs/context.bootstrap");
-    let target_context = env_path.join("context.bootstrap");
-    copy(amlang_context, target_context)
 }

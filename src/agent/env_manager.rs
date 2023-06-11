@@ -74,8 +74,10 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         let mut policy = Policy::default();
         let meta = MetaEnv::new(EnvManager::create_env(&mut policy, LocalNode::default()));
 
-        let mut context_path = in_path.as_ref().to_path_buf();
-        context_path.push("context.bootstrap");
+        let amlang_base = StdPath::new(env!("CARGO_MANIFEST_DIR"))
+            .canonicalize()
+            .unwrap();
+        let context_path = amlang_base.join("envs/context.bootstrap");
         let context = EnvManager::<Policy>::bootstrap_context(meta, context_path)?;
         info!("Context bootstrapping complete.");
 
@@ -89,7 +91,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
             policy: policy,
         };
 
-        let mut meta_path = in_path.as_ref().to_path_buf();
+        let mut meta_path = in_path.as_ref().canonicalize().unwrap().to_path_buf();
         meta_path.push("meta.env");
         manager.deserialize_curr_env(meta_path)?;
         verify_context!(manager,
@@ -102,20 +104,9 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         // Bootstrap lang env.
         let lang_env = context.lang_env();
         manager.initialize_env_node(lang_env);
-        let serialize_path = context.serialize_path();
         manager.agent_mut().jump_env(lang_env);
-        let lang_path = {
-            let meta = context.meta();
-            let lang_path_node = meta
-                .match_but_object(lang_env, serialize_path)
-                .objects()
-                .next()
-                .unwrap()
-                .clone();
-
-            Path::try_from(meta.entry(lang_path_node).owned()).unwrap()
-        };
-        manager.deserialize_curr_env(lang_path.as_std_path())?;
+        let lang_path = amlang_base.join("envs/lang.env");
+        manager.deserialize_curr_env(lang_path)?;
         verify_context!(manager,
                         quote: "quote",
                         lambda: "lambda",
@@ -293,7 +284,10 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         meta_path.push("meta.env");
         self.serialize_curr_env(meta_path)?;
 
+        // TODO(func) Allow for context bootstrap to be serialized.
+        // Skipping rn for the sake of downstream clients.
         // Serialize context.
+        /*
         {
             let mut path = out_path.as_ref().to_path_buf();
             path.push("context.bootstrap");
@@ -307,6 +301,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
             }
             write!(&mut w, ")\n")?;
         }
+        */
 
         // Serialize envs in meta env.
         let serialize_path = self.agent().context().serialize_path();
@@ -318,7 +313,12 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
             .triples();
         for triple in env_triples {
             let subject_node = self.agent().context().meta().triple_subject(triple);
-            let path = {
+            let path = if subject_node == self.agent().context().lang_env() {
+                // TODO(func) Allow for lang env to be serialized.
+                // Skipping the lang env rn for the sake of downstream clients.
+                continue;
+                //Path::new(format!("{}/envs/lang.env", env!("CARGO_MANIFEST_DIR")).into())
+            } else {
                 let object_node = self.agent().context().meta().triple_object(triple);
                 let entry = self.agent().context().meta().entry(object_node);
                 Path::try_from(entry.owned()).unwrap()
