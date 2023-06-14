@@ -78,7 +78,7 @@ impl ToSymbol for Symbol {
 
 impl fmt::Display for Symbol {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "[Symbol_{}]", self.0)
+        write!(f, "{}", self.0)
     }
 }
 
