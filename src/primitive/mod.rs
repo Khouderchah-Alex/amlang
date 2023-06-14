@@ -5,6 +5,8 @@ use std::mem;
 
 use serde::{Deserialize, Serialize};
 
+use crate::sexp::{HeapSexp, Sexp};
+
 #[macro_use]
 mod try_from_helper;
 
@@ -133,6 +135,21 @@ macro_rules! primitive_from {
         impl From<$from> for Primitive {
             fn from(elem: $from) -> Self {
                 Primitive::$from(elem)
+            }
+        }
+        impl From<$from> for Sexp {
+            fn from(elem: $from) -> Self {
+                Sexp::Primitive(Primitive::$from(elem))
+            }
+        }
+        impl From<$from> for HeapSexp {
+            fn from(elem: $from) -> Self {
+                Self::new(Sexp::Primitive(Primitive::$from(elem)))
+            }
+        }
+        impl From<$from> for Option<HeapSexp> {
+            fn from(elem: $from) -> Self {
+                Some(HeapSexp::new(Sexp::Primitive(Primitive::$from(elem))))
             }
         }
         primitive_from!($($tail)*);

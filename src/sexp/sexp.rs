@@ -465,42 +465,6 @@ impl From<Cons> for Option<HeapSexp> {
     }
 }
 
-// Impl From<T> over Primitive subtypes.
-macro_rules! sexp_from {
-    ($from:ident, $($tail:tt)*) => {
-        impl From<$from> for Sexp {
-            fn from(elem: $from) -> Self {
-                Sexp::Primitive(Primitive::$from(elem))
-            }
-        }
-        impl From<$from> for HeapSexp {
-            fn from(elem: $from) -> Self {
-                Self::new(Sexp::Primitive(Primitive::$from(elem)))
-            }
-        }
-        impl From<$from> for Option<HeapSexp> {
-            fn from(elem: $from) -> Self {
-                Some(HeapSexp::new(Sexp::Primitive(Primitive::$from(elem))))
-            }
-        }
-        sexp_from!($($tail)*);
-    };
-    () => {};
-}
-
-sexp_from!(
-    Number,
-    Symbol,
-    LangString,
-    BuiltIn,
-    Node,
-    Path,
-    SymNodeTable,
-    LocalNodeTable,
-    Procedure,
-);
-
-
 #[cfg(test)]
 #[path = "./sexp_test.rs"]
 mod sexp_test;

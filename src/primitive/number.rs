@@ -114,6 +114,12 @@ macro_rules! generate_number {
                     }
                 }
             }
+
+            impl From<$type> for Sexp {
+                fn from(elem: $type) -> Self {
+                    Sexp::Primitive(Primitive::Number(Number::$variant(elem)))
+                }
+            }
         )+
 
     };
