@@ -5,6 +5,25 @@ use crate::primitive::{Number, ToSymbol};
 
 
 #[test]
+fn push_front() {
+    // Append on primitive.
+    let mut s = Sexp::Primitive(Number::I64(1).into());
+
+    s.push_front(Number::I64(2));
+    assert_eq!(s, "(2 1)".parse().unwrap());
+
+    s.push_front(Number::I64(3));
+    assert_eq!(s, "(3 2 1)".parse().unwrap());
+
+    s = Sexp::default();
+    assert_eq!(s, "()".parse().unwrap());
+
+    // Append on empty cons.
+    s.push_front(Number::I64(1));
+    assert_eq!(s, "(1)".parse().unwrap());
+}
+
+#[test]
 fn vec_into_sexp() {
     let expected = "(test ing)".parse().unwrap();
     let v = vec![

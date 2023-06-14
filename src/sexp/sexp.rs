@@ -71,6 +71,21 @@ impl Sexp {
         }
     }
 
+    pub fn push_front<S: Into<Sexp>>(&mut self, head: S) {
+        let mut original = Sexp::Cons(Cons::new(head.into(), None));
+        std::mem::swap(self, &mut original);
+
+        let tail = match original {
+            Sexp::Primitive(p) => list!(p),
+            tail @ _ => tail,
+        };
+        if let Sexp::Cons(c) = self {
+            c.set_cdr(tail.into());
+        } else {
+            panic!();
+        }
+    }
+
     pub fn iter(&self) -> SexpIter {
         SexpIter {
             current: Some(&self),
