@@ -55,6 +55,11 @@ impl fmt::Display for LangString {
     }
 }
 
+impl From<String> for Sexp {
+    fn from(s: String) -> Self {
+        Sexp::Primitive(Primitive::LangString(LangString::new(s)))
+    }
+}
 
 impl_try_from!(LangString;
                Primitive         ->  LangString,
