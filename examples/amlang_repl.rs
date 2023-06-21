@@ -18,7 +18,9 @@ use std::convert::TryFrom;
 use std::path::Path;
 
 use amlang::agent::env_policy::SimplePolicy;
-use amlang::agent::{Agent, AmlangInterpreter, EnvManager, NullInterpreter, TransformExecutor};
+use amlang::agent::{
+    Agent, AmlangInterpreter, EnvManager, NullInterpreter, TransformExecutor, VmInterpreter,
+};
 use amlang::error::Error;
 use amlang::parser::Parser;
 use amlang::primitive::{Node, Primitive};
@@ -68,7 +70,17 @@ fn main() -> Result<(), String> {
     let pre_agent = manager.agent();
     let history_env = pre_agent.find_env("history.env").unwrap();
     let impl_env = pre_agent.find_env("impl.env").unwrap();
-    let mut agent = pre_agent.fork(AmlangInterpreter::new(history_env, impl_env));
+    let mut agent = pre_agent.fork(VmInterpreter::new(history_env, impl_env));
+    agent
+        .set_eval(move |frame| {
+            let mut interpreter = AmlangInterpreter::new(impl_env);
+            if let Some(frame) = frame {
+                interpreter.eval_state.push(frame);
+            }
+            Ok(Box::new(interpreter))
+        })
+        .unwrap();
+
     let working_env = agent.find_env("working.env").unwrap();
     agent.jump_env(working_env);
     agent.designation_chain_mut().push_back(working_env);
@@ -97,7 +109,7 @@ fn main() -> Result<(), String> {
 }
 
 fn agent_handler(agent: &mut Agent, sexp: Sexp) -> Result<Sexp, Error> {
-    let result = agent.top_interpret(sexp);
+    let result = agent.interpret(sexp);
     match &result {
         Ok(val) => {
             print!("-> ");

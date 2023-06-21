@@ -1,4 +1,5 @@
 use colored::*;
+use derivative::Derivative;
 use log::debug;
 use std::cell::RefCell;
 use std::collections::VecDeque;
@@ -22,7 +23,8 @@ use crate::primitive::table::Table;
 use crate::sexp::Sexp;
 
 
-#[derive(Debug)]
+#[derive(Derivative)]
+#[derivative(Debug)]
 pub struct Agent {
     env_state: Continuation<EnvFrame>,
     exec_state: Continuation<ExecFrame>,
@@ -30,6 +32,10 @@ pub struct Agent {
     designation_chain: VecDeque<LocalNode>,
 
     context: AmlangContext,
+
+    #[derivative(Debug = "ignore")]
+    gen_eval_interpreter:
+        Option<Box<dyn Fn(Option<SymNodeTable>) -> Result<Box<dyn InterpreterState>, Error>>>,
 }
 
 impl Agent {
@@ -45,6 +51,8 @@ impl Agent {
             )))),
             designation_chain: VecDeque::new(),
             context,
+
+            gen_eval_interpreter: None,
         }
     }
 
@@ -53,6 +61,93 @@ impl Agent {
         res.interpreter_state =
             Continuation::new(Rc::new(RefCell::new(Box::new(base_interpreter))));
         res.designation_chain = self.designation_chain.clone();
+        res
+    }
+
+    /// If the VmInterpreter or some other base Interpreter runs into
+    /// something like (eval ...), it won't be able to evaluate it on
+    /// its own. This provides such a "lower" Interpreter with the
+    /// ability to generate the desired sub-Interpreter to handle
+    /// this.
+    pub fn set_eval<
+        F: Fn(Option<SymNodeTable>) -> Result<Box<dyn InterpreterState>, Error> + 'static,
+    >(
+        &mut self,
+        gen_eval: F,
+    ) -> Result<(), Error> {
+        if !self.gen_eval_interpreter.is_none() {
+            panic!("Cannot set eval twice")
+        }
+
+        self.gen_eval_interpreter = Some(Box::new(gen_eval));
+        // Also push onto the Interpreter stack.
+        if let Some(gen) = &self.gen_eval_interpreter {
+            let eval_interpreter = (gen)(None)?;
+            self.interpreter_state
+                .push(Rc::new(RefCell::new(eval_interpreter)));
+        }
+        Ok(())
+    }
+    /// Create an "eval" Interpreter (presumably called from within an
+    /// Interpreter).
+    pub fn gen_eval_interpreter(
+        &self,
+        frame: Option<SymNodeTable>,
+    ) -> Result<Box<dyn InterpreterState>, Error> {
+        if let Some(gen) = &self.gen_eval_interpreter {
+            (gen)(frame)
+        } else {
+            err!(
+                self,
+                LangError::Unsupported("Agent has no eval interpreter".into())
+            )
+        }
+    }
+
+    pub fn interpreter_state(&self) -> &Continuation<Rc<RefCell<Box<dyn InterpreterState>>>> {
+        &self.interpreter_state
+    }
+    pub fn push_interpreter<I: InterpreterState + 'static>(&mut self, interpreter: I) {
+        self.interpreter_state
+            .push(Rc::new(RefCell::new(Box::new(interpreter))));
+    }
+
+    /// Interpret the given Sexp all the way down the Interpreter stack.
+    ///
+    /// Note that this cannot be called within an Interpreter because
+    /// that Interpreter would be double-borrowed (RefCell's
+    /// BorrowMutError at runtime).
+    pub fn interpret(&mut self, sexp: Sexp) -> Result<Sexp, Error> {
+        let mut curr = sexp;
+        for state in self.interpreter_state().clone().iter() {
+            let mut interpreter_state = state.borrow_mut();
+            let mut interpreter = interpreter_state.borrow_agent(self);
+            curr = interpreter.interpret(curr)?;
+        }
+        Ok(curr)
+    }
+
+    /// Interpret the given Sexp with the given Interpreter.
+    ///
+    /// Note that this will *not* interpret all the way down the
+    /// Interpreter stack.
+    pub fn sub_interpret(
+        &mut self,
+        sexp: Sexp,
+        interpreter: Box<dyn InterpreterState>,
+        _context: Node,
+    ) -> Result<Sexp, Error> {
+        self.interpreter_state
+            .push(Rc::new(RefCell::new(interpreter)));
+
+        let res = {
+            let interpreter_state_rc = self.interpreter_state().top().clone();
+            let mut interpreter_state = interpreter_state_rc.borrow_mut();
+            let mut interpreter = interpreter_state.borrow_agent(self);
+            interpreter.interpret(sexp)
+        };
+
+        self.interpreter_state.pop();
         res
     }
 
@@ -120,52 +215,6 @@ impl Agent {
             }
         }
         self.designate(node.into())
-    }
-
-    pub fn interpreter_state(&self) -> &Continuation<Rc<RefCell<Box<dyn InterpreterState>>>> {
-        &self.interpreter_state
-    }
-
-    pub fn top_interpret(&mut self, sexp: Sexp) -> Result<Sexp, Error> {
-        let interpreter_state_rc = self.interpreter_state().top().clone();
-        let mut interpreter_state = interpreter_state_rc.borrow_mut();
-        let mut interpreter = interpreter_state.borrow_agent(self);
-
-        let ir = interpreter.internalize(sexp);
-        interpreter.contemplate(ir?)
-    }
-    pub fn sub_interpret(
-        &mut self,
-        sexp: Sexp,
-        interpreter: Box<dyn InterpreterState>,
-        _context: Node,
-    ) -> Result<Sexp, Error> {
-        self.interpreter_state
-            .push(Rc::new(RefCell::new(interpreter)));
-        let res = self.top_interpret(sexp);
-        self.interpreter_state.pop();
-        res
-    }
-
-
-    pub fn top_exec(&mut self, sexp: Sexp) -> Result<Sexp, Error> {
-        let interpreter_state_rc = self.interpreter_state().top().clone();
-        let mut interpreter_state = interpreter_state_rc.borrow_mut();
-        let mut interpreter = interpreter_state.borrow_agent(self);
-
-        interpreter.contemplate(sexp)
-    }
-    pub fn sub_exec(
-        &mut self,
-        sexp: Sexp,
-        interpreter: Box<dyn InterpreterState>,
-        _context: Node,
-    ) -> Result<Sexp, Error> {
-        self.interpreter_state
-            .push(Rc::new(RefCell::new(interpreter)));
-        let res = self.top_exec(sexp);
-        self.interpreter_state.pop();
-        res
     }
 }
 

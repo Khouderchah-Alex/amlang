@@ -264,7 +264,7 @@ fn node_recursive() {
     // Node should be infinite list of 'a, with circularity traversed through `eval`.
     let (car, cdr) = break_sexp!(infinite.clone() => (Symbol; remainder)).unwrap();
     assert_eq!(car, "a".to_symbol_or_panic(policy_base));
-    assert_eq!(lang_agent.top_interpret(*cdr.unwrap()).unwrap(), infinite);
+    assert_eq!(lang_agent.interpret(*cdr.unwrap()).unwrap(), infinite);
 }
 
 #[test]

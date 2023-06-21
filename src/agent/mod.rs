@@ -7,6 +7,7 @@ pub use env_prelude::EnvPrelude;
 pub use executor::TransformExecutor;
 pub use interpreter::NullInterpreter;
 pub use lang_error::{ExpectedCount, LangError};
+pub use vm_interpreter::VmInterpreter;
 
 // Public mods.
 #[macro_use]
@@ -21,6 +22,7 @@ pub mod env_prelude;
 pub mod executor;
 pub mod interpreter;
 pub mod lang_error;
+pub mod vm_interpreter;
 
 // Private mods.
 mod amlang_wrappers;

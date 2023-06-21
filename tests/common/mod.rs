@@ -1,5 +1,5 @@
 use amlang::agent::env_policy::{EnvPolicy, SimplePolicy};
-use amlang::agent::{Agent, AmlangInterpreter, EnvManager, TransformExecutor};
+use amlang::agent::{Agent, AmlangInterpreter, EnvManager, TransformExecutor, VmInterpreter};
 use amlang::error::Error;
 use amlang::parser::Parser;
 use amlang::primitive::symbol_policies::policy_base;
@@ -26,7 +26,16 @@ pub fn setup() -> Result<(Agent, EnvManager<impl EnvPolicy>), String> {
     let pre_agent = manager.agent();
     let history_env = pre_agent.find_env("history.env").unwrap();
     let impl_env = pre_agent.find_env("impl.env").unwrap();
-    let mut agent = pre_agent.fork(AmlangInterpreter::new(history_env, impl_env));
+    let mut agent = pre_agent.fork(VmInterpreter::new(history_env, impl_env));
+    agent
+        .set_eval(move |frame| {
+            let mut interpreter = AmlangInterpreter::new(impl_env);
+            if let Some(frame) = frame {
+                interpreter.eval_state.push(frame);
+            }
+            Ok(Box::new(interpreter))
+        })
+        .unwrap();
     let working_env = agent.find_env("working.env").unwrap();
     agent.jump_env(working_env);
     agent.designation_chain_mut().push_back(working_env);
@@ -39,7 +48,7 @@ pub fn results<S: AsRef<str>>(lang_agent: &mut Agent, s: S) -> Vec<Sexp> {
                     StringReader::new(s.as_ref())
                     =>> Tokenizer::new(policy_base)
                     =>. Parser::new()
-                    =>. TransformExecutor::top_interpret(lang_agent))
+                    =>. TransformExecutor::interpret(lang_agent))
     .map(|e| e.unwrap())
     .collect::<Vec<_>>()
 }
@@ -52,6 +61,6 @@ pub fn results_with_errors<S: AsRef<str>>(
                     StringReader::new(s.as_ref())
                     =>> Tokenizer::new(policy_base)
                     =>. Parser::new()
-                    =>. TransformExecutor::top_interpret(lang_agent))
+                    =>. TransformExecutor::interpret(lang_agent))
     .collect::<Vec<_>>()
 }
