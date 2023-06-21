@@ -42,21 +42,21 @@ impl ErrorKind for LangError {
         let inner = match self {
             Self::InvalidArgument { given, expected } => {
                 list!(
-                    "Invalid argument".to_lang_string(),
+                    "InvalidArgument".to_lang_string(),
                     ("given".to_lang_string(), given.clone(),),
                     ("expected".to_lang_string(), expected.to_lang_string(),),
                 )
             }
             Self::InvalidState { actual, expected } => {
                 list!(
-                    "Invalid state".to_lang_string(),
+                    "InvalidState".to_lang_string(),
                     ("actual".to_lang_string(), actual.to_lang_string(),),
                     ("expected".to_lang_string(), expected.to_lang_string(),),
                 )
             }
-            Self::InvalidSexp(val) => list!("Invalid sexp".to_lang_string(), val.clone()),
+            Self::InvalidSexp(val) => list!("InvalidSexp".to_lang_string(), val.clone()),
             Self::WrongArgumentCount { given, expected } => list!(
-                "Wrong argument count".to_lang_string(),
+                "WrongArgumentCount".to_lang_string(),
                 ("given".to_lang_string(), Number::USize(*given),),
                 (
                     "expected".to_lang_string(),
@@ -64,17 +64,17 @@ impl ErrorKind for LangError {
                 ),
             ),
             Self::UnboundSymbol(symbol) => {
-                list!("Unbound symbol".to_lang_string(), symbol.clone())
+                list!("UnboundSymbol".to_lang_string(), symbol.clone())
             }
             Self::AlreadyBoundSymbol(symbol) => {
-                list!("Already bound symbol".to_lang_string(), symbol.clone())
+                list!("AlreadyBoundSymbol".to_lang_string(), symbol.clone())
             }
             Self::DuplicateTriple(sexp) => {
-                list!("Duplicate triple".to_lang_string(), sexp.clone())
+                list!("DuplicateTriple".to_lang_string(), sexp.clone())
             }
             Self::RejectedTriple(triple, reason) => {
                 list!(
-                    "Rejected triple".to_lang_string(),
+                    "RejectedTriple".to_lang_string(),
                     triple.clone(),
                     reason.clone(),
                 )
@@ -89,8 +89,8 @@ impl fmt::Display for ExpectedCount {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         return match self {
             Self::Exactly(exactly) => write!(f, "{}", exactly),
-            Self::AtLeast(minimum) => write!(f, "at least {}", minimum),
-            Self::AtMost(maximum) => write!(f, "at most {}", maximum),
+            Self::AtLeast(minimum) => write!(f, "AtLeast {}", minimum),
+            Self::AtMost(maximum) => write!(f, "AtMost {}", maximum),
         };
     }
 }

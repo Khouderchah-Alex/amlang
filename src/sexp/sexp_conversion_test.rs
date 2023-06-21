@@ -75,7 +75,7 @@ fn wrong_type() {
     if let Err(err) = break_sexp!(original => (Node, Sexp, Symbol)) {
         let (_, kind, _) =
             break_sexp!(err.kind().reify() => (LangString, LangString; remainder)).unwrap();
-        assert_eq!(kind, "Invalid argument".to_lang_string());
+        assert_eq!(kind, "InvalidArgument".to_lang_string());
     } else {
         panic!();
     }
@@ -87,7 +87,7 @@ fn extra_arguments() {
     if let Err(err) = break_sexp!(original => (Symbol, Symbol)) {
         let (_, kind, _) =
             break_sexp!(err.kind().reify() => (LangString, LangString; remainder)).unwrap();
-        assert_eq!(kind, "Wrong argument count".to_lang_string());
+        assert_eq!(kind, "WrongArgumentCount".to_lang_string());
     } else {
         panic!();
     }
@@ -99,7 +99,7 @@ fn missing_arguments() {
     if let Err(err) = break_sexp!(original => (Symbol, Symbol, Symbol)) {
         let (_, kind, _) =
             break_sexp!(err.kind().reify() => (LangString, LangString; remainder)).unwrap();
-        assert_eq!(kind, "Wrong argument count".to_lang_string());
+        assert_eq!(kind, "WrongArgumentCount".to_lang_string());
     } else {
         panic!();
     }

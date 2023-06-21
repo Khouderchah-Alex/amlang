@@ -100,7 +100,7 @@ fn lambda_duplicate_argname() {
 
     let err = results[0].as_ref().unwrap_err().kind().reify();
     let (_, kind, _) = break_sexp!(err => (LangString, LangString; remainder)).unwrap();
-    assert_eq!(kind.as_str(), "Invalid argument");
+    assert_eq!(kind.as_str(), "InvalidArgument");
 }
 
 #[test]
@@ -406,11 +406,11 @@ fn tell_dupe() {
 
     let err = results[3].as_ref().unwrap_err().kind().reify();
     let (_, kind, _triple) = break_sexp!(err => (LangString, LangString, Sexp)).unwrap();
-    assert_eq!(kind.as_str(), "Duplicate triple");
+    assert_eq!(kind.as_str(), "DuplicateTriple");
 
     let err = results[7].as_ref().unwrap_err().kind().reify();
     let (_, kind, _triple) = break_sexp!(err => (LangString, LangString, Sexp)).unwrap();
-    assert_eq!(kind.as_str(), "Duplicate triple");
+    assert_eq!(kind.as_str(), "DuplicateTriple");
 }
 
 /*
