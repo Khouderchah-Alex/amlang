@@ -120,6 +120,12 @@ macro_rules! generate_number {
                     Sexp::Primitive(Primitive::Number(Number::$variant(elem)))
                 }
             }
+
+            impl From<$type> for HeapSexp {
+                fn from(elem: $type) -> Self {
+                    Sexp::from(elem).into()
+                }
+            }
         )+
 
     };
