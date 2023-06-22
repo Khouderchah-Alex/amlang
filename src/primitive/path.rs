@@ -1,6 +1,6 @@
 use std::convert::TryFrom;
 use std::fmt;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
@@ -9,9 +9,9 @@ use crate::sexp::{HeapSexp, Sexp};
 
 
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
-pub struct Path(PathBuf);
+pub struct LangPath(PathBuf);
 
-impl Path {
+impl LangPath {
     pub fn new(path: PathBuf) -> Self {
         Self(path)
     }
@@ -22,20 +22,52 @@ impl Path {
 }
 
 
-impl fmt::Display for Path {
+impl fmt::Display for LangPath {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "[Path_{}]", self.as_std_path().to_string_lossy())
+        write!(f, "{}", self.as_std_path().to_string_lossy())
     }
 }
 
 
-impl_try_from!(Path;
-               Primitive         ->  Path,
-               Sexp              ->  Path,
-               HeapSexp          ->  Path,
-               ref Sexp          ->  ref Path,
-               Option<Sexp>      ->  Path,
-               Option<ref Sexp>  ->  ref Path,
-               Result<Sexp>      ->  Path,
-               Result<ref Sexp>  ->  ref Path,
+impl From<String> for LangPath {
+    fn from(s: String) -> Self {
+        Self::new(PathBuf::from(s.to_string()))
+    }
+}
+
+
+impl From<PathBuf> for LangPath {
+    fn from(p: PathBuf) -> Self {
+        Self::new(p)
+    }
+}
+
+impl From<&Path> for LangPath {
+    fn from(p: &Path) -> Self {
+        Self::new(PathBuf::from(p))
+    }
+}
+
+impl From<PathBuf> for Sexp {
+    fn from(p: PathBuf) -> Self {
+        Sexp::Primitive(Primitive::LangPath(LangPath::from(p)))
+    }
+}
+
+impl From<&Path> for Sexp {
+    fn from(p: &Path) -> Self {
+        Sexp::Primitive(Primitive::LangPath(LangPath::from(p)))
+    }
+}
+
+
+impl_try_from!(LangPath;
+               Primitive         ->  LangPath,
+               Sexp              ->  LangPath,
+               HeapSexp          ->  LangPath,
+               ref Sexp          ->  ref LangPath,
+               Option<Sexp>      ->  LangPath,
+               Option<ref Sexp>  ->  ref LangPath,
+               Result<Sexp>      ->  LangPath,
+               Result<ref Sexp>  ->  ref LangPath,
 );

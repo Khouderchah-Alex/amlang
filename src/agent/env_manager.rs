@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::fs::File;
 use std::io::{BufWriter, Write};
-use std::path::Path as StdPath;
+use std::path::Path;
 
 use super::amlang_context::AmlangContext;
 use super::amlang_wrappers::quote_wrapper;
@@ -70,11 +70,11 @@ macro_rules! verify_context {
 }
 
 impl<Policy: EnvPolicy> EnvManager<Policy> {
-    pub fn bootstrap<P: AsRef<StdPath>>(in_path: P) -> Result<Self, Error> {
+    pub fn bootstrap<P: AsRef<Path>>(in_path: P) -> Result<Self, Error> {
         let mut policy = Policy::default();
         let meta = MetaEnv::new(EnvManager::create_env(&mut policy, LocalNode::default()));
 
-        let amlang_base = StdPath::new(env!("CARGO_MANIFEST_DIR"))
+        let amlang_base = Path::new(env!("CARGO_MANIFEST_DIR"))
             .canonicalize()
             .unwrap();
         let context_path = amlang_base.join("envs/context.bootstrap");
@@ -153,7 +153,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
             let object_node = context.meta().triple_object(triple);
             let entry = context.meta().entry(object_node);
             let object = entry.structure();
-            let env_path = <&Path>::try_from(&*object).unwrap();
+            let env_path = <&LangPath>::try_from(&*object).unwrap();
 
             manager.initialize_env_node(subject_node);
             manager
@@ -173,19 +173,19 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         &mut self.agent
     }
 
-    pub fn insert_new_env<P: AsRef<StdPath>>(&mut self, path: P) -> LocalNode {
+    pub fn insert_new_env<P: AsRef<Path>>(&mut self, path: P) -> LocalNode {
         let serialize_path = self.agent().context().serialize_path();
         let env_node = self.agent_mut().context_mut().meta_mut().insert_atom();
         self.initialize_env_node(env_node);
 
         let meta = self.agent_mut().context_mut().meta_mut();
-        let path_node = meta.insert_structure(Path::new(path.as_ref().to_path_buf()).into());
+        let path_node = meta.insert_structure(LangPath::new(path.as_ref().to_path_buf()).into());
         meta.insert_triple(env_node, serialize_path, path_node);
 
         env_node
     }
 
-    fn bootstrap_context<P: AsRef<StdPath>>(
+    fn bootstrap_context<P: AsRef<Path>>(
         meta: MetaEnv,
         in_path: P,
     ) -> Result<AmlangContext, Error> {
@@ -274,7 +274,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
 
 // {,De}serialization functionality.
 impl<Policy: EnvPolicy> EnvManager<Policy> {
-    pub fn serialize_full<P: AsRef<StdPath>>(&mut self, out_path: P) -> std::io::Result<()> {
+    pub fn serialize_full<P: AsRef<Path>>(&mut self, out_path: P) -> std::io::Result<()> {
         let original_pos = self.agent().pos();
 
         // Serialize meta env.
@@ -317,11 +317,11 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
                 // TODO(func) Allow for lang env to be serialized.
                 // Skipping the lang env rn for the sake of downstream clients.
                 continue;
-                //Path::new(format!("{}/envs/lang.env", env!("CARGO_MANIFEST_DIR")).into())
+                //LangPath::new(format!("{}/envs/lang.env", env!("CARGO_MANIFEST_DIR")).into())
             } else {
                 let object_node = self.agent().context().meta().triple_object(triple);
                 let entry = self.agent().context().meta().entry(object_node);
-                Path::try_from(entry.owned()).unwrap()
+                LangPath::try_from(entry.owned()).unwrap()
             };
 
             self.agent_mut().jump_env(subject_node);
@@ -332,7 +332,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         Ok(())
     }
 
-    pub fn serialize_curr_env<P: AsRef<StdPath>>(&self, out_path: P) -> std::io::Result<()> {
+    pub fn serialize_curr_env<P: AsRef<Path>>(&self, out_path: P) -> std::io::Result<()> {
         let file = File::create(out_path.as_ref())?;
         let mut w = BufWriter::new(file);
 
@@ -355,7 +355,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
                     Sexp::Primitive(Primitive::BuiltIn(_)) => (true, false),
                     Sexp::Primitive(Primitive::Procedure(_)) => (true, false),
                     Sexp::Primitive(Primitive::Node(_)) => (true, false),
-                    Sexp::Primitive(Primitive::Path(_)) => (true, false),
+                    Sexp::Primitive(Primitive::LangPath(_)) => (true, false),
                     Sexp::Primitive(Primitive::LangString(_)) => (true, false),
                     _ => (true, true),
                 },
@@ -392,7 +392,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         Ok(())
     }
 
-    pub fn deserialize_curr_env<P: AsRef<StdPath>>(&mut self, in_path: P) -> Result<(), Error> {
+    pub fn deserialize_curr_env<P: AsRef<Path>>(&mut self, in_path: P) -> Result<(), Error> {
         let input = match FileReader::new(in_path.as_ref()) {
             Ok(input) => input,
             Err(ref e) if e.kind() == std::io::ErrorKind::NotFound => {
@@ -502,7 +502,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         match primitive {
             Primitive::LangString(s) => write!(w, "\"{}\"", s.clone().to_escaped()),
             Primitive::Symbol(symbol) => write!(w, "{}", symbol.as_str()),
-            Primitive::Path(path) => {
+            Primitive::LangPath(path) => {
                 write!(w, "(__path \"{}\")", path.as_std_path().to_string_lossy())
             }
             Primitive::BuiltIn(builtin) => write!(w, "(__builtin {})", builtin.name()),
@@ -664,7 +664,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
             }
             "__path" => {
                 let (path,) = break_sexp!(cdr.unwrap() => (LangString), self.agent())?;
-                Ok(Path::new(path.as_str().into()).into())
+                Ok(LangPath::new(path.as_str().into()).into())
             }
             _ => panic!("{}", command),
         }

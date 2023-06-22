@@ -656,7 +656,7 @@ impl Agent {
             let object_node = meta.triple_object(triple);
             let entry = meta.entry(object_node);
             let object = entry.structure();
-            if let Ok(path) = <&Path>::try_from(object) {
+            if let Ok(path) = <&LangPath>::try_from(object) {
                 if path.as_std_path().ends_with(s.as_ref()) {
                     return Some(meta.triple_subject(triple));
                 }

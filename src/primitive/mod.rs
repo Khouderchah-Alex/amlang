@@ -29,7 +29,7 @@ pub mod prelude {
     pub use super::builtin::BuiltIn;
     pub use super::node::Node;
     pub use super::number::Number;
-    pub use super::path::Path;
+    pub use super::path::LangPath;
     pub use super::procedure::Procedure;
     pub use super::string::{LangString, ToLangString};
     pub use super::symbol::{Symbol, ToSymbol};
@@ -48,7 +48,7 @@ pub enum Primitive {
     LangString(LangString),
     BuiltIn(BuiltIn),
     Node(Node),
-    Path(Path),
+    LangPath(LangPath),
 
     SymNodeTable(SymNodeTable),
     SymSexpTable(SymSexpTable),
@@ -66,7 +66,7 @@ impl fmt::Display for Primitive {
             Primitive::LangString(s) => write!(f, "{}", s),
             Primitive::BuiltIn(b) => write!(f, "{}", b),
             Primitive::Node(node) => write!(f, "{}", node),
-            Primitive::Path(path) => write!(f, "{}", path),
+            Primitive::LangPath(path) => write!(f, "{}", path),
 
             Primitive::SymNodeTable(table) => write!(f, "{:?}", table),
             Primitive::SymSexpTable(table) => write!(f, "{:?}", table),
@@ -100,7 +100,9 @@ impl PartialEq for Primitive {
                         (*this) == (*that)
                     }
                     (&Primitive::Node(ref this), &Primitive::Node(ref that)) => (*this) == (*that),
-                    (&Primitive::Path(ref this), &Primitive::Path(ref that)) => (*this) == (*that),
+                    (&Primitive::LangPath(ref this), &Primitive::LangPath(ref that)) => {
+                        (*this) == (*that)
+                    }
                     (&Primitive::SymNodeTable(ref this), &Primitive::SymNodeTable(ref that)) => {
                         (*this) == (*that)
                     }
@@ -163,7 +165,7 @@ primitive_from!(
     LangString,
     BuiltIn,
     Node,
-    Path,
+    LangPath,
     SymNodeTable,
     SymSexpTable,
     LocalNodeTable,
