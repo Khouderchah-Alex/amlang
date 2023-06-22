@@ -19,6 +19,7 @@ pub mod env;
 pub mod model;
 pub mod parser;
 pub mod primitive;
+pub mod std_error;
 pub mod token;
 
 pub mod prelude {
@@ -27,6 +28,7 @@ pub mod prelude {
     pub use crate::error::{Error, ErrorKind};
     pub use crate::primitive::prelude::*;
     pub use crate::sexp::{Cons, ConsList, Sexp};
+    pub use crate::std_error::StdError;
     pub use crate::InitOptions;
     // Macros.
     pub use crate::{break_sexp, err, list, pull_transform, push_transform};
