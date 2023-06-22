@@ -55,9 +55,22 @@ impl fmt::Display for LangString {
     }
 }
 
+
+impl From<LangString> for String {
+    fn from(s: LangString) -> Self {
+        s.0
+    }
+}
+
 impl From<String> for Sexp {
     fn from(s: String) -> Self {
         Sexp::Primitive(Primitive::LangString(LangString::new(s)))
+    }
+}
+
+impl From<String> for HeapSexp {
+    fn from(s: String) -> Self {
+        Sexp::from(s).into()
     }
 }
 
