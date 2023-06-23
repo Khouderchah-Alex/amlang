@@ -183,7 +183,7 @@ impl Parser {
 impl Transform<Token, Sexp> for Parser {
     fn input(&mut self, input: Result<Token, Error>) -> Result<bool, Error> {
         if let Err(err) = self.parse_token(input?) {
-            return Err(Error::no_cont(Box::new(err)));
+            return Err(Error::no_cont(err));
         }
         Ok(self.sexps.len() > 0)
     }

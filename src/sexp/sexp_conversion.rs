@@ -24,7 +24,7 @@ macro_rules! break_sexp {
                     ));
                 )*
                 #[allow(unreachable_code)]
-                Err($crate::error::Error::no_cont(Box::new(kind)))
+                Err($crate::error::Error::no_cont(kind))
             };
             let mut iter = $sexp.into_iter();
             let tuple = || {

@@ -1,8 +1,11 @@
 use log::info;
 use std::env::set_current_dir;
 use std::fs::{copy, read_dir, remove_file};
-use std::io;
 use std::path::{Path, PathBuf};
+
+use crate::error::Error;
+use crate::primitive::ToLangString;
+
 
 #[macro_use]
 pub mod error;
@@ -54,7 +57,7 @@ pub enum InitOptions {
 /// Note that this function does *not* setup logging, clients should
 /// take care of that prior to calling this function. See:
 ///   https://github.com/rust-lang/log#in-executables.
-pub fn init(options: InitOptions) -> Result<(), String> {
+pub fn init(options: InitOptions) -> Result<(), Error> {
     let amlang_root = Path::new(env!("CARGO_MANIFEST_DIR"))
         .canonicalize()
         .unwrap();
@@ -63,28 +66,36 @@ pub fn init(options: InitOptions) -> Result<(), String> {
         InitOptions::IsolatedRun(env_path, should_reset_state) => {
             // Need to set dir to properly read relative paths in envs.
             if !env_path.is_absolute() {
-                return Err(format!("env_path must be absolute"));
+                return Err(Error::adhoc(
+                    "InitErr",
+                    "env_path must be absolute".to_lang_string(),
+                ));
             }
             if let Err(err) = set_current_dir(env_path.clone()) {
-                return Err(format!("Setting current dir failed: {}", err));
+                return Err(Error::from(err)
+                    .wrap_adhoc("InitErr", "Setting current dir failed".to_lang_string()));
             }
 
             // Perform any needed state preparation.
             if should_reset_state {
                 if let Err(err) = reset_state(&env_path) {
-                    return Err(format!("Resetting state failed: {}", err));
+                    return Err(Error::from(err)
+                        .wrap_adhoc("InitErr", "Resetting state failed".to_lang_string()));
                 }
             }
             let meta_path = "meta.env";
             if !Path::new(meta_path).exists() {
                 if let Err(err) = copy_meta(&amlang_root, &env_path) {
-                    return Err(format!("Copying meta.env failed: {}", err));
+                    return Err(
+                        err.wrap_adhoc("InitErr", "Copying meta.env failed".to_lang_string())
+                    );
                 }
             }
         }
         InitOptions::RootRun => {
             if let Err(err) = set_current_dir(amlang_root.join("envs")) {
-                return Err(format!("Setting to amlang dir failed: {}", err));
+                return Err(Error::from(err)
+                    .wrap_adhoc("InitErr", "Setting to amlang dir failed".to_lang_string()));
             }
         }
     }
@@ -93,7 +104,7 @@ pub fn init(options: InitOptions) -> Result<(), String> {
 }
 
 
-fn reset_state(env_path: &Path) -> io::Result<()> {
+fn reset_state(env_path: &Path) -> Result<(), Error> {
     for entry in read_dir(env_path)? {
         let entry = entry?;
         let path = entry.path();
@@ -107,7 +118,7 @@ fn reset_state(env_path: &Path) -> io::Result<()> {
     Ok(())
 }
 
-fn copy_meta(amlang_root: &Path, env_path: &Path) -> io::Result<()> {
+fn copy_meta(amlang_root: &Path, env_path: &Path) -> Result<(), Error> {
     info!("No meta env; copying from envs/.");
     let amlang_meta = amlang_root.join("envs/meta.env");
     let target_meta = env_path.join("meta.env");

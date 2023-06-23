@@ -55,7 +55,7 @@ macro_rules! verify_context {
                     Ok(node.local())
                 } else {
                     Err(Error::no_cont(
-                        Box::new(LangError::UnboundSymbol(s.to_symbol_or_panic(policy_admin)))))?
+                        LangError::UnboundSymbol(s.to_symbol_or_panic(policy_admin))))?
                 }
             };
             (

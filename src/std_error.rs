@@ -24,6 +24,6 @@ impl ErrorKind for StdError {
 /// Allow for io::Errors to be used seamlessly with amlang::Errors.
 impl From<std::io::Error> for Error {
     fn from(err: std::io::Error) -> Self {
-        Error::no_cont(Box::new(StdError::Io(err)))
+        Error::no_cont(StdError::Io(err))
     }
 }

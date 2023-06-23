@@ -256,7 +256,7 @@ impl<SymbolInfo> Tokenizer<SymbolInfo> {
 impl<S: AsRef<str>, SymbolInfo> Transform<S, Token> for Tokenizer<SymbolInfo> {
     fn input(&mut self, input: Result<S, Error>) -> Result<bool, Error> {
         if let Err(error) = self.tokenize(input?) {
-            return Err(Error::no_cont(Box::new(error)));
+            return Err(Error::no_cont(error));
         }
         Ok(self.tokens.len() > 0)
     }
