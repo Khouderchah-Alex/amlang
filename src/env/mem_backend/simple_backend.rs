@@ -1,4 +1,6 @@
-use super::{index_id_conv::*, Edges, MemBackend, Node, Triple};
+use std::collections::hash_map::HashMap;
+
+use super::{index_id_conv::*, Designator, Edges, MemBackend, Node, Triple};
 use crate::env::local_node::LocalNode;
 
 
@@ -13,6 +15,8 @@ pub struct SimpleBackend {
 
     node_edges: Vec<Edges>,
     triple_edges: Vec<Edges>,
+
+    designators: HashMap<LocalNode, Designator>,
 }
 
 impl MemBackend for SimpleBackend {
@@ -64,5 +68,16 @@ impl MemBackend for SimpleBackend {
 
     fn triple_count(&self) -> usize {
         self.triples.len()
+    }
+
+    fn designator(&self, context: LocalNode) -> Option<&Designator> {
+        self.designators.get(&context)
+    }
+
+    fn designator_mut(&mut self, context: LocalNode) -> &mut Designator {
+        if !self.designators.contains_key(&context) {
+            self.designators.insert(context, Designator::default());
+        }
+        self.designators.get_mut(&context).unwrap()
     }
 }

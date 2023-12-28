@@ -7,6 +7,7 @@ use std::fmt;
 use super::entry::{Entry, EntryMut};
 use super::local_node::{LocalNode, LocalTriple};
 use super::triple_set::TripleSet;
+use crate::primitive::Symbol;
 use crate::sexp::Sexp;
 
 
@@ -28,6 +29,9 @@ pub trait Environment: DynClone {
         predicate: LocalNode,
         object: LocalNode,
     ) -> LocalTriple;
+
+    fn insert_designation(&mut self, node: LocalNode, designation: Symbol, context: LocalNode);
+    fn match_designation(&self, designation: &Symbol, context: LocalNode) -> Option<LocalNode>;
 
     fn match_subject(&self, subject: LocalNode) -> TripleSet;
     fn match_predicate(&self, predicate: LocalNode) -> TripleSet;

@@ -1,6 +1,6 @@
 use std::fmt::Debug;
 
-use super::{index_id_conv::*, Edges, Node, Triple};
+use super::{index_id_conv::*, Designator, Edges, Node, Triple};
 use crate::env::local_node::{LocalId, LocalNode, LocalTriple};
 use crate::primitive::Primitive;
 use crate::sexp::Sexp;
@@ -22,6 +22,9 @@ pub trait MemBackend: Debug + Default {
 
     fn node_count(&self) -> usize;
     fn triple_count(&self) -> usize;
+
+    fn designator(&self, context: LocalNode) -> Option<&Designator>;
+    fn designator_mut(&mut self, context: LocalNode) -> &mut Designator;
 
 
     fn next_node_id(&self) -> LocalNode {

@@ -7,6 +7,7 @@ use super::entry::{Entry, EntryKind, EntryMut, EntryMutKind};
 use super::local_node::{LocalId, LocalNode, LocalTriple};
 use super::mem_backend::{index_id_conv::*, Edges, MemBackend, Node, Triple};
 use super::{Environment, NodeSet, TripleSet};
+use crate::primitive::Symbol;
 use crate::sexp::Sexp;
 
 
@@ -63,6 +64,20 @@ impl<Backend: MemBackend> Environment for MemEnv<Backend> {
         });
         self.backend.push_triple_edges(Edges::default());
         id
+    }
+
+
+    fn insert_designation(&mut self, node: LocalNode, designation: Symbol, context: LocalNode) {
+        self.backend
+            .designator_mut(context)
+            .insert(designation, node);
+    }
+
+    fn match_designation(&self, designation: &Symbol, context: LocalNode) -> Option<LocalNode> {
+        if let Some(designator) = self.backend.designator(context) {
+            return designator.get_by_left(designation).copied();
+        }
+        None
     }
 
 
