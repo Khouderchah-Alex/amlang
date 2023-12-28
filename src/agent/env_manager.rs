@@ -143,15 +143,19 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
 
         // Load all other envs.
         // TODO(func) Allow for delayed loading of environments.
-        let env_triples = context.meta().match_predicate(serialize_path).triples();
+        let env_triples = context
+            .meta()
+            .base()
+            .match_predicate(serialize_path)
+            .triples();
         for triple in env_triples {
-            let subject_node = context.meta().triple_subject(triple);
+            let subject_node = context.meta().base().triple_subject(triple);
             if subject_node == context.lang_env() {
                 continue;
             }
 
-            let object_node = context.meta().triple_object(triple);
-            let entry = context.meta().entry(object_node);
+            let object_node = context.meta().base().triple_object(triple);
+            let entry = context.meta().base().entry(object_node);
             let object = entry.structure();
             let env_path = <&LangPath>::try_from(&*object).unwrap();
 
@@ -175,12 +179,20 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
 
     pub fn insert_new_env<P: AsRef<Path>>(&mut self, path: P) -> LocalNode {
         let serialize_path = self.agent().context().serialize_path();
-        let env_node = self.agent_mut().context_mut().meta_mut().insert_atom();
+        let env_node = self
+            .agent_mut()
+            .context_mut()
+            .meta_mut()
+            .base_mut()
+            .insert_atom();
         self.initialize_env_node(env_node);
 
         let meta = self.agent_mut().context_mut().meta_mut();
-        let path_node = meta.insert_structure(LangPath::new(path.as_ref().to_path_buf()).into());
-        meta.insert_triple(env_node, serialize_path, path_node);
+        let path_node = meta
+            .base_mut()
+            .insert_structure(LangPath::new(path.as_ref().to_path_buf()).into());
+        meta.base_mut()
+            .insert_triple(env_node, serialize_path, path_node);
 
         env_node
     }
@@ -309,18 +321,19 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
             .agent()
             .context()
             .meta()
+            .base()
             .match_predicate(serialize_path)
             .triples();
         for triple in env_triples {
-            let subject_node = self.agent().context().meta().triple_subject(triple);
+            let subject_node = self.agent().context().meta().base().triple_subject(triple);
             let path = if subject_node == self.agent().context().lang_env() {
                 // TODO(func) Allow for lang env to be serialized.
                 // Skipping the lang env rn for the sake of downstream clients.
                 continue;
                 //LangPath::new(format!("{}/envs/lang.env", env!("CARGO_MANIFEST_DIR")).into())
             } else {
-                let object_node = self.agent().context().meta().triple_object(triple);
-                let entry = self.agent().context().meta().entry(object_node);
+                let object_node = self.agent().context().meta().base().triple_object(triple);
+                let entry = self.agent().context().meta().base().entry(object_node);
                 LangPath::try_from(entry.owned()).unwrap()
             };
 
