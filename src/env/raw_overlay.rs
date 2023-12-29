@@ -41,11 +41,8 @@ impl<T: Environment + Clone> Environment for RawOverlay<T> {
     fn all_nodes(&self) -> NodeSet {
         self.base().all_nodes()
     }
-    fn insert_atom(&mut self) -> LocalNode {
-        self.base().insert_atom()
-    }
-    fn insert_structure(&mut self, structure: Sexp) -> LocalNode {
-        self.base().insert_structure(structure)
+    fn insert_node(&mut self, structure: Option<Sexp>) -> LocalNode {
+        self.base().insert_node(structure)
     }
     fn insert_triple(
         &mut self,

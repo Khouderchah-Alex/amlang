@@ -414,11 +414,7 @@ impl Agent {
     }
 
     pub fn define(&mut self, structure: Option<Sexp>) -> Result<Node, Error> {
-        let env = self.env_mut();
-        let local = match structure {
-            None => env.insert_atom(),
-            Some(sexp) => env.insert_structure(sexp),
-        };
+        let local = self.env_mut().insert_node(structure);
         Ok(self.globalize(local))
     }
 
@@ -428,10 +424,7 @@ impl Agent {
         structure: Option<Sexp>,
     ) -> Result<Node, Error> {
         let env = self.access_env_mut(env_node).unwrap();
-        let local = match structure {
-            None => env.insert_atom(),
-            Some(sexp) => env.insert_structure(sexp),
-        };
+        let local = env.insert_node(structure);
         Ok(Node::new(env_node, local))
     }
 
@@ -690,7 +683,7 @@ impl Agent {
         match matches.len() {
             0 => {
                 let table = LocalNodeTable::in_env(LocalNode::default()).into();
-                let table_node = self.context.meta_mut().base_mut().insert_structure(table);
+                let table_node = self.context.meta_mut().base_mut().insert_node(Some(table));
                 self.context.meta_mut().base_mut().insert_triple(
                     import_triple.node(),
                     import_table_node,

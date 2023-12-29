@@ -21,8 +21,7 @@ pub trait Environment: DynClone {
     fn type_name(&self) -> &'static str;
     fn all_nodes(&self) -> NodeSet;
 
-    fn insert_atom(&mut self) -> LocalNode;
-    fn insert_structure(&mut self, structure: Sexp) -> LocalNode;
+    fn insert_node(&mut self, structure: Option<Sexp>) -> LocalNode;
     fn insert_triple(
         &mut self,
         subject: LocalNode,

@@ -33,15 +33,12 @@ impl<Backend: MemBackend> Environment for MemEnv<Backend> {
             .collect()
     }
 
-    fn insert_atom(&mut self) -> LocalNode {
+    fn insert_node(&mut self, structure: Option<Sexp>) -> LocalNode {
         let id = self.backend.next_node_id();
-        self.backend.push_node(Node::Atomic);
-        self.backend.push_node_edges(Edges::default());
-        id
-    }
-    fn insert_structure(&mut self, structure: Sexp) -> LocalNode {
-        let id = self.backend.next_node_id();
-        self.backend.push_node(Node::Structured(structure));
+        match structure {
+            Some(structure) => self.backend.push_node(Node::Structured(structure)),
+            None => self.backend.push_node(Node::Atomic),
+        }
         self.backend.push_node_edges(Edges::default());
         id
     }

@@ -7,9 +7,9 @@ use crate::env::mem_backend::SimpleBackend;
 #[test]
 fn atomic_insertion() {
     let mut env = MemEnv::<SimpleBackend>::new();
-    let a = env.insert_atom();
-    let b = env.insert_atom();
-    let c = env.insert_atom();
+    let a = env.insert_node(None);
+    let b = env.insert_node(None);
+    let c = env.insert_node(None);
 
     let t = env.insert_triple(a, b, c);
     assert_eq!(env.triple_predicate(t), b);
@@ -22,11 +22,11 @@ fn atomic_insertion() {
 #[test]
 fn structure_insertion() {
     let mut env = MemEnv::<SimpleBackend>::new();
-    let a = env.insert_structure("(1 2 3)".parse().unwrap());
+    let a = env.insert_node("(1 2 3)".parse().ok());
     assert_eq!(env.entry(a).structure(), &"(1 2 3)".parse().unwrap());
 
-    let b = env.insert_atom();
-    let c = env.insert_atom();
+    let b = env.insert_node(None);
+    let c = env.insert_node(None);
 
     let t = env.insert_triple(a, b, c);
     assert_eq!(env.triple_subject(t), a);
@@ -43,7 +43,7 @@ fn structure_insertion() {
 #[test]
 fn entry_update() {
     let mut env = MemEnv::<SimpleBackend>::new();
-    let a = env.insert_atom();
+    let a = env.insert_node(None);
 
     let mut entry = env.entry_mut(a);
     assert_eq!(*entry.kind(), EntryMutKind::Atomic);
@@ -61,9 +61,9 @@ fn entry_update() {
 #[test]
 fn meta_triple_insertion() {
     let mut env = MemEnv::<SimpleBackend>::new();
-    let a = env.insert_atom();
-    let b = env.insert_atom();
-    let c = env.insert_atom();
+    let a = env.insert_node(None);
+    let b = env.insert_node(None);
+    let c = env.insert_node(None);
 
     let t = env.insert_triple(a, b, c);
     let tt = env.insert_triple(t.node(), a, c);

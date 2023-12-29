@@ -184,13 +184,13 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
             .context_mut()
             .meta_mut()
             .base_mut()
-            .insert_atom();
+            .insert_node(None);
         self.initialize_env_node(env_node);
 
         let meta = self.agent_mut().context_mut().meta_mut();
         let path_node = meta
             .base_mut()
-            .insert_structure(LangPath::new(path.as_ref().to_path_buf()).into());
+            .insert_node(Some(LangPath::new(path.as_ref().to_path_buf()).into()));
         meta.base_mut()
             .insert_triple(env_node, serialize_path, path_node);
 
@@ -232,12 +232,12 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         let mut env = Policy::BaseEnv::default();
 
         // Create nodes.
-        let self_env = env.insert_structure(Node::new(LocalNode::default(), env_node).into());
-        let designation = env.insert_structure(SymNodeTable::default().into());
-        let tell_handler = env.insert_atom();
+        let self_env = env.insert_node(Some(Node::new(LocalNode::default(), env_node).into()));
+        let designation = env.insert_node(Some(SymNodeTable::default().into()));
+        let tell_handler = env.insert_node(None);
         let mut reserved_id = env.all_nodes().len() as LocalId;
         while let Some(_) = LocalNode::new(reserved_id).as_prelude() {
-            env.insert_structure("RESERVED".to_symbol_or_panic(policy_admin).into());
+            env.insert_node(Some("RESERVED".to_symbol_or_panic(policy_admin).into()));
             reserved_id += 1;
         }
 
