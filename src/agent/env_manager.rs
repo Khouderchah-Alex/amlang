@@ -40,28 +40,14 @@ macro_rules! verify_context {
         $($node:ident : $query:expr),+
         $(,)?
     ) => {
+        let env = $manager.agent().pos().env();
+        $manager.agent_mut().designation_chain_mut().push_front(env);
         let ($($node,)+) = {
-            let desig_node = $manager.agent().context().designation();
-            let entry = $manager.agent().env().entry(desig_node);
-            let table = if let Ok(table) =
-                <&SymNodeTable>::try_from(entry.as_option()) {
-                    table
-                } else {
-                    panic!("Env designation isn't a symbol table");
-                };
-
-            let lookup = |s: &str| -> Result<LocalNode, Error> {
-                if let Some(node) = table.lookup(s) {
-                    Ok(node.local())
-                } else {
-                    Err(Error::no_cont(
-                        LangError::UnboundSymbol(s.to_symbol_or_panic(policy_admin))))?
-                }
-            };
             (
-                $(lookup($query)?,)+
+                $($manager.agent().resolve(&$query.to_symbol_or_panic(policy_admin))?.local(),)+
             )
         };
+        $manager.agent_mut().designation_chain_mut().pop_front();
 
         // Verify context nodes.
         let context = $manager.agent_mut().context_mut();
@@ -397,6 +383,16 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
             self.serialize_list_internal(&mut w, &s, 1)?;
         }
         writeln!(&mut w, "\n)")?;
+
+        // TODO(func) Generalize to arbitrary designations.
+        let des = env.designation_pairs(LocalNode::default());
+        if !des.is_empty() {
+            write!(&mut w, "(designation amlang")?;
+            for (sym, node) in des {
+                write!(&mut w, "\n    ({} {})", node, sym)?;
+            }
+            writeln!(&mut w, "\n)")?;
+        }
         info!(
             "Serialized env {} @ \"{}\".",
             self.agent().pos().env(),
@@ -452,14 +448,15 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
                 return Err(err);
             }
         };
-        match stream.next() {
-            Some(Ok(_)) => return err!(self.agent(), ExtraneousSection),
-            None => {}
-            Some(Err(mut err)) => {
-                err.set_cont(self.agent().exec_state().clone());
-                return Err(err);
+        while let Some(res) = stream.next() {
+            match res {
+                Ok(parsed) => self.deserialize_designation(parsed)?,
+                Err(mut err) => {
+                    err.set_cont(self.agent().exec_state().clone());
+                    return Err(err);
+                }
             }
-        };
+        }
 
         info!(
             "Loaded env {} from \"{}\".",
@@ -700,34 +697,28 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
             let object = self.parse_node(&o)?;
 
             self.agent_mut().tell(subject, predicate, object)?;
+        }
+        Ok(())
+    }
 
-            let designation = self.agent().context().designation();
-            if predicate.local() == designation && object.local() != designation {
-                let name = if let Ok(sym) =
-                    <Symbol>::try_from(self.agent_mut().designate(object.into()))
-                {
-                    sym
-                } else {
-                    println!(
-                        "{} {} {:?}",
-                        subject,
-                        object,
-                        self.agent_mut().designate(object.into()).unwrap()
-                    );
-                    return err!(self.agent(), ExpectedSymbol);
-                };
+    fn deserialize_designation(&mut self, structure: Sexp) -> Result<(), Error> {
+        let (command, designator, remainder) =
+            break_sexp!(structure => (Symbol, Symbol; remainder), self.agent())?;
+        // TODO(func) Support generic designators.
+        if command.as_str() != "designation" || designator.as_str() != "amlang" {
+            return err!(self.agent(), UnexpectedCommand(command.into()));
+        }
 
-                if let Ok(table) = <&mut SymNodeTable>::try_from(
-                    self.agent_mut()
-                        .env_mut()
-                        .entry_mut(designation)
-                        .as_option(),
-                ) {
-                    table.insert(name, subject);
-                } else {
-                    panic!("Env designation isn't a symbol table");
-                }
+        for (entry, proper) in SexpIntoIter::from(remainder) {
+            if !proper {
+                return err!(self.agent(), LangError::InvalidSexp(*entry))?;
             }
+            let (node_id, name) = break_sexp!(entry => (Symbol, Symbol), self.agent())?;
+
+            let node = self.parse_node(&node_id)?;
+            self.agent_mut()
+                .env_mut()
+                .insert_designation(node.local(), name, LocalNode::default());
         }
         Ok(())
     }

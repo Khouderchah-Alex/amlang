@@ -352,8 +352,8 @@ fn basic_ask_tell() {
          (ask _ VariantOf _)",
     );
 
-    assert_eq!(results[1].iter().count(), 1);
-    assert_eq!(results[5].iter().count(), 2);
+    assert_eq!(results[1].iter().count(), 0);
+    assert_eq!(results[5].iter().count(), 1);
     assert_eq!(results[6].iter().count(), 1);
 }
 

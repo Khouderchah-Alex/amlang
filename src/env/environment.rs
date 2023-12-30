@@ -31,6 +31,9 @@ pub trait Environment: DynClone {
 
     fn insert_designation(&mut self, node: LocalNode, designation: Symbol, context: LocalNode);
     fn match_designation(&self, designation: &Symbol, context: LocalNode) -> Option<LocalNode>;
+    fn find_designation(&self, node: LocalNode, context: LocalNode) -> Option<&Symbol>;
+    // TODO(perf) Abstract concrete Iter type for coroutine possibilities.
+    fn designation_pairs(&self, context: LocalNode) -> Vec<(&Symbol, &LocalNode)>;
 
     fn match_subject(&self, subject: LocalNode) -> TripleSet;
     fn match_predicate(&self, predicate: LocalNode) -> TripleSet;

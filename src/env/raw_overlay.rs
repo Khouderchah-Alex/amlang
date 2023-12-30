@@ -53,6 +53,7 @@ impl<T: Environment + Clone> Environment for RawOverlay<T> {
         self.base().insert_triple(subject, predicate, object)
     }
 
+
     fn insert_designation(&mut self, node: LocalNode, designation: Symbol, context: LocalNode) {
         self.base().insert_designation(node, designation, context)
     }
@@ -61,6 +62,13 @@ impl<T: Environment + Clone> Environment for RawOverlay<T> {
         self.base().match_designation(designation, context)
     }
 
+    fn find_designation(&self, node: LocalNode, context: LocalNode) -> Option<&Symbol> {
+        self.base().find_designation(node, context)
+    }
+
+    fn designation_pairs(&self, context: LocalNode) -> Vec<(&Symbol, &LocalNode)> {
+        self.base().designation_pairs(context)
+    }
 
 
     fn match_subject(&self, subject: LocalNode) -> TripleSet {

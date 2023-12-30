@@ -77,6 +77,20 @@ impl<Backend: MemBackend> Environment for MemEnv<Backend> {
         None
     }
 
+    fn find_designation(&self, node: LocalNode, context: LocalNode) -> Option<&Symbol> {
+        if let Some(designator) = self.backend.designator(context) {
+            return designator.get_by_right(&node);
+        }
+        None
+    }
+
+    fn designation_pairs(&self, context: LocalNode) -> Vec<(&Symbol, &LocalNode)> {
+        match self.backend.designator(context) {
+            Some(designator) => designator.iter().collect(),
+            None => vec![],
+        }
+    }
+
 
     fn match_subject(&self, subject: LocalNode) -> TripleSet {
         let set = self.backend.edges(subject).as_subject.iter();

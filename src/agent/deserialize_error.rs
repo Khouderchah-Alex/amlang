@@ -8,7 +8,6 @@ pub enum DeserializeError {
     MissingHeaderSection,
     MissingNodeSection,
     MissingTripleSection,
-    ExtraneousSection,
     UnexpectedCommand(Sexp),
     ExpectedSymbol,
     UnrecognizedBuiltIn(Symbol),
@@ -33,9 +32,6 @@ impl ErrorKind for DeserializeError {
             }
             Self::MissingTripleSection => {
                 list!("MissingTripleSection".to_lang_string())
-            }
-            Self::ExtraneousSection => {
-                list!("ExtraneousSection".to_lang_string())
             }
             Self::UnexpectedCommand(sexp) => {
                 list!("UnexpectedCommand".to_lang_string(), sexp.clone())

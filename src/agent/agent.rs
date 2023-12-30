@@ -278,22 +278,10 @@ impl Agent {
             return Some(prelude.name().to_symbol_or_panic(policy_admin));
         }
 
-        let designation = self.context().designation();
-        let names = self
-            .ask_from(
-                node.env(),
-                Some(node),
-                Some(Node::new(node.env(), designation)),
-                None,
-            )
-            .unwrap();
-        if let Some(name) = names.objects().next() {
-            if let Ok(sym) = Symbol::try_from(self.concretize(Node::new(node.env(), name)).unwrap())
-            {
-                return Some(sym);
-            }
-        }
-        None
+        self.access_env(node.env())
+            .unwrap()
+            .find_designation(node.local(), LocalNode::default())
+            .cloned()
     }
 
     /// Get the label of a Node, which need not be injective.
@@ -323,14 +311,13 @@ impl Agent {
             return Ok(Node::new(self.pos().env(), prelude.local()));
         }
 
-        let designation = self.context().designation();
-        for i in 0..self.designation_chain.len() {
-            let table = SymNodeTable::try_from(
-                self.concretize(Node::new(self.designation_chain[i], designation))?,
-            )
-            .unwrap();
-            if let Some(node) = table.lookup(name) {
-                return Ok(node);
+        for env in &self.designation_chain {
+            if let Some(local) = self
+                .access_env(*env)
+                .unwrap()
+                .match_designation(name, LocalNode::default())
+            {
+                return Ok(Node::new(*env, local));
             }
         }
         err!(self, LangError::UnboundSymbol(name.clone()))
@@ -370,13 +357,6 @@ impl Agent {
     }
 
     pub fn name_node(&mut self, name: Node, node: Node) -> Result<Node, Error> {
-        if name.env() != node.env() {
-            return err!(
-                self,
-                LangError::Unsupported("Cross-env triples are not currently supported".into())
-            );
-        }
-
         let name_sexp = self.concretize(name)?;
         let symbol = match <Symbol>::try_from(name_sexp) {
             Ok(symbol) => symbol,
@@ -399,17 +379,11 @@ impl Agent {
             return err!(self, LangError::AlreadyBoundSymbol(symbol));
         }
 
-        let designation = self.context().designation();
-        // Use designation of current environment.
-        if let Ok(table) =
-            <&mut SymNodeTable>::try_from(self.env_mut().entry_mut(designation).as_option())
-        {
-            table.insert(symbol, node);
-        } else {
-            panic!("Env designation isn't a symbol table");
-        }
-
-        self.tell(node, self.globalize(designation), name)?;
+        self.access_env_mut(node.env()).unwrap().insert_designation(
+            node.local(),
+            symbol,
+            LocalNode::default(),
+        );
         Ok(node)
     }
 

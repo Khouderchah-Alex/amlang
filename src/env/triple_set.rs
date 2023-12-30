@@ -45,12 +45,24 @@ impl<'a> TripleSet<'a> {
 
     pub fn union(&self, other: &TripleSet) -> TripleSet<'a> {
         assert_eq!(
-            self.env.all_nodes().iter().next(),
-            other.env.all_nodes().iter().next()
+            self.env.entry(LocalNode::default()).owned(),
+            other.env.entry(LocalNode::default()).owned(),
         );
         Self {
             // TODO(perf) Can we clone + collect lazily?
             elements: self.elements.union(&other.elements).cloned().collect(),
+            env: self.env,
+        }
+    }
+
+    pub fn difference(&self, other: &TripleSet) -> TripleSet<'a> {
+        assert_eq!(
+            self.env.entry(LocalNode::default()).owned(),
+            other.env.entry(LocalNode::default()).owned(),
+        );
+        Self {
+            // TODO(perf) Can we clone + collect lazily?
+            elements: self.elements.difference(&other.elements).cloned().collect(),
             env: self.env,
         }
     }
