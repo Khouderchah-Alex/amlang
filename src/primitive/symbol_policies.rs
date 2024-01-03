@@ -35,6 +35,14 @@ pub fn policy_base(s: &str) -> Result<(), SymbolError> {
     }
 }
 
+pub fn policy_uuid(s: &str) -> Result<(), SymbolError> {
+    if s.chars().all(|c| c.is_ascii_hexdigit() || c == '-') {
+        Ok(())
+    } else {
+        Err(SymbolError::InvalidIdentifier(s.to_string()))
+    }
+}
+
 
 pub enum AdminSymbolInfo {
     Identifier,

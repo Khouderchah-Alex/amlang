@@ -30,7 +30,7 @@ pub mod prelude {
     pub use crate::env::{NodeSet, TripleSet};
     pub use crate::error::{Error, ErrorKind};
     pub use crate::primitive::prelude::*;
-    pub use crate::sexp::{Cons, ConsList, Sexp};
+    pub use crate::sexp::{Cons, ConsList, HeapSexp, Sexp};
     pub use crate::std_error::StdError;
     pub use crate::InitOptions;
     // Macros.

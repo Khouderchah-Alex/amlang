@@ -33,7 +33,9 @@ pub mod prelude {
     pub use super::procedure::Procedure;
     pub use super::string::{LangString, ToLangString};
     pub use super::symbol::{Symbol, ToSymbol};
-    pub use super::symbol_policies::{policy_admin, policy_base, AdminSymbolInfo, SymbolPolicy};
+    pub use super::symbol_policies::{
+        policy_admin, policy_base, policy_uuid, AdminSymbolInfo, SymbolPolicy,
+    };
     pub use super::table::{LocalNodeTable, SymNodeTable, SymSexpTable, Table};
     pub use super::vector::Vector;
 }
