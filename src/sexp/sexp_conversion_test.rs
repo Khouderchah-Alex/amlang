@@ -148,3 +148,10 @@ fn nested_list_vars() {
     assert_eq!(b, bb);
     assert_eq!(c, cc);
 }
+
+#[test]
+fn empty_list() {
+    assert_eq!(list!(), None);
+    assert_eq!(list!(()), "(())".parse().unwrap());
+    assert_eq!(list!((), ()), "(() ())".parse().unwrap());
+}

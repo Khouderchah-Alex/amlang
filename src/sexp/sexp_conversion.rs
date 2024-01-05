@@ -114,6 +114,22 @@ macro_rules! list {
             $crate::sexp::Cons::new($car, $cdr))
     };
     (@inner) => { None as Option<$crate::sexp::HeapSexp> };
+    (@inner (() $(, $($sub_tail:tt)*)?) $(, $($tail:tt)*)?) => {
+        {
+            list!(@cons
+                  list!(@cons
+                    Some($crate::sexp::HeapSexp::new(list!(@cons None, None))),
+                    list!(@inner $($($sub_tail)*)*)),
+                list!(@inner $($($tail)*)*))
+        }
+    };
+    (@inner () $(, $($tail:tt)*)?) => {
+        {
+            list!(@cons
+                Some($crate::sexp::HeapSexp::new(list!(@cons None, None))),
+                list!(@inner $($($tail)*)*))
+        }
+    };
     (@inner ($elem:expr $(, $($sub_tail:tt)*)?) $(, $($tail:tt)*)?) => {
         {
             list!(@cons
