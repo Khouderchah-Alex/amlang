@@ -1,10 +1,12 @@
 //! Representation of primitives.
 
+use std::convert::TryFrom;
 use std::fmt;
 use std::mem;
 
 use serde::{Deserialize, Serialize};
 
+use crate::error::Error;
 use crate::sexp::{HeapSexp, Sexp};
 
 #[macro_use]
@@ -154,6 +156,28 @@ macro_rules! primitive_from {
         impl From<$from> for Option<HeapSexp> {
             fn from(elem: $from) -> Self {
                 Some(HeapSexp::new(Sexp::Primitive(Primitive::$from(elem))))
+            }
+        }
+        impl TryFrom<HeapSexp> for Vec<$from> {
+            type Error = Error;
+            fn try_from(value: HeapSexp) -> Result<Self, Self::Error> {
+                let mut ret = vec![];
+                for (i, (sexp, _proper)) in value.into_iter().enumerate() {
+                    if let Ok(elem) = <$from>::try_from(sexp) {
+                        ret.push(elem);
+                    } else {
+                        return Err(Error::no_cont(
+                            $crate::agent::lang_error::LangError::InvalidArgument{
+                                // TODO(perf) Avoid clone for non-ref types.
+                                given: format!("Element {}", i).to_lang_string().into(),
+                                expected: std::borrow::Cow::Owned(
+                                    format!("List of all {} elements", stringify!($from))
+                                ),
+                            }
+                        ));
+                    }
+                }
+                Ok(ret)
             }
         }
         primitive_from!($($tail)*);
