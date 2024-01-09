@@ -29,6 +29,14 @@ impl<'a> BaseSerializer<'a> {
         }
     }
 
+    pub fn to_sexp<T>(agent: &'a mut Agent, value: &T) -> Result<HeapSexp, Error>
+    where
+        T: Serialize,
+    {
+        let mut serializer = Self::new(agent);
+        value.serialize(&mut serializer)
+    }
+
     fn serialize_symbol<S: AsRef<str>>(s: S) -> Result<HeapSexp, Error> {
         // TODO(func) This should be controlled by the Agent.
         match s.to_symbol(policy_base) {
@@ -162,19 +170,19 @@ impl<'a, 'b> ser::Serializer for &'a mut BaseSerializer<'b> {
     where
         T: ?Sized + Serialize,
     {
-        debug!("Serializing newtype_variant {}::{}", name, variant);
+        debug!("newtype_variant {}::{}", name, variant);
         let name = BaseSerializer::<'b>::serialize_symbol(name)?;
         let v = value.serialize(&mut *self)?;
         Ok(list!(name, v).into())
     }
 
     fn serialize_seq(self, _len: Option<usize>) -> Result<Self::SerializeSeq, Self::Error> {
-        debug!("Serializing seq");
+        debug!("seq");
         self.stack.push_front(ConsList::new());
         Ok(self)
     }
     fn serialize_tuple(self, _len: usize) -> Result<Self::SerializeTuple, Self::Error> {
-        debug!("Serializing tuple");
+        debug!("tuple");
         self.stack.push_front(ConsList::new());
         Ok(self)
     }
@@ -183,7 +191,7 @@ impl<'a, 'b> ser::Serializer for &'a mut BaseSerializer<'b> {
         name: &'static str,
         _len: usize,
     ) -> Result<Self::SerializeTupleStruct, Self::Error> {
-        debug!("Serializing tuple_struct {}", name);
+        debug!("tuple_struct {}", name);
         self.stack.push_front(ConsList::new());
         let name = BaseSerializer::<'b>::serialize_symbol(name)?;
         self.stack[0].append(name);
@@ -197,7 +205,7 @@ impl<'a, 'b> ser::Serializer for &'a mut BaseSerializer<'b> {
         variant: &'static str,
         _len: usize,
     ) -> Result<Self::SerializeTupleVariant, Self::Error> {
-        debug!("Serializing tuple_variant {}::{}", name, variant);
+        debug!("tuple_variant {}::{}", name, variant);
         self.stack.push_front(ConsList::new());
         let name = BaseSerializer::<'b>::serialize_symbol(name)?;
         let variant = BaseSerializer::<'b>::serialize_symbol(variant)?;
@@ -207,7 +215,7 @@ impl<'a, 'b> ser::Serializer for &'a mut BaseSerializer<'b> {
     }
 
     fn serialize_map(self, _len: Option<usize>) -> Result<Self::SerializeMap, Self::Error> {
-        debug!("Serializing map");
+        debug!("map");
         self.stack.push_front(ConsList::new());
         Ok(self)
     }
@@ -217,7 +225,7 @@ impl<'a, 'b> ser::Serializer for &'a mut BaseSerializer<'b> {
         name: &'static str,
         _len: usize,
     ) -> Result<Self::SerializeStruct, Self::Error> {
-        debug!("Serializing struct {}", name);
+        debug!("struct {}", name);
         self.stack.push_front(ConsList::new());
         let name = BaseSerializer::<'b>::serialize_symbol(name)?;
         self.stack[0].append(name);
@@ -231,7 +239,7 @@ impl<'a, 'b> ser::Serializer for &'a mut BaseSerializer<'b> {
         variant: &'static str,
         _len: usize,
     ) -> Result<Self::SerializeStructVariant, Self::Error> {
-        debug!("Serializing struct_variant {}::{}", name, variant);
+        debug!("struct_variant {}::{}", name, variant);
         self.stack.push_front(ConsList::new());
         let name = BaseSerializer::<'b>::serialize_symbol(name)?;
         let variant = BaseSerializer::<'b>::serialize_symbol(variant)?;

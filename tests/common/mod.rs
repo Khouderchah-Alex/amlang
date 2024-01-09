@@ -1,12 +1,5 @@
 use amlang::agent::env_policy::{EnvPolicy, SimplePolicy};
-use amlang::agent::{Agent, AmlangInterpreter, EnvManager, TransformExecutor, VmInterpreter};
-use amlang::error::Error;
-use amlang::parser::Parser;
-use amlang::primitive::symbol_policies::policy_base;
-use amlang::pull_transform;
-use amlang::sexp::Sexp;
-use amlang::stream::input::StringReader;
-use amlang::token::Tokenizer;
+use amlang::agent::{Agent, AmlangInterpreter, EnvManager, VmInterpreter};
 use amlang::InitOptions;
 
 
@@ -41,26 +34,4 @@ pub fn setup() -> Result<(Agent, EnvManager<impl EnvPolicy>), String> {
     agent.designation_chain_mut().push_back(working_env);
 
     Ok((agent, manager))
-}
-
-pub fn results<S: AsRef<str>>(lang_agent: &mut Agent, s: S) -> Vec<Sexp> {
-    pull_transform!(?unwrap
-                    StringReader::new(s.as_ref())
-                    =>> Tokenizer::new(policy_base)
-                    =>. Parser::new()
-                    =>. TransformExecutor::interpret(lang_agent))
-    .map(|e| e.unwrap())
-    .collect::<Vec<_>>()
-}
-
-pub fn results_with_errors<S: AsRef<str>>(
-    lang_agent: &mut Agent,
-    s: S,
-) -> Vec<Result<Sexp, Error>> {
-    pull_transform!(?unwrap
-                    StringReader::new(s.as_ref())
-                    =>> Tokenizer::new(policy_base)
-                    =>. Parser::new()
-                    =>. TransformExecutor::interpret(lang_agent))
-    .collect::<Vec<_>>()
 }

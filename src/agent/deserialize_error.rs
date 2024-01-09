@@ -5,6 +5,13 @@ use crate::sexp::{Cons, Sexp};
 #[derive(Debug)]
 pub enum DeserializeError {
     IoError(std::io::Error),
+
+    // Serde usage.
+    MissingData,
+    ExtraneousData(Sexp),
+    UnexpectedType { given: Sexp, expected: String },
+
+    // Legacy EnvManager deserialization.
     MissingHeaderSection,
     MissingNodeSection,
     MissingTripleSection,
@@ -22,6 +29,19 @@ impl ErrorKind for DeserializeError {
                 list!(
                     "IoError".to_lang_string(),
                     format!("{}", err).to_lang_string(),
+                )
+            }
+            Self::MissingData => {
+                list!("MissingData".to_lang_string())
+            }
+            Self::ExtraneousData(sexp) => {
+                list!("ExtraneousData".to_lang_string(), sexp.clone())
+            }
+            Self::UnexpectedType { given, expected } => {
+                list!(
+                    "UnexpectedType".to_lang_string(),
+                    given.clone(),
+                    expected.clone()
                 )
             }
             Self::MissingHeaderSection => {

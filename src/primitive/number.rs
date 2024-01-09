@@ -103,6 +103,19 @@ macro_rules! generate_number {
         }
 
         $(
+            impl TryFrom<Sexp> for $type {
+                type Error = Sexp;
+
+                fn try_from(value: Sexp) -> Result<Self, Self::Error> {
+                    let num = Number::try_from(value)?;
+                    if let Number::$variant(val) = num {
+                        Ok(val)
+                    } else {
+                        Err(num.into())
+                    }
+                }
+            }
+
             impl TryFrom<Number> for $type {
                 type Error = Number;
 
