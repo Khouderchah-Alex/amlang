@@ -46,7 +46,7 @@ use crate::token::Tokenizer;
 
 pub type HeapSexp = Box<Sexp>;
 
-#[derive(Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum Sexp {
     Primitive(Primitive),
     Cons(Cons),
@@ -291,12 +291,6 @@ impl IntoIterator for HeapSexp {
 
     fn into_iter(self) -> Self::IntoIter {
         Self::IntoIter::Heap(self)
-    }
-}
-
-impl fmt::Debug for Sexp {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(&self, f)
     }
 }
 
