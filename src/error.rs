@@ -24,6 +24,16 @@ macro_rules! err {
     };
 }
 
+/// Creates a stateless Error wrapped in Err. Always prefer err! when possible.
+#[macro_export]
+macro_rules! err_nost {
+    ($($kind:tt)+) => {
+        Err($crate::error::Error::no_cont(
+            $($kind)+),
+        )
+    };
+}
+
 
 pub type ErrorCont = Continuation<ExecFrame>;
 
@@ -153,13 +163,13 @@ impl fmt::Debug for Error {
 impl std::error::Error for Error {}
 
 impl ser::Error for Error {
-    fn custom<T: fmt::Display>(_msg: T) -> Self {
-        panic!()
+    fn custom<T: fmt::Display>(msg: T) -> Self {
+        Self::adhoc("Serde.Ser", msg.to_string())
     }
 }
 
 impl de::Error for Error {
-    fn custom<T: fmt::Display>(_msg: T) -> Self {
-        panic!()
+    fn custom<T: fmt::Display>(msg: T) -> Self {
+        Self::adhoc("Serde.De", msg.to_string())
     }
 }
