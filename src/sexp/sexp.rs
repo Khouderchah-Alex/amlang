@@ -435,6 +435,12 @@ impl From<HeapSexp> for Sexp {
     }
 }
 
+impl From<()> for Sexp {
+    fn from(_: ()) -> Self {
+        Self::default()
+    }
+}
+
 impl From<Primitive> for Sexp {
     fn from(primitive: Primitive) -> Self {
         Sexp::Primitive(primitive)

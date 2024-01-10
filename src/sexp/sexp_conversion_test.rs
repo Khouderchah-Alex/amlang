@@ -151,7 +151,15 @@ fn nested_list_vars() {
 
 #[test]
 fn empty_list() {
-    assert_eq!(list!(), None);
+    assert_eq!(list!(), "()".parse().unwrap());
+    println!("{}", list!(()));
     assert_eq!(list!(()), "(())".parse().unwrap());
     assert_eq!(list!((), ()), "(() ())".parse().unwrap());
+}
+
+#[test]
+fn multiple_nested_list() {
+    assert_eq!(list!((())), "((()))".parse().unwrap());
+    assert_eq!(list!((list!(()))), "(((())))".parse().unwrap());
+    assert_eq!(list!((list!((list!())))), "((((()))))".parse().unwrap());
 }

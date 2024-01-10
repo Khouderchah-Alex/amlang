@@ -113,28 +113,14 @@ macro_rules! list {
         <$crate::sexp::Sexp>::from(
             $crate::sexp::Cons::new($car, $cdr))
     };
-    (@inner) => { None as Option<$crate::sexp::HeapSexp> };
-    (@inner (() $(, $($sub_tail:tt)*)?) $(, $($tail:tt)*)?) => {
-        {
-            list!(@cons
-                  list!(@cons
-                    Some($crate::sexp::HeapSexp::new(list!(@cons None, None))),
-                    list!(@inner $($($sub_tail)*)*)),
-                list!(@inner $($($tail)*)*))
-        }
-    };
-    (@inner () $(, $($tail:tt)*)?) => {
-        {
-            list!(@cons
-                Some($crate::sexp::HeapSexp::new(list!(@cons None, None))),
-                list!(@inner $($($tail)*)*))
-        }
-    };
+    (@base) => { $crate::sexp::Sexp::default() };
+    (@base $elem:expr) => { <$crate::sexp::Sexp>::from($elem) };
+    (@inner) => { list!(@base) };
     (@inner ($elem:expr $(, $($sub_tail:tt)*)?) $(, $($tail:tt)*)?) => {
         {
             list!(@cons
                   list!(@cons
-                    Some($crate::sexp::HeapSexp::new($elem.into())),
+                    Some($crate::sexp::HeapSexp::new(list!(@base $elem))),
                     list!(@inner $($($sub_tail)*)*)),
                 list!(@inner $($($tail)*)*))
         }
@@ -142,8 +128,8 @@ macro_rules! list {
     (@inner $elem:expr $(, $($tail:tt)*)?) => {
         {
             list!(@cons
-                Some($crate::sexp::HeapSexp::new($elem.into())),
-                list!(@inner $($($tail)*)*))
+                  Some($crate::sexp::HeapSexp::new(list!(@base $elem))),
+                  list!(@inner $($($tail)*)*))
         }
     };
     ($($tail:tt)*) => {
