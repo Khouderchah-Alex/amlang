@@ -171,7 +171,7 @@ impl<'a, 'b> ser::Serializer for &'a mut BaseSerializer<'b> {
         T: ?Sized + Serialize,
     {
         debug!("newtype_variant {}::{}", name, variant);
-        let name = BaseSerializer::<'b>::serialize_symbol(name)?;
+        let name = BaseSerializer::<'b>::serialize_symbol(variant)?;
         let v = value.serialize(&mut *self)?;
         Ok(list!(name, v).into())
     }
@@ -207,10 +207,8 @@ impl<'a, 'b> ser::Serializer for &'a mut BaseSerializer<'b> {
     ) -> Result<Self::SerializeTupleVariant, Self::Error> {
         debug!("tuple_variant {}::{}", name, variant);
         self.stack.push_front(ConsList::new());
-        let name = BaseSerializer::<'b>::serialize_symbol(name)?;
         let variant = BaseSerializer::<'b>::serialize_symbol(variant)?;
-        let val: HeapSexp = Cons::new(name, variant).into();
-        self.stack[0].append(val);
+        self.stack[0].append(variant);
         Ok(self)
     }
 

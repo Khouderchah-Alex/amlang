@@ -3,7 +3,7 @@ use std::collections::VecDeque;
 use std::convert::TryFrom;
 
 use log::debug;
-use serde::de::{self, DeserializeSeed, MapAccess, SeqAccess, Visitor};
+use serde::de::{self, DeserializeSeed, EnumAccess, MapAccess, SeqAccess, VariantAccess, Visitor};
 use serde::Deserialize;
 
 use super::deserialize_error::DeserializeError;
@@ -282,13 +282,13 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut BaseDeserializer<'de> {
         self,
         name: &'static str,
         _variants: &'static [&'static str],
-        _visitor: V,
+        visitor: V,
     ) -> Result<V::Value, Error>
     where
         V: Visitor<'de>,
     {
         debug!("enum {}", name);
-        unimplemented!()
+        visitor.visit_enum(CompositeAccessor::new(self))
     }
 
     fn deserialize_identifier<V>(self, visitor: V) -> Result<V::Value, Error>
@@ -365,6 +365,70 @@ impl<'de, 'a> MapAccess<'de> for CompositeAccessor<'a, 'de> {
         V: DeserializeSeed<'de>,
     {
         seed.deserialize(&mut *self.de)
+    }
+}
+
+impl<'de, 'a> EnumAccess<'de> for CompositeAccessor<'a, 'de> {
+    type Error = Error;
+    type Variant = Self;
+
+    fn variant_seed<V>(self, seed: V) -> Result<(V::Value, Self::Variant), Error>
+    where
+        V: DeserializeSeed<'de>,
+    {
+        let (state, top) = self.de.stack.pop_front().unwrap();
+        match top {
+            Sexp::Cons(cons) => {
+                let (head, tail) = cons.consume();
+                self.de
+                    .stack
+                    .push_front((Base, tail.unwrap_or_default().into()));
+                self.de
+                    .stack
+                    .push_front((state, head.unwrap_or_default().into()));
+            }
+            Sexp::Primitive(p) => {
+                self.de.stack.push_front((Base, p.into()));
+            }
+        };
+        Ok((seed.deserialize(&mut *self.de)?, self))
+    }
+}
+
+impl<'de, 'a> VariantAccess<'de> for CompositeAccessor<'a, 'de> {
+    type Error = Error;
+
+    fn unit_variant(self) -> Result<(), Error> {
+        Ok(())
+    }
+
+    fn newtype_variant_seed<T>(self, seed: T) -> Result<T::Value, Error>
+    where
+        T: DeserializeSeed<'de>,
+    {
+        let (state, top) = self.de.stack.pop_front().unwrap();
+        let (head, _tail) = Cons::try_from(top).unwrap_or_default().consume();
+        self.de.stack.push_front((state, *head.unwrap_or_default()));
+
+        seed.deserialize(self.de)
+    }
+
+    fn tuple_variant<V>(self, _len: usize, visitor: V) -> Result<V::Value, Error>
+    where
+        V: Visitor<'de>,
+    {
+        de::Deserializer::deserialize_seq(self.de, visitor)
+    }
+
+    fn struct_variant<V>(
+        self,
+        _fields: &'static [&'static str],
+        visitor: V,
+    ) -> Result<V::Value, Error>
+    where
+        V: Visitor<'de>,
+    {
+        de::Deserializer::deserialize_map(self.de, visitor)
     }
 }
 
