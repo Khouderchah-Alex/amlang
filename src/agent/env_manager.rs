@@ -120,7 +120,6 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
                         sym_node_table: "table-sym-node",
                         sym_sexp_table: "table-sym-sexp",
                         local_node_table: "table-lnode",
-                        label: "label",
                         vector: "vector",
                         set: "set!",
                         node: "node",

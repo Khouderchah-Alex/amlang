@@ -297,27 +297,6 @@ impl Agent {
             .cloned()
     }
 
-    /// Get the label of a Node, which need not be injective.
-    pub fn node_label(&self, node: Node) -> Option<Symbol> {
-        let try_import = self.get_imported(amlang_node!(label, self.context()), node.env());
-        let label_predicate = match try_import {
-            Some(pred) => pred,
-            None => return None,
-        };
-
-        let labels = self
-            .ask_from(node.env(), Some(node), Some(label_predicate), None)
-            .unwrap();
-        if let Some(label) = labels.objects().next() {
-            if let Ok(sym) =
-                Symbol::try_from(self.concretize(Node::new(node.env(), label)).unwrap())
-            {
-                return Some(sym);
-            }
-        }
-        None
-    }
-
     pub fn resolve(&self, name: &Symbol) -> Result<Node, Error> {
         // Always get prelude nodes from current env.
         if let Some(prelude) = EnvPrelude::from_name(name.as_str()) {
@@ -793,8 +772,6 @@ impl Agent {
                 {
                     let s = triple.reify(self);
                     self.write_sexp(w, &s, depth, show_redirects)
-                } else if let Some(sym) = self.node_label(*node) {
-                    write!(w, "${}", sym.as_str())
                 } else {
                     let s = match self.concretize(*node) {
                         Ok(structure) => structure,
