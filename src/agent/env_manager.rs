@@ -377,7 +377,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         if !des.is_empty() {
             write!(&mut w, "(designation amlang")?;
             for (sym, node) in des {
-                write!(&mut w, "\n    ({} {})", node, sym)?;
+                write!(&mut w, "\n    (^{} {})", node.id(), sym)?;
             }
             writeln!(&mut w, "\n)")?;
         }
