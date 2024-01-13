@@ -88,6 +88,12 @@ impl Borrow<String> for Symbol {
     }
 }
 
+impl Borrow<String> for &Symbol {
+    fn borrow(&self) -> &String {
+        &self.0
+    }
+}
+
 impl Borrow<str> for Symbol {
     fn borrow(&self) -> &str {
         self.as_str()

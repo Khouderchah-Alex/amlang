@@ -5,11 +5,11 @@ use rustyline::line_buffer::LineBuffer;
 use rustyline::validate::Validator;
 use rustyline::{Context, Helper};
 use std::cell::RefCell;
-use std::convert::TryFrom;
+use std::collections::BTreeMap;
 
 use crate::agent::Agent;
-use crate::primitive::table::Table;
-use crate::primitive::{SymNodeTable, Symbol};
+use crate::env::LocalNode;
+use crate::primitive::Symbol;
 
 
 // Rustyline Helper for CliStream.
@@ -30,18 +30,22 @@ impl CliHelper {
 
     fn designation_prefix(&self, prefix: &str) -> Vec<Symbol> {
         let agent = self.agent.borrow_mut();
-        let designation = agent.context().designation();
+        // TODO(func, flex) Generalize on designation type.
+        let designation = LocalNode::default();
 
         let mut res = Vec::<Symbol>::new();
         for env in agent.designation_chain().clone() {
-            let entry = agent.access_env(env).unwrap().entry(designation);
-            let table = <&SymNodeTable>::try_from(entry.as_option()).unwrap();
+            let pairs: BTreeMap<_, _> = agent
+                .access_env(env)
+                .unwrap()
+                .designation_pairs(designation)
+                .into_iter()
+                .collect();
             res.extend(
-                table
-                    .as_map()
+                pairs
                     .range(prefix.to_string()..)
                     .take_while(|(k, _)| k.as_str().starts_with(prefix))
-                    .map(|(k, _)| k.clone()),
+                    .map(|(k, _)| (*k).clone()),
             );
         }
         res
