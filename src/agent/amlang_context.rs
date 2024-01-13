@@ -2,7 +2,6 @@ use std::convert::TryFrom;
 
 use super::env_prelude::EnvPrelude;
 use crate::agent::Agent;
-use crate::env::meta_env::MetaEnv;
 use crate::env::LocalNode;
 use crate::error::Error;
 use crate::model::Reflective;
@@ -62,13 +61,8 @@ macro_rules! generate_context {
         ($($lang_node:ident),+)
         $(,)?
     ) => {
-        // TODO(perf) Make generic over Environment, but in a manner consistent with
-        // library usage and without pushing templating over most of the codebase
-        // (e.g. changing build flag to select Overlay class).
         #[derive(Clone, Debug)]
         pub struct AmlangContext {
-            meta: MetaEnv,
-
             // Relative to meta env.
             $($meta_node: LocalNode,)+
             // Relative to lang_env.
@@ -77,11 +71,9 @@ macro_rules! generate_context {
 
 
         impl AmlangContext {
-            pub(super) fn new(meta: MetaEnv) -> Self {
+            pub(super) fn new() -> Self {
                 let placeholder = LocalNode::new(1);
                 Self {
-                    meta,
-
                     // This is delicate; putting placeholders here, which must be set
                     // properly during bootstrapping.
                     $($meta_node: placeholder.clone(),)+
@@ -135,13 +127,6 @@ macro_rules! generate_context {
 }
 
 impl AmlangContext {
-    pub fn meta(&self) -> &MetaEnv {
-        &self.meta
-    }
-    pub fn meta_mut(&mut self) -> &mut MetaEnv {
-        &mut self.meta
-    }
-
     pub const fn self_node(&self) -> LocalNode {
         EnvPrelude::SelfEnv.local()
     }
