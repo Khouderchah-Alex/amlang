@@ -4,14 +4,16 @@
 //! Rust are repr'd.
 
 use std::collections::VecDeque;
+use std::convert::TryFrom;
 
 use log::debug;
 use serde::{ser, Serialize};
 
 use crate::agent::Agent;
+use crate::env::local_node::{LocalId, LocalNode};
 use crate::error::Error;
 use crate::primitive::prelude::*;
-use crate::sexp::{Cons, ConsList, HeapSexp};
+use crate::sexp::{Cons, ConsList, HeapSexp, Sexp};
 
 
 pub struct BaseSerializer<'a> {
@@ -43,6 +45,19 @@ impl<'a> BaseSerializer<'a> {
             Ok(sym) => Ok(sym.into()),
             Err(err) => panic!("{:?}", err),
         }
+    }
+
+    fn serialize_node(&self, sexp: Sexp) -> Result<HeapSexp, Error> {
+        let (_name, env, local) = break_sexp!(sexp => (Symbol, HeapSexp, HeapSexp), self.agent)?;
+        let e = LocalId::try_from(
+            *<&Number>::try_from(Cons::try_from(env).unwrap().cdr().unwrap()).unwrap(),
+        )
+        .unwrap();
+        let l = LocalId::try_from(
+            *<&Number>::try_from(Cons::try_from(local).unwrap().cdr().unwrap()).unwrap(),
+        )
+        .unwrap();
+        Ok(Node::new(LocalNode::new(e), LocalNode::new(l)).into())
     }
 }
 
@@ -356,7 +371,12 @@ impl<'a, 'b> ser::SerializeStruct for &'a mut BaseSerializer<'b> {
     }
 
     fn end(self) -> Result<Self::Ok, Self::Error> {
-        Ok(self.stack.pop_front().unwrap().release().into())
+        let sexp: HeapSexp = self.stack.pop_front().unwrap().release().into();
+        if &*BaseSerializer::<'b>::serialize_symbol("Node")? == sexp.iter().next().unwrap().0 {
+            self.serialize_node(*sexp)
+        } else {
+            Ok(sexp)
+        }
     }
 }
 

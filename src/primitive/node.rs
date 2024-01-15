@@ -13,13 +13,13 @@ use crate::sexp::{HeapSexp, Sexp};
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialOrd, PartialEq, Serialize, Deserialize)]
 pub struct Node {
     env: LocalNode,
-    node: LocalNode,
+    local: LocalNode,
 }
 
 
 impl Node {
-    pub const fn new(env: LocalNode, node: LocalNode) -> Self {
-        Self { env, node }
+    pub const fn new(env: LocalNode, local: LocalNode) -> Self {
+        Self { env, local }
     }
 
     pub const fn env(&self) -> LocalNode {
@@ -27,14 +27,14 @@ impl Node {
     }
 
     pub const fn local(&self) -> LocalNode {
-        self.node
+        self.local
     }
 }
 
 
 impl fmt::Display for Node {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "[Node_{}_{}]", self.env.id(), self.node.id())
+        write!(f, "[Node_{}_{}]", self.env.id(), self.local.id())
     }
 }
 
