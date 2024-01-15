@@ -36,9 +36,7 @@ impl InterpreterState for VmInterpreter {
 
 
 struct ExecutingInterpreter<'a> {
-    history_env: LocalNode,
-    impl_env: LocalNode,
-
+    state: &'a mut VmInterpreter,
     agent: &'a mut Agent,
 }
 
@@ -50,12 +48,7 @@ impl<'a> ExecutingInterpreter<'a> {
             agent.designation_chain_mut().push_front(lang_env);
         }
 
-        Self {
-            history_env: state.history_env,
-            impl_env: state.impl_env,
-
-            agent,
-        }
+        Self { state, agent }
     }
 
     fn agent(&self) -> &Agent {
@@ -356,7 +349,7 @@ impl<'a> ExecutingInterpreter<'a> {
         if let Ok(node) = <Node>::try_from(&sexp) {
             Ok(node)
         } else {
-            let env = self.impl_env;
+            let env = self.state.impl_env;
             self.agent_mut().define_to(env, Some(sexp))
         }
     }
@@ -382,7 +375,7 @@ impl<'a> Interpreter for ExecutingInterpreter<'a> {
         let node = if let Ok(node) = <Node>::try_from(&structure) {
             node
         } else {
-            let env = self.history_env;
+            let env = self.state.history_env;
             self.agent_mut().define_to(env, Some(structure))?
         };
         self.exec(node)

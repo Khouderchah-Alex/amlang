@@ -37,9 +37,7 @@ impl InterpreterState for AmlangInterpreter {
 
 
 struct ExecutingInterpreter<'a> {
-    eval_state: &'a mut Continuation<SymNodeTable>,
-    impl_env: LocalNode,
-
+    state: &'a mut AmlangInterpreter,
     agent: &'a mut Agent,
 }
 
@@ -51,12 +49,7 @@ impl<'a> ExecutingInterpreter<'a> {
             agent.designation_chain_mut().push_front(lang_env);
         }
 
-        Self {
-            eval_state: &mut state.eval_state,
-            impl_env: state.impl_env,
-
-            agent,
-        }
+        Self { state, agent }
     }
 
     fn agent(&self) -> &Agent {
@@ -74,7 +67,7 @@ impl<'a> ExecutingInterpreter<'a> {
     ) -> Result<(Procedure, SymNodeTable), Error> {
         let mut surface = Vec::new();
         let mut frame = SymNodeTable::default();
-        let impl_env = self.impl_env;
+        let impl_env = self.state.impl_env;
         for symbol in params {
             let node = self.agent_mut().define_to(impl_env, None)?;
             if frame.contains_key(&symbol) {
@@ -96,7 +89,7 @@ impl<'a> ExecutingInterpreter<'a> {
             // self.agent_mut().tell(node, label_predicate, name)?;
         }
 
-        self.eval_state.push(frame);
+        self.state.eval_state.push(frame);
         let res = (|| {
             let mut body_nodes = vec![];
             for (elem, proper) in body.into_iter() {
@@ -117,7 +110,7 @@ impl<'a> ExecutingInterpreter<'a> {
                 Ok(Procedure::Abstraction(surface, seq_node, reflect))
             }
         })();
-        let frame = self.eval_state.pop().unwrap();
+        let frame = self.state.eval_state.pop().unwrap();
         Ok((res?, frame))
     }
 
@@ -128,7 +121,7 @@ impl<'a> ExecutingInterpreter<'a> {
         if let Ok(node) = <Node>::try_from(&sexp) {
             Ok(node)
         } else {
-            let env = self.impl_env;
+            let env = self.state.impl_env;
             self.agent_mut().define_to(env, Some(sexp))
         }
     }
@@ -154,7 +147,7 @@ impl<'a> ExecutingInterpreter<'a> {
                 let val = self.interpret(*structure)?;
                 self.node_or_insert(val)?
             } else {
-                let env = self.impl_env;
+                let env = self.state.impl_env;
                 self.agent_mut().define_to(env, Some(*structure))?
             };
             args.push(arg_node);
@@ -182,7 +175,7 @@ impl<'a> ExecutingInterpreter<'a> {
             let arg_node = if i == 0 && first_interface {
                 self.agent_mut().define(Some(*structure))?
             } else {
-                let env = self.impl_env;
+                let env = self.state.impl_env;
                 self.agent_mut().define_to(env, Some(*structure))?
             };
             args.push(arg_node);
@@ -197,7 +190,7 @@ impl<'a> Interpreter for ExecutingInterpreter<'a> {
         match structure {
             Sexp::Primitive(primitive) => {
                 if let Primitive::Symbol(symbol) = &primitive {
-                    for frame in self.eval_state.iter() {
+                    for frame in self.state.eval_state.iter() {
                         if let Some(node) = frame.lookup(symbol) {
                             return Ok(node.into());
                         }
@@ -254,9 +247,9 @@ impl<'a> Interpreter for ExecutingInterpreter<'a> {
                         let proc_node = self.node_or_insert(proc.into())?;
 
                         let args = if recursive {
-                            self.eval_state.push(frame);
+                            self.state.eval_state.push(frame);
                             let res = self.evlis(Some(exprs), true);
-                            self.eval_state.pop();
+                            self.state.eval_state.pop();
                             res?
                         } else {
                             self.evlis(Some(exprs), true)?
