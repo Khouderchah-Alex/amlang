@@ -45,8 +45,17 @@ impl<'a> ExecutingInterpreter<'a> {
     fn from_state(state: &'a mut AmlangInterpreter, agent: &'a mut Agent) -> Self {
         // Ensure agent designates amlang nodes first.
         let lang_env = agent.context().lang_env();
-        if agent.designation_chain().front().cloned() != Some(lang_env) {
-            agent.designation_chain_mut().push_front(lang_env);
+        if agent
+            .designation_chain()
+            .front()
+            .cloned()
+            .unwrap_or_default()
+            .env()
+            != lang_env
+        {
+            agent
+                .designation_chain_mut()
+                .push_front(Node::new(lang_env, LocalNode::default()));
         }
 
         Self { state, agent }

@@ -41,7 +41,7 @@ macro_rules! verify_context {
         $(,)?
     ) => {
         let env = $manager.agent().pos().env();
-        $manager.agent_mut().designation_chain_mut().push_front(env);
+        $manager.agent_mut().designation_chain_mut().push_front(Node::new(env, LocalNode::default()));
         let ($($node,)+) = {
             (
                 $($manager.agent().resolve(&$query.to_symbol_or_panic(policy_admin))?.local(),)+

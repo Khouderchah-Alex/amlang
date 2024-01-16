@@ -30,7 +30,7 @@ pub struct Agent {
     env_state: Continuation<EnvFrame>,
     exec_state: Continuation<ExecFrame>,
     interpreter_state: Continuation<Rc<RefCell<Box<dyn InterpreterState>>>>,
-    designation_chain: VecDeque<LocalNode>,
+    designation_chain: VecDeque<Node>,
 
     meta: MetaEnv,
     context: AmlangContext,
@@ -186,19 +186,20 @@ impl Agent {
     }
 
     /// Jump to self node of indicated env.
-    pub fn jump_env(&mut self, env_node: LocalNode) {
+    pub fn jump_env(&mut self, env_node: LocalNode) -> Node {
         // TODO(sec) Verify.
         let node = Node::new(env_node, self.context.self_node());
         *self.pos_mut() = node;
+        node
     }
 
-    pub fn designation_chain(&self) -> &VecDeque<LocalNode> {
+    pub fn designation_chain(&self) -> &VecDeque<Node> {
         &self.designation_chain
     }
     // Agent does not currently contain any policy; Clients populate this as
     // needed.
     // TODO(func, sec) Provide dedicated interface for d-chain mutations.
-    pub fn designation_chain_mut(&mut self) -> &mut VecDeque<LocalNode> {
+    pub fn designation_chain_mut(&mut self) -> &mut VecDeque<Node> {
         &mut self.designation_chain
     }
 
@@ -303,13 +304,13 @@ impl Agent {
             return Ok(Node::new(self.pos().env(), prelude.local()));
         }
 
-        for env in &self.designation_chain {
-            if let Some(local) = self
-                .access_env(*env)
+        for node in &self.designation_chain {
+            if let Some(found) = self
+                .access_env(node.env())
                 .unwrap()
-                .match_designation(name, LocalNode::default())
+                .match_designation(name, node.local())
             {
-                return Ok(Node::new(*env, local));
+                return Ok(Node::new(node.env(), found));
             }
         }
         err!(self, LangError::UnboundSymbol(name.clone()))

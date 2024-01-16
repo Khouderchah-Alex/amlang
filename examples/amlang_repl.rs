@@ -21,6 +21,7 @@ use amlang::agent::env_policy::SimplePolicy;
 use amlang::agent::{
     Agent, AmlangInterpreter, EnvManager, NullInterpreter, TransformExecutor, VmInterpreter,
 };
+use amlang::env::LocalNode;
 use amlang::error::Error;
 use amlang::parser::Parser;
 use amlang::primitive::{Node, Primitive};
@@ -82,13 +83,15 @@ fn main() -> Result<(), String> {
         .unwrap();
 
     let working_env = agent.find_env("working.env").unwrap();
-    agent.jump_env(working_env);
-    agent.designation_chain_mut().push_back(working_env);
+    let pos = agent.jump_env(working_env);
+    agent.designation_chain_mut().push_back(pos);
 
     // TODO(func) Rm once we sort out the deal with CliHelper holding a
     // potentially-stale Agent copy.
     let lang_env = agent.context().lang_env();
-    agent.designation_chain_mut().push_front(lang_env);
+    agent
+        .designation_chain_mut()
+        .push_front(Node::new(lang_env, LocalNode::default()));
 
     // Run agent.
     let tokens = CliStream::with_helper(agent.fork(NullInterpreter::default()));

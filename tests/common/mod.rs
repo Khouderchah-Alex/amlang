@@ -30,8 +30,8 @@ pub fn setup() -> Result<(Agent, EnvManager<impl EnvPolicy>), String> {
         })
         .unwrap();
     let working_env = agent.find_env("working.env").unwrap();
-    agent.jump_env(working_env);
-    agent.designation_chain_mut().push_back(working_env);
+    let pos = agent.jump_env(working_env);
+    agent.designation_chain_mut().push_back(pos);
 
     Ok((agent, manager))
 }

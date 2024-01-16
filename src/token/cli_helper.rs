@@ -8,7 +8,6 @@ use std::cell::RefCell;
 use std::collections::BTreeMap;
 
 use crate::agent::Agent;
-use crate::env::LocalNode;
 use crate::primitive::Symbol;
 
 
@@ -30,15 +29,12 @@ impl CliHelper {
 
     fn designation_prefix(&self, prefix: &str) -> Vec<Symbol> {
         let agent = self.agent.borrow_mut();
-        // TODO(func, flex) Generalize on designation type.
-        let designation = LocalNode::default();
-
         let mut res = Vec::<Symbol>::new();
-        for env in agent.designation_chain().clone() {
+        for node in agent.designation_chain() {
             let pairs: BTreeMap<_, _> = agent
-                .access_env(env)
+                .access_env(node.env())
                 .unwrap()
-                .designation_pairs(designation)
+                .designation_pairs(node.local())
                 .into_iter()
                 .collect();
             res.extend(
