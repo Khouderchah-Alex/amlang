@@ -39,11 +39,16 @@ impl<'a> BaseSerializer<'a> {
         value.serialize(&mut serializer)
     }
 
-    fn serialize_symbol<S: AsRef<str>>(s: S) -> Result<HeapSexp, Error> {
-        // TODO(func) This should be controlled by the Agent.
-        match s.to_symbol(policy_base) {
-            Ok(sym) => Ok(sym.into()),
+    fn serialize_symbol<S: AsRef<str>>(&self, s: S) -> Result<HeapSexp, Error> {
+        let sym = match s.to_symbol(policy_base) {
+            Ok(sym) => sym,
             Err(err) => panic!("{:?}", err),
+        };
+        // Preferentially use context to serialize Node.
+        if let Ok(resolved) = self.agent.resolve(&sym) {
+            Ok(resolved.into())
+        } else {
+            Ok(sym.into())
         }
     }
 
@@ -74,13 +79,7 @@ impl<'a, 'b> ser::Serializer for &'a mut BaseSerializer<'b> {
     type SerializeStructVariant = Self;
 
     fn serialize_bool(self, v: bool) -> Result<Self::Ok, Self::Error> {
-        let sexp = if v {
-            amlang_node!(t, self.agent.context())
-        } else {
-            amlang_node!(f, self.agent.context())
-        }
-        .into();
-        Ok(sexp)
+        self.serialize_symbol(if v { "true" } else { "false" })
     }
 
     // TODO(func) Have Number support more than i64, f64.
@@ -160,7 +159,7 @@ impl<'a, 'b> ser::Serializer for &'a mut BaseSerializer<'b> {
         _variant_index: u32,
         variant: &'static str,
     ) -> Result<Self::Ok, Self::Error> {
-        BaseSerializer::<'b>::serialize_symbol(variant)
+        self.serialize_symbol(variant)
     }
 
     fn serialize_newtype_struct<T>(
@@ -186,7 +185,7 @@ impl<'a, 'b> ser::Serializer for &'a mut BaseSerializer<'b> {
         T: ?Sized + Serialize,
     {
         debug!("newtype_variant {}::{}", name, variant);
-        let name = BaseSerializer::<'b>::serialize_symbol(variant)?;
+        let name = self.serialize_symbol(variant)?;
         let v = value.serialize(&mut *self)?;
         Ok(list!(name, v).into())
     }
@@ -208,7 +207,7 @@ impl<'a, 'b> ser::Serializer for &'a mut BaseSerializer<'b> {
     ) -> Result<Self::SerializeTupleStruct, Self::Error> {
         debug!("tuple_struct {}", name);
         self.stack.push_front(ConsList::new());
-        let name = BaseSerializer::<'b>::serialize_symbol(name)?;
+        let name = self.serialize_symbol(name)?;
         self.stack[0].append(name);
         Ok(self)
     }
@@ -222,7 +221,7 @@ impl<'a, 'b> ser::Serializer for &'a mut BaseSerializer<'b> {
     ) -> Result<Self::SerializeTupleVariant, Self::Error> {
         debug!("tuple_variant {}::{}", name, variant);
         self.stack.push_front(ConsList::new());
-        let variant = BaseSerializer::<'b>::serialize_symbol(variant)?;
+        let variant = self.serialize_symbol(variant)?;
         self.stack[0].append(variant);
         Ok(self)
     }
@@ -240,7 +239,7 @@ impl<'a, 'b> ser::Serializer for &'a mut BaseSerializer<'b> {
     ) -> Result<Self::SerializeStruct, Self::Error> {
         debug!("struct {}", name);
         self.stack.push_front(ConsList::new());
-        let name = BaseSerializer::<'b>::serialize_symbol(name)?;
+        let name = self.serialize_symbol(name)?;
         self.stack[0].append(name);
         Ok(self)
     }
@@ -254,8 +253,8 @@ impl<'a, 'b> ser::Serializer for &'a mut BaseSerializer<'b> {
     ) -> Result<Self::SerializeStructVariant, Self::Error> {
         debug!("struct_variant {}::{}", name, variant);
         self.stack.push_front(ConsList::new());
-        let name = BaseSerializer::<'b>::serialize_symbol(name)?;
-        let variant = BaseSerializer::<'b>::serialize_symbol(variant)?;
+        let name = self.serialize_symbol(name)?;
+        let variant = self.serialize_symbol(variant)?;
         let val: HeapSexp = Cons::new(name, variant).into();
         self.stack[0].append(val);
         Ok(self)
@@ -364,7 +363,7 @@ impl<'a, 'b> ser::SerializeStruct for &'a mut BaseSerializer<'b> {
     where
         T: ?Sized + Serialize,
     {
-        let k = BaseSerializer::<'b>::serialize_symbol(key)?;
+        let k = self.serialize_symbol(key)?;
         let v = value.serialize(&mut **self)?;
         let val: HeapSexp = Cons::new(k, v).into();
         Ok(self.stack[0].append(val))
@@ -372,7 +371,7 @@ impl<'a, 'b> ser::SerializeStruct for &'a mut BaseSerializer<'b> {
 
     fn end(self) -> Result<Self::Ok, Self::Error> {
         let sexp: HeapSexp = self.stack.pop_front().unwrap().release().into();
-        if &*BaseSerializer::<'b>::serialize_symbol("Node")? == sexp.iter().next().unwrap().0 {
+        if &*self.serialize_symbol("Node")? == sexp.iter().next().unwrap().0 {
             self.serialize_node(*sexp)
         } else {
             Ok(sexp)
@@ -388,7 +387,7 @@ impl<'a, 'b> ser::SerializeStructVariant for &'a mut BaseSerializer<'b> {
     where
         T: ?Sized + Serialize,
     {
-        let k = BaseSerializer::<'b>::serialize_symbol(key)?;
+        let k = self.serialize_symbol(key)?;
         let v = value.serialize(&mut **self)?;
         let val: HeapSexp = Cons::new(k, v).into();
         Ok(self.stack[0].append(val))

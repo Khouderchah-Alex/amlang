@@ -1,4 +1,3 @@
-use core::marker::PhantomData;
 use std::collections::VecDeque;
 use std::convert::TryFrom;
 
@@ -7,6 +6,7 @@ use serde::de::{self, DeserializeSeed, EnumAccess, MapAccess, SeqAccess, Variant
 use serde::Deserialize;
 
 use super::deserialize_error::DeserializeError;
+use crate::agent::Agent;
 use crate::error::Error;
 use crate::parser::Parser;
 use crate::primitive::*;
@@ -17,9 +17,8 @@ use crate::token::Tokenizer;
 use DeserializerState::*;
 
 pub struct BaseDeserializer<'de> {
+    agent: &'de mut Agent,
     stack: VecDeque<(DeserializerState, Sexp)>,
-    // TODO(perf) Allow for borrowed Sexps.
-    phantom: PhantomData<&'de str>,
 }
 
 #[derive(Debug)]
@@ -29,10 +28,10 @@ enum DeserializerState {
 }
 
 impl<'de> BaseDeserializer<'de> {
-    pub fn from_sexp(sexp: Sexp) -> Self {
+    pub fn from_sexp(agent: &'de mut Agent, sexp: Sexp) -> Self {
         Self {
+            agent,
             stack: vec![(Base, sexp)].into(),
-            phantom: PhantomData::default(),
         }
     }
 
@@ -41,7 +40,7 @@ impl<'de> BaseDeserializer<'de> {
     }
 }
 
-pub fn from_str<'a, T>(s: &'a str) -> Result<T, Error>
+pub fn from_str<'a, T>(agent: &'a mut Agent, s: &'a str) -> Result<T, Error>
 where
     T: Deserialize<'a>,
 {
@@ -52,7 +51,7 @@ where
         if let Some(extra) = sexps.next() {
             return err_nost!(DeserializeError::ExtraneousData(extra?));
         }
-        let mut deserializer = BaseDeserializer::from_sexp(sexp?);
+        let mut deserializer = BaseDeserializer::from_sexp(agent, sexp?);
         T::deserialize(&mut deserializer)
     } else {
         return err_nost!(DeserializeError::MissingData);
@@ -76,11 +75,17 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut BaseDeserializer<'de> {
         }
     }
 
-    fn deserialize_bool<V>(self, _visitor: V) -> Result<V::Value, Error>
+    fn deserialize_bool<V>(self, visitor: V) -> Result<V::Value, Error>
     where
         V: Visitor<'de>,
     {
-        unimplemented!()
+        let node = as_type!(Node, self.input());
+        let b = if node == amlang_node!(t, self.agent.context()) {
+            true
+        } else {
+            false
+        };
+        visitor.visit_bool(b)
     }
 
     fn deserialize_i8<V>(self, visitor: V) -> Result<V::Value, Error>

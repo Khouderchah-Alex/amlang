@@ -11,12 +11,14 @@ fn test_struct() {
     struct Test {
         int: u32,
         seq: Vec<String>,
+        b: bool,
     }
 
     let (mut agent, _manager) = common::setup().unwrap();
     let original = Test {
         int: 1,
         seq: vec!["a".to_owned(), "b".to_owned()],
+        b: true,
     };
 
     // TODO(func) Have list! support (a . b)
@@ -26,10 +28,15 @@ fn test_struct() {
         Cons::new(
             "seq".to_symbol_or_panic(policy_base),
             list!("a".to_string(), "b".to_string())
+        ),
+        Cons::new(
+            "b".to_symbol_or_panic(policy_base),
+            amlang_node!(t, agent.context()),
         )
     );
 
     let serialized = BaseSerializer::to_sexp(&mut agent, &original).unwrap();
+    println!("{}", serialized);
     assert_eq!(expected, *serialized);
 
     let wrong_int_type = list!(
@@ -38,11 +45,16 @@ fn test_struct() {
         Cons::new(
             "seq".to_symbol_or_panic(policy_base),
             list!("a".to_string(), "b".to_string())
+        ),
+        Cons::new(
+            "b".to_symbol_or_panic(policy_base),
+            amlang_node!(t, agent.context()),
         )
     );
     assert_ne!(wrong_int_type, *serialized);
 
-    let deserialized = Test::deserialize(&mut BaseDeserializer::from_sexp(*serialized)).unwrap();
+    let deserialized =
+        Test::deserialize(&mut BaseDeserializer::from_sexp(&mut agent, *serialized)).unwrap();
     assert_eq!(original, deserialized);
 }
 
@@ -70,28 +82,32 @@ fn test_enum() {
     let expected: Sexp = "Unit".parse().unwrap();
     let serialized = BaseSerializer::to_sexp(&mut agent, &unit).unwrap();
     assert_eq!(expected, *serialized);
-    let deserialized = Test::deserialize(&mut BaseDeserializer::from_sexp(*serialized)).unwrap();
+    let deserialized =
+        Test::deserialize(&mut BaseDeserializer::from_sexp(&mut agent, *serialized)).unwrap();
     assert_eq!(unit, deserialized);
 
     let int = Test::Int(42);
     let expected: Sexp = "(Int 42)".parse().unwrap();
     let serialized = BaseSerializer::to_sexp(&mut agent, &int).unwrap();
     assert_eq!(expected, *serialized);
-    let deserialized = Test::deserialize(&mut BaseDeserializer::from_sexp(*serialized)).unwrap();
+    let deserialized =
+        Test::deserialize(&mut BaseDeserializer::from_sexp(&mut agent, *serialized)).unwrap();
     assert_eq!(int, deserialized);
 
     let seq = Test::Seq(vec![4., 2.]);
     let expected: Sexp = "(Seq (4. 2.))".parse().unwrap();
     let serialized = BaseSerializer::to_sexp(&mut agent, &seq).unwrap();
     assert_eq!(expected, *serialized);
-    let deserialized = Test::deserialize(&mut BaseDeserializer::from_sexp(*serialized)).unwrap();
+    let deserialized =
+        Test::deserialize(&mut BaseDeserializer::from_sexp(&mut agent, *serialized)).unwrap();
     assert_eq!(seq, deserialized);
 
     let tuple = Test::Tuple(4, 2);
     let expected: Sexp = "(Tuple 4 2)".parse().unwrap();
     let serialized = BaseSerializer::to_sexp(&mut agent, &tuple).unwrap();
     assert_eq!(expected, *serialized);
-    let deserialized = Test::deserialize(&mut BaseDeserializer::from_sexp(*serialized)).unwrap();
+    let deserialized =
+        Test::deserialize(&mut BaseDeserializer::from_sexp(&mut agent, *serialized)).unwrap();
     assert_eq!(tuple, deserialized);
 
     let sub = Sub {
@@ -105,6 +121,7 @@ fn test_enum() {
         .unwrap();
     let serialized = BaseSerializer::to_sexp(&mut agent, &struct_).unwrap();
     assert_eq!(expected, *serialized);
-    let deserialized = Test::deserialize(&mut BaseDeserializer::from_sexp(*serialized)).unwrap();
+    let deserialized =
+        Test::deserialize(&mut BaseDeserializer::from_sexp(&mut agent, *serialized)).unwrap();
     assert_eq!(struct_, deserialized);
 }

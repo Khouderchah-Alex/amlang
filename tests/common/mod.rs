@@ -1,5 +1,7 @@
 use amlang::agent::env_policy::{EnvPolicy, SimplePolicy};
 use amlang::agent::{Agent, AmlangInterpreter, EnvManager, VmInterpreter};
+use amlang::env::LocalNode;
+use amlang::primitive::Node;
 use amlang::InitOptions;
 
 
@@ -29,6 +31,11 @@ pub fn setup() -> Result<(Agent, EnvManager<impl EnvPolicy>), String> {
             Ok(Box::new(interpreter))
         })
         .unwrap();
+    // TODO(func) Rm once we figure out right d-chain abstraction.
+    let lang_env = agent.context().lang_env();
+    agent
+        .designation_chain_mut()
+        .push_front(Node::new(lang_env, LocalNode::default()));
     let working_env = agent.find_env("working.env").unwrap();
     let pos = agent.jump_env(working_env);
     agent.designation_chain_mut().push_back(pos);
