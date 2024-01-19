@@ -288,10 +288,6 @@ impl Agent {
     /// Get the amlang designator of a Node, which is (contextually) an
     /// injective property.
     pub fn lookup_designation(&self, node: Node) -> Option<Symbol> {
-        if let Some(prelude) = node.local().as_prelude() {
-            return Some(prelude.name().to_symbol_or_panic(policy_admin));
-        }
-
         let env = self.access_env(node.env()).unwrap();
         for context in &self.designation_chain {
             if context.env() != node.env() {

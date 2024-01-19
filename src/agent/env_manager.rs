@@ -68,11 +68,14 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         info!("Context bootstrapping complete.");
 
         // Bootstrap meta env.
-        let meta_agent = Agent::new(
+        let mut meta_agent = Agent::new(
             Node::new(LocalNode::default(), context.self_node()),
             meta.clone(),
             context.clone(),
         );
+        meta_agent
+            .designation_chain_mut()
+            .push_front(Node::new(context.lang_env(), LocalNode::default()));
         let mut manager = Self {
             agent: meta_agent,
             policy: policy,
@@ -517,6 +520,11 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
                 self.serialize_list_internal(w, &sexp, depth)
             }
             Primitive::Node(node) => {
+                // Write Nodes as their designation if possible.
+                if let Some(sym) = self.agent().lookup_designation(*node) {
+                    return write!(w, "{}", sym.as_str());
+                }
+
                 if let Some(triple) = self
                     .agent()
                     .access_env(node.env())
