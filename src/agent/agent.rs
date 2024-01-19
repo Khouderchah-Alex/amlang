@@ -287,15 +287,22 @@ impl Agent {
 
     /// Get the amlang designator of a Node, which is (contextually) an
     /// injective property.
-    pub fn node_designator(&self, node: Node) -> Option<Symbol> {
+    pub fn lookup_designation(&self, node: Node) -> Option<Symbol> {
         if let Some(prelude) = node.local().as_prelude() {
             return Some(prelude.name().to_symbol_or_panic(policy_admin));
         }
 
-        self.access_env(node.env())
-            .unwrap()
-            .find_designation(node.local(), LocalNode::default())
-            .cloned()
+        let env = self.access_env(node.env()).unwrap();
+        for context in &self.designation_chain {
+            if context.env() != node.env() {
+                continue;
+            }
+
+            if let Some(sym) = env.find_designation(node.local(), context.local()) {
+                return Some(sym.clone());
+            }
+        }
+        return None;
     }
 
     pub fn resolve(&self, name: &Symbol) -> Result<Node, Error> {
@@ -763,8 +770,8 @@ impl Agent {
 
         match primitive {
             Primitive::Node(node) => {
-                // Print Nodes as their designators if possible.
-                if let Some(sym) = self.node_designator(*node) {
+                // Write Nodes as their designation if possible.
+                if let Some(sym) = self.lookup_designation(*node) {
                     write!(w, "{}", sym.as_str())
                 } else if let Some(triple) = self
                     .access_env(node.env())
