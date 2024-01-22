@@ -82,7 +82,6 @@ impl<'a, 'b> ser::Serializer for &'a mut BaseSerializer<'b> {
         self.serialize_symbol(if v { "true" } else { "false" })
     }
 
-    // TODO(func) Have Number support more than i64, f64.
     fn serialize_i8(self, v: i8) -> Result<Self::Ok, Self::Error> {
         Ok(Number::I8(v).into())
     }

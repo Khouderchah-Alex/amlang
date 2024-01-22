@@ -62,17 +62,17 @@ fn test_struct() {
 fn test_enum() {
     #[derive(Debug, Deserialize, PartialEq, Serialize)]
     struct Sub {
-        i: i64,
-        am: i64,
-        groot: i64,
+        i: i32,
+        am: u64,
+        groot: i8,
     }
 
     #[derive(Debug, Deserialize, PartialEq, Serialize)]
     enum Test {
         Unit,
-        Int(i64),
+        Int(i8),
         Seq(Vec<f64>),
-        Tuple(i64, i64),
+        Tuple(u16, i32),
         Struct(Sub),
     }
 

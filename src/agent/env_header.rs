@@ -77,7 +77,7 @@ impl Reflective for EnvHeader {
 
         let map = table.as_map_mut();
         let mut extract = |key| match map.remove(key) {
-            Some(Sexp::Primitive(Primitive::Number(Number::I64(i)))) => i,
+            Some(Sexp::Primitive(Primitive::Number(n))) => i32::try_from(n).unwrap(),
             _ => panic!(),
         };
         let file_version = extract("version").try_into().unwrap();

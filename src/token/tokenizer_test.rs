@@ -61,7 +61,7 @@ fn ints() {
     let input = "(1 2 -4 33 128)";
     let mut expected: Vec<TokenKind> = vec![1, 2, -4, 33, 128]
         .iter_mut()
-        .map(|elem| Primitive(Number(Number::I64(*elem))))
+        .map(|elem| Primitive(Number(Number::generic(*elem))))
         .collect();
     expected = nest(expected);
 
@@ -76,7 +76,7 @@ fn floats() {
     let input = "(1. 2.2 -4.5 33. 128.128 .2)";
     let mut expected: Vec<TokenKind> = vec![1., 2.2, -4.5, 33., 128.128, 0.2]
         .iter_mut()
-        .map(|elem| Primitive(Number(Number::F64(*elem))))
+        .map(|elem| Primitive(Number(Number::generic(*elem))))
         .collect();
     expected = nest(expected);
 

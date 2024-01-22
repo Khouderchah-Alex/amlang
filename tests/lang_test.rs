@@ -35,24 +35,21 @@ fn basic_arithmetic() {
     let (mut lang_agent, _manager) = common::setup().unwrap();
 
     let results = eval(&mut lang_agent, "(+ 1 2) (+ 2 2)");
-    assert_eq!(results, vec![Number::I64(3).into(), Number::I64(4).into()]);
+    assert_eq!(results, vec![3.into(), 4.into()]);
 
     let results = eval(
         &mut lang_agent,
         "(* (+ 1 1) 3)
          (* (+ 1. 1.) 3.)",
     );
-    assert_eq!(
-        results,
-        vec![Number::I64(6).into(), Number::F64(6.0).into()]
-    );
+    assert_eq!(results, vec![6.into(), 6.0.into()]);
 
     let results = eval(
         &mut lang_agent,
         "(/ (- 1 1) 2)
          (/ (+ 1 1) 2)",
     );
-    assert_eq!(results, vec![Number::I64(0).into(), Number::I64(1).into()]);
+    assert_eq!(results, vec![0.into(), 1.into()]);
 }
 
 #[test]
@@ -62,7 +59,7 @@ fn lambda_param_node_body() {
     // Requires concretization to work properly to avoid returning the abstract
     // param node itself.
     let results = eval(&mut lang_agent, "((lambda (a) a) 4)");
-    assert_eq!(results, vec![Number::I64(4).into()]);
+    assert_eq!(results, vec![4.into()]);
 }
 
 #[test]
@@ -70,7 +67,7 @@ fn lambda_single_body() {
     let (mut lang_agent, _manager) = common::setup().unwrap();
 
     let results = eval(&mut lang_agent, "((lambda (a) (+ a a)) 4)");
-    assert_eq!(results, vec![Number::I64(8).into()]);
+    assert_eq!(results, vec![8.into()]);
 }
 
 #[test]
@@ -94,8 +91,8 @@ fn lambda_branch_body() {
          (a 1)
          (a 2)",
     );
-    assert_eq!(results[1], Number::I64(0).into());
-    assert_eq!(results[2], Number::I64(4).into());
+    assert_eq!(results[1], 0.into());
+    assert_eq!(results[2], 4.into());
 }
 
 #[test]
@@ -103,7 +100,7 @@ fn lambda_nested_exec() {
     let (mut lang_agent, _manager) = common::setup().unwrap();
 
     let results = eval(&mut lang_agent, "((lambda (a) (+ a a)) (* 4 2))");
-    assert_eq!(results, vec![Number::I64(16).into()]);
+    assert_eq!(results, vec![16.into()]);
 }
 
 #[test]
@@ -111,7 +108,7 @@ fn lambda_proc() {
     let (mut lang_agent, _manager) = common::setup().unwrap();
 
     let results = eval(&mut lang_agent, "((lambda (a b) (a b 4)) + 40)");
-    assert_eq!(results, vec![Number::I64(44).into()]);
+    assert_eq!(results, vec![44.into()]);
 }
 
 #[test]
@@ -135,7 +132,7 @@ fn let_basic() {
                (b 4))
            (+ a b))",
     );
-    assert_eq!(results, vec![Number::I64(6).into()]);
+    assert_eq!(results, vec![6.into()]);
 }
 
 #[test]
@@ -149,7 +146,7 @@ fn let_rec_vals() {
                   (c b))
            (+ a b c))",
     );
-    assert_eq!(results, vec![Number::I64(6).into()]);
+    assert_eq!(results, vec![6.into()]);
 }
 
 #[test]
@@ -185,7 +182,7 @@ fn basic_apply() {
     let (mut lang_agent, _manager) = common::setup().unwrap();
 
     let results = eval(&mut lang_agent, "(apply + '(1 2))");
-    assert_eq!(results, vec![Number::I64(3).into()]);
+    assert_eq!(results, vec![3.into()]);
 }
 
 #[test]
@@ -193,7 +190,7 @@ fn basic_fexpr() {
     let (mut lang_agent, _manager) = common::setup().unwrap();
 
     let results = eval(&mut lang_agent, "((fexpr (a) (car (cdr a))) (+ 1 2))");
-    assert_eq!(results, vec![Number::I64(1).into()]);
+    assert_eq!(results, vec![1.into()]);
 }
 
 #[test]
@@ -219,7 +216,7 @@ fn def_number() {
         lang_agent
             .designate(Primitive::try_from(results[0].clone()).unwrap())
             .unwrap(),
-        Number::I64(2).into()
+        2.into()
     );
 }
 
@@ -228,7 +225,7 @@ fn def_lambda() {
     let (mut lang_agent, _manager) = common::setup().unwrap();
 
     let results = eval(&mut lang_agent, "(def a (lambda (e) (+ e 2))) (a 2)");
-    assert_eq!(results[1], Number::I64(4).into());
+    assert_eq!(results[1], 4.into());
 }
 
 #[test]
@@ -243,7 +240,7 @@ fn def_recursive_lambda() {
 
          (fact 4)",
     );
-    assert_eq!(results[1], Number::I64(24).into());
+    assert_eq!(results[1], 24.into());
 }
 
 
@@ -270,7 +267,7 @@ fn node_apply() {
         lang_agent
             .designate(Primitive::try_from(results[0].clone()).unwrap())
             .unwrap(),
-        Number::I64(3).into()
+        3.into()
     );
 }
 
@@ -302,7 +299,7 @@ fn set_atom() {
          (set! a)
          a",
     );
-    assert_eq!(results[2], Number::I64(4).into());
+    assert_eq!(results[2], 4.into());
     let original_atom = Node::try_from(results[0].clone()).unwrap();
     assert_eq!(results[4], original_atom.into());
 }
@@ -317,7 +314,7 @@ fn set_lambda() {
          (set! a (lambda (a) (+ a a)))
          (a 4)",
     );
-    assert_eq!(results[2], Number::I64(8).into());
+    assert_eq!(results[2], 8.into());
 }
 
 #[test]
@@ -330,7 +327,7 @@ fn set_recursive() {
          (set! a (* a 2))
          a",
     );
-    assert_eq!(results[2], Number::I64(8).into());
+    assert_eq!(results[2], 8.into());
 }
 
 #[test]
@@ -348,7 +345,7 @@ fn eval_() {
         results[0],
         amlang_node!(lambda, lang_agent.context()).into()
     );
-    assert_eq!(results[1], Number::I64(3).into());
+    assert_eq!(results[1], 3.into());
 }
 
 #[test]
