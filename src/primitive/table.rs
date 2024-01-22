@@ -8,12 +8,8 @@ use std::convert::TryFrom;
 use serde::{Deserialize, Serialize};
 
 use super::{Node, Primitive, Symbol};
-use crate::agent::lang_error::LangError;
-use crate::agent::Agent;
 use crate::env::LocalNode;
-use crate::error::Error;
-use crate::model::Reflective;
-use crate::sexp::{Cons, HeapSexp, Sexp, SexpIntoIter};
+use crate::sexp::{HeapSexp, Sexp};
 
 
 pub type SymNodeTable = AmlangTable<Symbol, Node>;
@@ -80,6 +76,7 @@ impl<K: Ord, V> Default for AmlangTable<K, V> {
     }
 }
 
+
 impl LocalNodeTable {
     pub fn in_env(env: LocalNode) -> Self {
         Self {
@@ -98,123 +95,11 @@ impl Table<LocalNode, LocalNode> for LocalNodeTable {
     }
 }
 
-
-fn reflect_map<K, V, FK, FV>(
-    structure: Option<HeapSexp>,
-    agent: &Agent,
-    resolve_key: FK,
-    resolve_val: FV,
-) -> Result<BTreeMap<K, V>, Error>
-where
-    K: Ord + Clone,
-    V: Clone,
-    FK: Fn(&Agent, Sexp) -> Result<K, Error>,
-    FV: Fn(&Agent, Sexp) -> Result<V, Error>,
-{
-    let mut table = BTreeMap::<K, V>::default();
-    for (assoc, _proper) in SexpIntoIter::from(structure) {
-        let cons = match Cons::try_from(assoc) {
-            Ok(cons) => cons,
-            Err(err) => {
-                return err!(
-                    agent,
-                    LangError::InvalidArgument {
-                        given: *err,
-                        expected: "Association Cons".into()
-                    }
-                );
-            }
-        };
-        match cons.consume() {
-            (Some(k), Some(v)) => table.insert(resolve_key(agent, *k)?, resolve_val(agent, *v)?),
-            (k, v) => {
-                return err!(
-                    agent,
-                    LangError::InvalidArgument {
-                        given: Cons::new(k, v).into(),
-                        expected: "Association cons".into()
-                    }
-                );
-            }
-        };
-    }
-    Ok(table)
-}
-
 impl_amlang_table!(SymNodeTable, Symbol, Node, sym_node_table);
 impl_amlang_table!(SymSexpTable, Symbol, Sexp, sym_sexp_table);
 
 macro_rules! impl_amlang_table {
     ($alias:ident, $key:ident, $val:ident, $discriminator:ident) => {
-        impl Reflective for AmlangTable<$key, $val> {
-            fn reify(&self, agent: &Agent) -> Sexp {
-                let mut alist = None;
-                for (k, v) in self.as_map() {
-                    alist = Some(
-                        Cons::new(
-                            Cons::new(k.clone(), v.clone()),
-                            alist,
-                        ).into()
-                    );
-                }
-                let node = amlang_node!($discriminator, agent.context());
-                Cons::new(node, alist).into()
-            }
-
-            fn reflect<F>(structure: Sexp, agent: &Agent, resolve: F) -> Result<Self, Error>
-            where
-                Self: Sized,
-                F: Fn(&Agent, &Primitive) -> Result<Node, Error>,
-            {
-                let (command, cdr) = break_sexp!(structure => (Primitive; remainder), agent)?;
-                let cmd = resolve(agent, &command)?;
-                if !Self::valid_discriminator(cmd, agent) {
-                    return err!(
-                        agent,
-                        LangError::InvalidArgument {
-                            given: command.into(),
-                            expected: format!("{} node", stringify!($discriminator)).into()
-                        }
-                    );
-                }
-
-                let map = reflect_map(
-                    cdr,
-                    agent,
-                    |agent, sexp| match <impl_amlang_table!(@try_from $key)>::try_from(sexp) {
-                        Ok(key) => impl_amlang_table!(@process resolve, agent, key, $key),
-                        Err(sexp) => err!(
-                            agent,
-                            LangError::InvalidArgument {
-                                given: sexp.into(),
-                                expected: format!("Key as a {}", stringify!($key)).into()
-                            }
-                        ),
-                    },
-                    |agent, sexp| match <impl_amlang_table!(@try_from $val)>::try_from(sexp) {
-                        Ok(val) => impl_amlang_table!(@process resolve, agent, val, $val),
-                        Err(sexp) => err!(
-                            agent,
-                            LangError::InvalidArgument {
-                                given: sexp.into(),
-                                expected: format!("Val as a {}", stringify!($val)).into()
-                            }
-                        ),
-                    },
-                )?;
-                Ok(Self { map })
-            }
-
-            fn valid_discriminator(node: Node, agent: &Agent) -> bool {
-                let context = agent.context();
-                if node.env() != context.lang_env() {
-                    return false;
-                }
-
-                node.local() == context.$discriminator()
-            }
-        }
-
         impl_try_from!($alias;
                        Primitive            ->  $alias,
                        Sexp                 ->  $alias,
@@ -242,86 +127,6 @@ macro_rules! impl_amlang_table {
     };
 }
 use impl_amlang_table;
-
-
-/// Special impl for LocalNodeTable.
-impl Reflective for LocalNodeTable {
-    fn reify(&self, agent: &Agent) -> Sexp {
-        let mut alist = None;
-        for (k, v) in self.as_map() {
-            alist = Some(
-                Cons::new(
-                    Cons::new(Node::new(self.env, *k), Node::new(self.env, *v)),
-                    alist,
-                )
-                .into(),
-            );
-        }
-        Cons::new(
-            amlang_node!(local_node_table, agent.context()),
-            Cons::new(Node::new(LocalNode::default(), self.env), alist),
-        )
-        .into()
-    }
-
-    fn reflect<F>(structure: Sexp, agent: &Agent, resolve: F) -> Result<Self, Error>
-    where
-        Self: Sized,
-        F: Fn(&Agent, &Primitive) -> Result<Node, Error>,
-    {
-        let (command, env, cdr) =
-            break_sexp!(structure => (Primitive, Primitive; remainder), agent)?;
-        let cmd = resolve(agent, &command)?;
-        if !Self::valid_discriminator(cmd, agent) {
-            return err!(
-                agent,
-                LangError::InvalidArgument {
-                    given: command.into(),
-                    expected: "Lnode table node".into()
-                }
-            );
-        }
-
-        let env = resolve(agent, &env)?;
-        let map = reflect_map(
-            cdr,
-            agent,
-            |agent, sexp| match Primitive::try_from(sexp) {
-                Ok(key) => Ok(resolve(agent, &key)?.local()),
-                Err(sexp) => err!(
-                    agent,
-                    LangError::InvalidArgument {
-                        given: sexp,
-                        expected: "Key as a Node".into()
-                    }
-                ),
-            },
-            |agent, sexp| match Primitive::try_from(sexp) {
-                Ok(val) => Ok(resolve(agent, &val)?.local()),
-                Err(sexp) => err!(
-                    agent,
-                    LangError::InvalidArgument {
-                        given: sexp,
-                        expected: "Val as a Node".into()
-                    }
-                ),
-            },
-        )?;
-        Ok(Self {
-            map,
-            env: env.local(),
-        })
-    }
-
-    fn valid_discriminator(node: Node, agent: &Agent) -> bool {
-        let context = agent.context();
-        if node.env() != context.lang_env() {
-            return false;
-        }
-
-        node.local() == context.local_node_table()
-    }
-}
 
 
 impl_try_from!(LocalNodeTable;

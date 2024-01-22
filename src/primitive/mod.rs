@@ -1,9 +1,11 @@
 //! Representation of primitives.
 
+use std::collections::BTreeMap;
 use std::convert::TryFrom;
 use std::fmt;
 use std::mem;
 
+use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 
 use crate::error::Error;
@@ -59,6 +61,23 @@ pub enum Primitive {
     LocalNodeTable(LocalNodeTable),
     Vector(Vector),
     Procedure(Procedure),
+}
+
+impl Primitive {
+    pub fn type_from_discriminator(discriminator: &str) -> Option<&str> {
+        lazy_static! {
+            static ref MAP: BTreeMap<&'static str, &'static str> = {
+                let mut m = BTreeMap::new();
+                m.insert("apply", "Procedure");
+                m.insert("lambda", "Procedure");
+                m.insert("fexpr", "Procedure");
+                m.insert("progn", "Procedure");
+                m.insert("if", "Procedure");
+                m
+            };
+        }
+        MAP.get(discriminator).cloned()
+    }
 }
 
 

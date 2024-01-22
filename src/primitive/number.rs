@@ -166,7 +166,7 @@ macro_rules! generate_number {
 
                 fn try_from(value: Sexp) -> Result<Self, Self::Error> {
                     let num = Number::try_from(value)?;
-                    if let Number::$variant(val) = num {
+                    if let Ok(val) = $type::try_from(num) {
                         Ok(val)
                     } else {
                         Err(num.into())

@@ -6,9 +6,11 @@ use serde::de::{self, DeserializeSeed, EnumAccess, MapAccess, SeqAccess, Variant
 use serde::Deserialize;
 
 use super::deserialize_error::DeserializeError;
+use crate::agent::lang_error::LangError;
 use crate::agent::Agent;
 use crate::error::Error;
 use crate::parser::Parser;
+use crate::primitive::symbol_policies::{policy_env_serde, AdminSymbolInfo};
 use crate::primitive::*;
 use crate::sexp::{Cons, Sexp};
 use crate::stream::input::StringReader;
@@ -37,6 +39,40 @@ impl<'de> BaseDeserializer<'de> {
 
     fn input(&mut self) -> Sexp {
         self.stack.pop_front().unwrap().1
+    }
+
+    fn deserialize_node(&self, sexp: Sexp) -> Result<Node, Error> {
+        match sexp {
+            Sexp::Primitive(Primitive::Node(node)) => Ok(node),
+            Sexp::Primitive(Primitive::Symbol(sym)) => {
+                match policy_env_serde(sym.as_str()).unwrap() {
+                    AdminSymbolInfo::Identifier => {
+                        if let Ok(resolved) = self.agent.resolve(&sym) {
+                            Ok(resolved.into())
+                        } else {
+                            err!(self.agent, LangError::UnboundSymbol(sym.clone()))
+                        }
+                    }
+                    AdminSymbolInfo::LocalNode(node) => Ok(node.globalize(self.agent)),
+                    AdminSymbolInfo::LocalTriple(idx) => {
+                        let triple = self.agent.env().triple_from_index(idx);
+                        Ok(triple.node().globalize(self.agent))
+                    }
+                    AdminSymbolInfo::GlobalNode(env, node) => Ok(Node::new(env, node)),
+                    AdminSymbolInfo::GlobalTriple(env, idx) => Ok(Node::new(
+                        env,
+                        self.agent.env().triple_from_index(idx).node(),
+                    )),
+                }
+            }
+            sexp @ _ => err!(
+                self.agent,
+                DeserializeError::UnexpectedType {
+                    given: sexp,
+                    expected: "Node repr".into()
+                },
+            ),
+        }
     }
 }
 
@@ -278,8 +314,25 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut BaseDeserializer<'de> {
     {
         debug!("struct {}", name);
         let (_state, top) = self.stack.pop_front().unwrap();
-        let (_head, tail) = Cons::try_from(top).unwrap_or_default().consume();
-        self.stack.push_front((Map, *tail.unwrap_or_default()));
+        if name == "Node" {
+            let node = self.deserialize_node(top)?;
+            self.stack.push_front((
+                Map,
+                list!(
+                    Cons::new(
+                        "env".to_symbol_or_panic(policy_base),
+                        Some(node.env().id().into())
+                    ),
+                    Cons::new(
+                        "local".to_symbol_or_panic(policy_base),
+                        Some(node.local().id().into())
+                    ),
+                ),
+            ));
+        } else {
+            let (_head, tail) = Cons::try_from(top).unwrap_or_default().consume();
+            self.stack.push_front((Map, *tail.unwrap_or_default()));
+        }
         self.deserialize_map(visitor)
     }
 

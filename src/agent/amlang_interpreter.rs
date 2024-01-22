@@ -110,13 +110,17 @@ impl<'a> ExecutingInterpreter<'a> {
                 body_nodes.push(node);
             }
 
-            if body_nodes.len() == 1 {
-                Ok(Procedure::Abstraction(surface, body_nodes[0], reflect))
+            let body = if body_nodes.len() == 1 {
+                body_nodes[0]
             } else {
-                let seq_node = self
-                    .agent_mut()
-                    .define_to(impl_env, Some(Procedure::Sequence(body_nodes).into()))?;
-                Ok(Procedure::Abstraction(surface, seq_node, reflect))
+                self.agent_mut()
+                    .define_to(impl_env, Some(Procedure::Sequence(body_nodes).into()))?
+            };
+
+            if reflect {
+                Ok(Procedure::InterpreterAbstraction(surface, body))
+            } else {
+                Ok(Procedure::UserAbstraction(surface, body))
             }
         })();
         let frame = self.state.eval_state.pop().unwrap();
@@ -291,12 +295,9 @@ impl<'a> Interpreter for ExecutingInterpreter<'a> {
                     }
                     _ => {
                         let should_interpret = match self.agent_mut().designate(node.into())? {
-                            // Don't evaluate args of reflective Abstractions.
-                            Sexp::Primitive(Primitive::Procedure(Procedure::Abstraction(
-                                _,
-                                _,
-                                true,
-                            ))) => false,
+                            Sexp::Primitive(Primitive::Procedure(
+                                Procedure::InterpreterAbstraction(_, _),
+                            )) => false,
                             _ => true,
                         };
                         let args = self.evlis(cdr, should_interpret)?;

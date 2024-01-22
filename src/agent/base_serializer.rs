@@ -17,13 +17,13 @@ use crate::sexp::{Cons, ConsList, HeapSexp, Sexp};
 
 
 pub struct BaseSerializer<'a> {
-    agent: &'a mut Agent,
+    agent: &'a Agent,
     stack: VecDeque<ConsList>,
     tmp: Vec<HeapSexp>,
 }
 
 impl<'a> BaseSerializer<'a> {
-    pub fn new(agent: &'a mut Agent) -> Self {
+    pub fn new(agent: &'a Agent) -> Self {
         Self {
             agent,
             stack: Default::default(),
@@ -31,7 +31,7 @@ impl<'a> BaseSerializer<'a> {
         }
     }
 
-    pub fn to_sexp<T>(agent: &'a mut Agent, value: &T) -> Result<HeapSexp, Error>
+    pub fn to_sexp<T>(agent: &'a Agent, value: &T) -> Result<HeapSexp, Error>
     where
         T: Serialize,
     {

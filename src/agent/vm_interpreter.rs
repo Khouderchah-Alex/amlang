@@ -111,7 +111,8 @@ impl<'a> ExecutingInterpreter<'a> {
                         }
                         Ok(result)
                     }
-                    lambda @ Procedure::Abstraction(..) => Ok(lambda.into()),
+                    lambda @ Procedure::UserAbstraction(..) => Ok(lambda.into()),
+                    fexpr @ Procedure::InterpreterAbstraction(..) => Ok(fexpr.into()),
                 }
             }
             _ => Ok(meaning),
@@ -140,7 +141,14 @@ impl<'a> ExecutingInterpreter<'a> {
                 }
                 builtin.call(args.release(), self.agent_mut())
             }
-            Sexp::Primitive(Primitive::Procedure(Procedure::Abstraction(params, body_node, _))) => {
+            Sexp::Primitive(Primitive::Procedure(Procedure::UserAbstraction(
+                params,
+                body_node,
+            )))
+            | Sexp::Primitive(Primitive::Procedure(Procedure::InterpreterAbstraction(
+                params,
+                body_node,
+            ))) => {
                 if arg_nodes.len() != params.len() {
                     return err!(
                         self.agent(),

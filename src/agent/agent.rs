@@ -11,6 +11,7 @@ use super::agent_frames::{EnvFrame, ExecFrame};
 use super::amlang_context::AmlangContext;
 use super::env_prelude::EnvPrelude;
 use super::interpreter::{InterpreterState, NullInterpreter};
+use super::BaseSerializer;
 use crate::agent::lang_error::LangError;
 use crate::continuation::Continuation;
 use crate::env::entry::EntryMutKind;
@@ -344,9 +345,9 @@ impl Agent {
                 }
             }
             // Reify Reflectives.
-            Primitive::Procedure(proc) => Ok(proc.reify(self)),
-            Primitive::SymNodeTable(table) => Ok(table.reify(self)),
-            Primitive::LocalNodeTable(table) => Ok(table.reify(self)),
+            Primitive::Procedure(proc) => Ok(*BaseSerializer::to_sexp(self, &proc)?),
+            Primitive::SymNodeTable(table) => Ok(*BaseSerializer::to_sexp(self, &table)?),
+            Primitive::LocalNodeTable(table) => Ok(*BaseSerializer::to_sexp(self, &table)?),
             // Base case for self-designating.
             _ => Ok(designator.into()),
         }
@@ -802,21 +803,21 @@ impl Agent {
                 if show_redirects {
                     write!(w, "[Procedure]->")?;
                 }
-                let s = procedure.reify(self);
+                let s = *BaseSerializer::to_sexp(self, &procedure).unwrap();
                 self.write_sexp(w, &s, depth, true)
             }
             Primitive::SymNodeTable(table) => {
                 if show_redirects {
                     write!(w, "[SymNodeTable]->")?;
                 }
-                let s = table.reify(self);
+                let s = *BaseSerializer::to_sexp(self, &table).unwrap();
                 self.write_sexp(w, &s, depth, false)
             }
             Primitive::LocalNodeTable(table) => {
                 if show_redirects {
                     write!(w, "[LocalNodeTable]->")?;
                 }
-                let s = table.reify(self);
+                let s = *BaseSerializer::to_sexp(self, &table).unwrap();
                 self.write_sexp(w, &s, depth, false)
             }
             _ => write!(w, "{}", primitive),

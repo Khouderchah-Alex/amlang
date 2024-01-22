@@ -5,6 +5,8 @@ use std::fs::File;
 use std::io::{BufWriter, Write};
 use std::path::Path;
 
+use serde::Deserialize;
+
 use super::amlang_context::AmlangContext;
 use super::amlang_wrappers::quote_wrapper;
 use super::deserialize_error::DeserializeError::*;
@@ -12,6 +14,7 @@ use super::env_header::EnvHeader;
 use super::env_policy::EnvPolicy;
 use super::env_prelude::EnvPrelude;
 use super::Agent;
+use super::{BaseDeserializer, BaseSerializer};
 use crate::agent::lang_error::LangError;
 use crate::builtins::generate_builtin_map;
 use crate::env::local_node::{LocalId, LocalNode};
@@ -327,7 +330,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         let mut w = BufWriter::new(file);
 
         let env = self.agent().env();
-        let header = EnvHeader::from_env(env).reify(self.agent());
+        let header = *BaseSerializer::to_sexp(self.agent(), &EnvHeader::from_env(env)).unwrap();
         self.serialize_list_internal(&mut w, &header, 0)?;
 
         write!(&mut w, "(nodes")?;
@@ -410,13 +413,9 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
                                          =>. Parser::new());
 
         let _header = match stream.next() {
-            Some(Ok(parsed)) => EnvHeader::reflect(parsed, self.agent_mut(), |_agent, p| {
-                if let Primitive::Node(n) = p {
-                    Ok(*n)
-                } else {
-                    panic!();
-                }
-            })?,
+            Some(Ok(parsed)) => {
+                EnvHeader::deserialize(&mut BaseDeserializer::from_sexp(self.agent_mut(), parsed))?
+            }
             None => return err!(self.agent(), MissingHeaderSection),
             Some(Err(mut err)) => {
                 err.set_cont(self.agent().exec_state().clone());
@@ -508,15 +507,15 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
             }
             Primitive::BuiltIn(builtin) => write!(w, "(__builtin {})", builtin.name()),
             Primitive::Procedure(proc) => {
-                let proc_sexp = proc.reify(self.agent());
-                self.serialize_list_internal(w, &proc_sexp, depth)
+                let sexp = *BaseSerializer::to_sexp(self.agent(), &proc).unwrap();
+                self.serialize_list_internal(w, &sexp, depth)
             }
             Primitive::SymNodeTable(table) => {
-                let sexp = table.reify(self.agent());
+                let sexp = *BaseSerializer::to_sexp(self.agent(), &table).unwrap();
                 self.serialize_list_internal(w, &sexp, depth)
             }
             Primitive::LocalNodeTable(table) => {
-                let sexp = table.reify(self.agent());
+                let sexp = *BaseSerializer::to_sexp(self.agent(), &table).unwrap();
                 self.serialize_list_internal(w, &sexp, depth)
             }
             Primitive::Node(node) => {
@@ -635,23 +634,25 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         }
 
         let (command, _) = break_sexp!(hsexp.iter() => (&Symbol; remainder), self.agent())?;
-        // Note(subtle): during the initial deserialization of the meta & lang
-        // envs, Reflective context nodes are only valid because they're specially
-        // set before actual context bootstrapping occurs.
-        if let Ok(node) = self.parse_node(&command) {
-            let resolve = |agent: &Agent, p: &Primitive| match p {
-                Primitive::Node(n) => Ok(*n),
-                Primitive::Symbol(s) => EnvManager::<Policy>::parse_node_inner(agent, &s),
+        if let Some(t) = Primitive::type_from_discriminator(command.as_str()) {
+            return Ok(match t {
+                "Procedure" => Procedure::deserialize(&mut BaseDeserializer::from_sexp(
+                    self.agent_mut(),
+                    *hsexp,
+                ))?
+                .into(),
+                "LocalNodeTable" => LocalNodeTable::deserialize(&mut BaseDeserializer::from_sexp(
+                    self.agent_mut(),
+                    *hsexp,
+                ))?
+                .into(),
+                "SymNodeTable" => SymNodeTable::deserialize(&mut BaseDeserializer::from_sexp(
+                    self.agent_mut(),
+                    *hsexp,
+                ))?
+                .into(),
                 _ => panic!(),
-            };
-
-            if Procedure::valid_discriminator(node, self.agent()) {
-                return Ok(Procedure::reflect(*hsexp, self.agent(), resolve)?.into());
-            } else if LocalNodeTable::valid_discriminator(node, self.agent()) {
-                return Ok(LocalNodeTable::reflect(*hsexp, self.agent(), resolve)?.into());
-            } else if SymNodeTable::valid_discriminator(node, self.agent()) {
-                return Ok(SymNodeTable::reflect(*hsexp, self.agent(), resolve)?.into());
-            }
+            });
         }
 
         let (command, cdr) = break_sexp!(hsexp => (Symbol; remainder), self.agent())?;
