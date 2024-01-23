@@ -241,7 +241,6 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut BaseDeserializer<'de> {
     where
         V: Visitor<'de>,
     {
-        assert!(self.input().is_none());
         visitor.visit_unit()
     }
 

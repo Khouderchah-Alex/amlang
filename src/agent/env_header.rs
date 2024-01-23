@@ -5,10 +5,11 @@ use serde::ser::{Serialize, SerializeStruct, Serializer};
 
 use crate::env::EnvObject;
 use crate::primitive::prelude::*;
+use crate::version::{Version, VersionString};
 
 
 pub struct EnvHeader {
-    file_version: usize,
+    file_version: VersionString,
     node_count: usize,
     triple_count: usize,
     unrecognized: SymSexpTable,
@@ -19,7 +20,7 @@ impl EnvHeader {
         let node_count = env.all_nodes().len();
         let triple_count = env.match_all().len();
         Self {
-            file_version: 1,
+            file_version: Version::new(0, 0, 2).into(),
             node_count,
             triple_count,
             unrecognized: SymSexpTable::default(),
@@ -104,7 +105,7 @@ impl<'de> Deserialize<'de> for EnvHeader {
             where
                 V: SeqAccess<'de>,
             {
-                let version = seq
+                let _version: usize = seq
                     .next_element()?
                     .ok_or_else(|| de::Error::invalid_length(0, &self))?;
                 let node_count = seq
@@ -114,7 +115,7 @@ impl<'de> Deserialize<'de> for EnvHeader {
                     .next_element()?
                     .ok_or_else(|| de::Error::invalid_length(1, &self))?;
                 Ok(EnvHeader {
-                    file_version: version,
+                    file_version: Version::new(0, 0, 2).into(),
                     node_count,
                     triple_count,
                     unrecognized: Default::default(),
@@ -159,7 +160,8 @@ impl<'de> Deserialize<'de> for EnvHeader {
                         }
                     }
                 }
-                let version = version.ok_or_else(|| de::Error::missing_field("version"))?;
+                let _version: usize = version.ok_or_else(|| de::Error::missing_field("version"))?;
+                let version = Version::new(0, 0, 2).into();
                 let node_count =
                     node_count.ok_or_else(|| de::Error::missing_field("node-count"))?;
                 let triple_count =
