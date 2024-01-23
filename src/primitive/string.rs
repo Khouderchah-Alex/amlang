@@ -10,10 +10,6 @@ use crate::sexp::{HeapSexp, Sexp};
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub struct LangString(String);
 
-pub trait ToLangString {
-    fn to_lang_string(&self) -> LangString;
-}
-
 impl LangString {
     pub fn new<S: ToString>(s: S) -> Self {
         Self(s.to_string())
@@ -43,18 +39,11 @@ impl LangString {
 }
 
 
-impl<S: ToString + std::fmt::Display> ToLangString for S {
-    fn to_lang_string(&self) -> LangString {
-        LangString::new(self)
-    }
-}
-
 impl fmt::Display for LangString {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "\"{}\"", self.as_str())
     }
 }
-
 
 impl From<LangString> for String {
     fn from(s: LangString) -> Self {
@@ -62,9 +51,33 @@ impl From<LangString> for String {
     }
 }
 
+impl From<&str> for LangString {
+    fn from(s: &str) -> Self {
+        LangString::new(s.to_string())
+    }
+}
+
+impl From<&str> for Sexp {
+    fn from(s: &str) -> Self {
+        LangString::from(s).into()
+    }
+}
+
+impl From<&str> for HeapSexp {
+    fn from(s: &str) -> Self {
+        Sexp::from(s).into()
+    }
+}
+
+impl From<String> for LangString {
+    fn from(s: String) -> Self {
+        LangString::new(s)
+    }
+}
+
 impl From<String> for Sexp {
     fn from(s: String) -> Self {
-        Sexp::Primitive(Primitive::LangString(LangString::new(s)))
+        LangString::from(s).into()
     }
 }
 

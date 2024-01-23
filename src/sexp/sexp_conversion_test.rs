@@ -1,4 +1,4 @@
-use crate::primitive::{LangString, Node, Number, Symbol, ToLangString};
+use crate::primitive::{LangString, Node, Number, Symbol};
 use crate::sexp::{Cons, HeapSexp, Sexp};
 
 
@@ -71,7 +71,7 @@ fn wrong_type() {
     if let Err(err) = break_sexp!(original => (Node, Sexp, Symbol)) {
         let (_, kind, _) =
             break_sexp!(err.kind().reify() => (LangString, LangString; remainder)).unwrap();
-        assert_eq!(kind, "InvalidArgument".to_lang_string());
+        assert_eq!(kind, "InvalidArgument".into());
     } else {
         panic!();
     }
@@ -83,7 +83,7 @@ fn extra_arguments() {
     if let Err(err) = break_sexp!(original => (Symbol, Symbol)) {
         let (_, kind, _) =
             break_sexp!(err.kind().reify() => (LangString, LangString; remainder)).unwrap();
-        assert_eq!(kind, "WrongArgumentCount".to_lang_string());
+        assert_eq!(kind, "WrongArgumentCount".into());
     } else {
         panic!();
     }
@@ -95,7 +95,7 @@ fn missing_arguments() {
     if let Err(err) = break_sexp!(original => (Symbol, Symbol, Symbol)) {
         let (_, kind, _) =
             break_sexp!(err.kind().reify() => (LangString, LangString; remainder)).unwrap();
-        assert_eq!(kind, "WrongArgumentCount".to_lang_string());
+        assert_eq!(kind, "WrongArgumentCount".into());
     } else {
         panic!();
     }
@@ -115,7 +115,7 @@ fn simple_list() {
 #[test]
 fn multi_type_list() {
     let original: Sexp = "(1 \"test\")".parse().unwrap();
-    let l = list!(Number::generic(1), "test".to_lang_string());
+    let l = list!(Number::generic(1), "test");
     let (a, b) = break_sexp!(original => (Number, LangString)).unwrap();
     let (aa, bb) = break_sexp!(l => (Number, LangString)).unwrap();
     assert_eq!(a, aa);

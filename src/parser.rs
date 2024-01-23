@@ -4,7 +4,7 @@ use std::collections::VecDeque;
 use crate::continuation::Continuation;
 use crate::error::{Error, ErrorKind};
 use crate::primitive::symbol_policies::policy_base;
-use crate::primitive::{ToLangString, ToSymbol};
+use crate::primitive::ToSymbol;
 use crate::sexp::{ConsList, Sexp};
 use crate::stream::Transform;
 use crate::token::{Token, TokenKind};
@@ -214,9 +214,9 @@ impl ErrorKind for ParseError {
     // TODO(func) Model within env rather than fall back on strings.
     fn reify(&self) -> Sexp {
         list!(
-            "ParseError".to_lang_string(),
-            format!("{:?}", self.reason).to_lang_string(),
-            self.token.to_lang_string(),
+            "ParseError",
+            format!("{:?}", self.reason),
+            self.token.to_string()
         )
     }
 }

@@ -35,7 +35,7 @@ pub mod prelude {
     pub use super::number::Number;
     pub use super::path::LangPath;
     pub use super::procedure::Procedure;
-    pub use super::string::{LangString, ToLangString};
+    pub use super::string::LangString;
     pub use super::symbol::{Symbol, ToSymbol};
     pub use super::symbol_policies::{
         policy_admin, policy_base, policy_uuid, AdminSymbolInfo, SymbolPolicy,
@@ -188,7 +188,7 @@ macro_rules! primitive_from {
                         return Err(Error::no_cont(
                             $crate::agent::lang_error::LangError::InvalidArgument{
                                 // TODO(perf) Avoid clone for non-ref types.
-                                given: format!("Element {}", i).to_lang_string().into(),
+                                given: format!("Element {}", i).into(),
                                 expected: std::borrow::Cow::Owned(
                                     format!("List of all {} elements", stringify!($from))
                                 ),

@@ -6,9 +6,9 @@ use super::token::{Token, TokenKind};
 use crate::error::{Error, ErrorKind};
 use crate::primitive::symbol::{SymbolError, ToSymbol};
 use crate::primitive::symbol_policies::SymbolPolicy;
+use crate::primitive::LangString;
 use crate::primitive::Number as Num;
 use crate::primitive::Primitive::*;
-use crate::primitive::{LangString, ToLangString};
 use crate::sexp::Sexp;
 use crate::stream::Transform;
 
@@ -270,12 +270,11 @@ impl ErrorKind for TokenizeError {
     // TODO(func) Model within env rather than fall back on strings.
     fn reify(&self) -> Sexp {
         list!(
-            "TokenizeError".to_lang_string(),
+            "TokenizeError",
             format!(
                 "[Tokenize Error]: {:?} @ ({}, {})",
                 self.kind, self.line, self.col
-            )
-            .to_lang_string(),
+            ),
         )
     }
 }

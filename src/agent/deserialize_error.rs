@@ -1,5 +1,5 @@
 use crate::error::ErrorKind;
-use crate::primitive::{Symbol, ToLangString};
+use crate::primitive::Symbol;
 use crate::sexp::{Cons, Sexp};
 
 #[derive(Debug)]
@@ -26,46 +26,39 @@ impl ErrorKind for DeserializeError {
     fn reify(&self) -> Sexp {
         let inner = match self {
             Self::IoError(err) => {
-                list!(
-                    "IoError".to_lang_string(),
-                    format!("{}", err).to_lang_string(),
-                )
+                list!("IoError", format!("{}", err))
             }
             Self::MissingData => {
-                list!("MissingData".to_lang_string())
+                list!("MissingData")
             }
             Self::ExtraneousData(sexp) => {
-                list!("ExtraneousData".to_lang_string(), sexp.clone())
+                list!("ExtraneousData", sexp.clone())
             }
             Self::UnexpectedType { given, expected } => {
-                list!(
-                    "UnexpectedType".to_lang_string(),
-                    given.clone(),
-                    expected.clone()
-                )
+                list!("UnexpectedType", given.clone(), expected.clone())
             }
             Self::MissingHeaderSection => {
-                list!("MissingHeaderSection".to_lang_string())
+                list!("MissingHeaderSection")
             }
             Self::MissingNodeSection => {
-                list!("MissingNodeSection".to_lang_string())
+                list!("MissingNodeSection")
             }
             Self::MissingTripleSection => {
-                list!("MissingTripleSection".to_lang_string())
+                list!("MissingTripleSection")
             }
             Self::UnexpectedCommand(sexp) => {
-                list!("UnexpectedCommand".to_lang_string(), sexp.clone())
+                list!("UnexpectedCommand", sexp.clone())
             }
             Self::ExpectedSymbol => {
-                list!("ExpectedSymbol".to_lang_string())
+                list!("ExpectedSymbol")
             }
             Self::UnrecognizedBuiltIn(symbol) => {
-                list!("UnrecognizedBuiltIn".to_lang_string(), symbol.clone())
+                list!("UnrecognizedBuiltIn", symbol.clone())
             }
             Self::InvalidNodeEntry(sexp) => {
-                list!("InvalidNodeEntry".to_lang_string(), sexp.clone())
+                list!("InvalidNodeEntry", sexp.clone())
             }
         };
-        Cons::new("DeserializeError".to_lang_string(), inner).into()
+        Cons::new(Sexp::from("DeserializeError"), inner).into()
     }
 }
