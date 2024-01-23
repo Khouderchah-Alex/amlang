@@ -105,7 +105,7 @@ impl<'de> Deserialize<'de> for EnvHeader {
             where
                 V: SeqAccess<'de>,
             {
-                let _version: usize = seq
+                let version = seq
                     .next_element()?
                     .ok_or_else(|| de::Error::invalid_length(0, &self))?;
                 let node_count = seq
@@ -115,7 +115,7 @@ impl<'de> Deserialize<'de> for EnvHeader {
                     .next_element()?
                     .ok_or_else(|| de::Error::invalid_length(1, &self))?;
                 Ok(EnvHeader {
-                    file_version: Version::new(0, 0, 2).into(),
+                    file_version: version,
                     node_count,
                     triple_count,
                     unrecognized: Default::default(),
@@ -160,8 +160,7 @@ impl<'de> Deserialize<'de> for EnvHeader {
                         }
                     }
                 }
-                let _version: usize = version.ok_or_else(|| de::Error::missing_field("version"))?;
-                let version = Version::new(0, 0, 2).into();
+                let version = version.ok_or_else(|| de::Error::missing_field("version"))?;
                 let node_count =
                     node_count.ok_or_else(|| de::Error::missing_field("node-count"))?;
                 let triple_count =
