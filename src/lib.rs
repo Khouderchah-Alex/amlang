@@ -24,6 +24,7 @@ pub mod parser;
 pub mod primitive;
 pub mod std_error;
 pub mod token;
+pub mod version;
 
 pub mod prelude {
     pub use crate::agent::{Agent, EnvManager};
