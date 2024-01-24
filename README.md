@@ -1,34 +1,84 @@
 ![alt text](https://github.com/Khouderchah-Alex/amlang/blob/master/logo/logo.png "Amlang")
 
 # Summary
-An intersection of programming language, database, and simulation system. Both a
-language system in its own right, and a library to build language systems out
-of. A key principle of Amlang is the ability to both collapse and reproduce the
-context of data.
+The key skill required to develop effective software is managing abstractions
+(designing, adapting, nesting, and contextualizing them). If language systems
+exist to facilitate building effective software, then the defining
+characteristic of a next-generation language system is one which aids in the
+managing of abstractions. Amlang is a platform designed to do this.
 
-One can think of an `Environment` as a graph database with "wormholes". `Agents`
-exist in and interact with their `Environment` and posssibly with each other.
-[S-exp](https://en.wikipedia.org/wiki/S-expression)-like `Structures` drive
-`Agent` behavior, whether those `Structures` come from the `Environment`, from
-other `Agents`, from human users, or even from themselves. But structure alone
-has no meaning; `Agents` use `Interpreters` to tie `Structures` to actual
-behavior.
+Managing abstractions goes beyond developing software. One could allow for a
+theory of mind which posits that the mind is abstractions of different forms and
+modalities, all the way down. Permitting that line of thought, managing
+abstractions is the key matter of AI broadly and AGI in particular. Amlang is a
+platform designed to facilitate software which seeks to do this.
 
-`Agents` can also use local state to form "overlays" on top of their
-`Environment`, allowing different `Agents` to perceive the same `Environment`
-differently. Those "overlays", represented as `Structures`, can also be stored
-in the `Environment`, examined by `Agents`, and shared or built upon. More
-broadly, Amlang has the capability to deeply
-[reify](https://en.wikipedia.org/wiki/Reification_(computer_science)) itself,
-although it isn't by default.
+Amlang is an intersection of programming language, database, and simulation
+system. Both a language system in its own right, and a library to build language
+systems out of. A key principle of Amlang is the ability to both collapse and
+reproduce the context of data.
 
+# Key Abstractions
+## Core
+  - Environment: A [triple store](https://en.wikipedia.org/wiki/Triplestore)
+    capable of representing triples as nodes. Environments can store S-exps, but
+    can also be represented to varying degrees as S-exps. Environments are owned
+    by the MetaEnvironment, which treats them as nodes that can be connected and
+    related as any other node.
+  - S-exp: Basically an [N-tree](https://en.wikipedia.org/wiki/M-ary_tree)
+    composed of primitive types (importantly, including nodes of Environments)
+    and a generic glue called Cons.
+
+Concepts could be initially represented as nodes in a graph and queried through
+the (relatively) slow mechanims of a graph-db/triple-store. As usage hardens
+into particular forms, S-exps can be used to represent the relevant relations
+and bypass the use of graph queries. We might think of this as compiling.
+Indeed, we can always "compile" down an entire Environment into a set of N-trees
+(read: S-exps) if we don't need generic querying capabilities. We might think of
+this as a way of modeling the Environment to be something other than a
+triple-store.
+
+In the other direction, we could begin with a monolithic S-exp (or an external
+interface/system) and incrementally abstract out relevant concepts into the
+Environment. We can do this more than once, creating different models of one
+structure and pitting them against each other or using them in different
+contexts. We might think of this as an Environment modeling a set of S-exps.
+
+The duality between Environment and S-exp forms what we call a **structured
+metagraph**, a single structure capable of collapsing and reproducing parts of
+itself.
+
+Finally, it's worth noting that an S-exp is a stone's throw from a array. This
+flattening could be accomplished from anywhere between trivial serialization to
+full-on compilation, but allows for structured metagraphs to be "compiled" down
+to native formats independent of this project. When we support the text/binary
+-> S-exp direction as well, the knot tied between Environment and S-exp extends
+to text & binaries and forms a single structure of computing.
+  
+## Agent
+  - Agent: Agents exist in Environments, and use Interpreters to act on S-exps
+    (which can come from Environments, other Agents, or external entities like
+    human users).
+  - Interpreter: Interpreters define Agent actions given S-exps. Alternatively,
+    one could look at an Interpreter as a context of meaning for S-exps (which
+    are otherwise inert N-trees).
+  - Context: Contexts are a link between the Rust world and Amlang world. They
+    allow for Rust code to talk about specific Nodes as variants of an enum
+    (particularly useful when writing Interpreters), and for Amlang to use Nodes
+    to talk about Rust interfaces. Contexts are a key part of getting reflection
+    b/w Rust and Amlang, both for clients of this library building custom
+    functionality and for this library itself to expose the implementation of
+    Amlang to the interface. Amlang doesn't require reflection, but certain
+    self-modifying projects do.
+
+## Further reading
 The concepts behind the project are further described in this article series:
   - [Part 0: Background](https://alexkhouderchah.com/articles/ai/amlang_0.html)
   - [Part 1: Environment](https://alexkhouderchah.com/articles/ai/amlang_1.html)
   - Part 2: Agents (WIP)
   - Part 3: Operational Design (WIP)
 
-### AmlangInterpreter REPL
+# Demo REPL
 
 `cargo run --example amlang_repl` will run a REPL with the built-in `AmlangInterpreter`.
 
