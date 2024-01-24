@@ -317,11 +317,10 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         let env = self.agent().env();
         let header = *BaseSerializer::to_sexp(self.agent(), &EnvHeader::from_env(env)).unwrap();
         self.serialize_list_internal(&mut w, &header, 0)?;
+        writeln!(&mut w, "")?;
 
-        write!(&mut w, "(nodes")?;
+        writeln!(&mut w, "(section nodes)")?;
         for (i, node) in env.all_nodes().into_iter().enumerate() {
-            write!(&mut w, "\n    ")?;
-
             let s = env.entry(node).owned();
             let (write_structure, add_quote) = match &s {
                 // Serialize self_des as ^1 since it can be reconstructed.
@@ -341,36 +340,34 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
             };
 
             let node = node.globalize(self.agent());
-            let line = if write_structure {
+            if write_structure {
                 let mut structure = s.unwrap();
                 if add_quote {
                     structure = list!("quote".to_symbol_or_panic(policy_admin), structure);
                 }
-                list!(node, structure)
+                self.serialize_list_internal(&mut w, &list!(node, structure), 0)?;
             } else {
                 write!(&mut w, " ")?; // Add space to align with structured lines.
-                node.into()
+                self.serialize_list_internal(&mut w, &node.into(), 0)?;
             };
-            self.serialize_list_internal(&mut w, &line, 1)?;
         }
-        write!(&mut w, "\n)\n\n")?;
+        writeln!(&mut w, "")?;
 
-        write!(&mut w, "(triples")?;
+        writeln!(&mut w, "(section triples)")?;
         for triple in env.match_all().triples() {
-            write!(&mut w, "\n    ")?;
             let s = triple.reify(self.agent());
-            self.serialize_list_internal(&mut w, &s, 1)?;
+            self.serialize_list_internal(&mut w, &s, 0)?;
         }
-        writeln!(&mut w, "\n)")?;
+        writeln!(&mut w, "")?;
 
         // TODO(func) Generalize to arbitrary designations.
         let des = env.designation_pairs(LocalNode::default());
         if !des.is_empty() {
-            write!(&mut w, "(designation amlang")?;
+            writeln!(&mut w, "(section designation amlang)")?;
             for (sym, node) in des {
-                write!(&mut w, "\n    (^{} {})", node.id(), sym)?;
+                writeln!(&mut w, "(^{} {})", node.id(), sym)?;
             }
-            writeln!(&mut w, "\n)")?;
+            writeln!(&mut w, "")?;
         }
         info!(
             "Serialized env {} @ \"{}\".",
@@ -457,25 +454,15 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
             w,
             depth,
             &mut |writer, primitive, depth| self.serialize_primitive(writer, primitive, depth),
-            &mut |writer, paren, depth| {
-                let prefix = if paren == ")" && depth == 0 { "\n" } else { "" };
-                let suffix = if paren == ")" && depth == 0 {
-                    "\n\n"
-                } else {
-                    ""
-                };
-                write!(writer, "{}{}{}", prefix, paren, suffix)
-            },
-            &mut |writer, depth| {
-                let s = match depth {
-                    0 => "\n    ",
-                    _ => " ",
-                };
-                write!(writer, "{}", s)
-            },
+            &mut |writer, paren, _depth| write!(writer, "{}", paren),
+            &mut |writer, _depth| write!(writer, " "),
             None,
             None,
-        )
+        )?;
+        if depth == 0 {
+            write!(w, "\n")?;
+        }
+        Ok(())
     }
 
     fn serialize_primitive<W: std::io::Write>(
