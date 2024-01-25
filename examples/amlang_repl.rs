@@ -104,7 +104,7 @@ fn main() -> Result<(), String> {
     for _result in sexps {}
 
     // Serialize.
-    if let Err(err) = manager.serialize_full(SERIALIZATION_PATH) {
+    if let Err(err) = manager.serialize_full(SERIALIZATION_PATH, ["lang.env"].into()) {
         return Err(err.to_string());
     }
 

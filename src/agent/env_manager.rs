@@ -1,5 +1,6 @@
 use log::{debug, info, warn};
-use std::collections::HashMap;
+use std::borrow::Borrow;
+use std::collections::{BTreeSet, HashMap};
 use std::convert::TryFrom;
 use std::fs::File;
 use std::io::{BufWriter, Write};
@@ -267,7 +268,11 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
 
 // {,De}serialization functionality.
 impl<Policy: EnvPolicy> EnvManager<Policy> {
-    pub fn serialize_full<P: AsRef<Path>>(&mut self, out_path: P) -> std::io::Result<()> {
+    pub fn serialize_full<P: AsRef<Path>>(
+        &mut self,
+        out_path: P,
+        blacklist: BTreeSet<&str>,
+    ) -> std::io::Result<()> {
         let original_pos = self.agent().pos();
 
         // Serialize meta env.
@@ -276,25 +281,6 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         let mut meta_path = out_path.as_ref().to_path_buf();
         meta_path.push("meta.env");
         self.serialize_curr_env(meta_path)?;
-
-        // TODO(func) Allow for context bootstrap to be serialized.
-        // Skipping rn for the sake of downstream clients.
-        // Serialize context.
-        /*
-        {
-            let mut path = out_path.as_ref().to_path_buf();
-            path.push("context.bootstrap");
-            let file = File::create(path)?;
-            let mut w = BufWriter::new(file);
-
-            let context = self.agent().context().clone().reify(self.agent_mut());
-            write!(&mut w, "(\n\n")?;
-            for (sublist, _) in context {
-                self.serialize_list_internal(&mut w, &sublist, 0)?;
-            }
-            write!(&mut w, ")\n")?;
-        }
-        */
 
         // Serialize envs in meta env.
         let serialize_path = self.agent().context().serialize_path();
@@ -305,19 +291,18 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
             .match_predicate(serialize_path)
             .triples();
         for triple in env_triples {
-            let subject_node = self.agent().meta().base().triple_subject(triple);
-            let path = if subject_node == self.agent().context().lang_env() {
-                // TODO(func) Allow for lang env to be serialized.
-                // Skipping the lang env rn for the sake of downstream clients.
-                continue;
-                //LangPath::new(format!("{}/envs/lang.env", env!("CARGO_MANIFEST_DIR")).into())
-            } else {
+            let env = self.agent().meta().base().triple_subject(triple);
+            let path = {
                 let object_node = self.agent().meta().base().triple_object(triple);
                 let entry = self.agent().meta().base().entry(object_node);
                 LangPath::try_from(entry.owned()).unwrap()
             };
 
-            self.agent_mut().jump_env(subject_node);
+            if blacklist.contains(&path.as_std_path().as_os_str().to_string_lossy().borrow()) {
+                continue;
+            }
+
+            self.agent_mut().jump_env(env);
             self.serialize_curr_env(path.as_std_path())?;
         }
 
