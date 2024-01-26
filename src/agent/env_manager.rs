@@ -6,14 +6,13 @@ use std::fs::File;
 use std::io::{BufWriter, Write};
 use std::path::Path;
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use super::amlang_context::AmlangContext;
 use super::amlang_wrappers::quote_wrapper;
 use super::deserialize_error::DeserializeError::*;
 use super::env_header::EnvHeader;
 use super::env_policy::EnvPolicy;
-use super::env_prelude::EnvPrelude;
 use super::Agent;
 use super::{BaseDeserializer, BaseSerializer};
 use crate::agent::lang_error::LangError;
@@ -27,7 +26,7 @@ use crate::parser::Parser;
 use crate::primitive::prelude::*;
 use crate::primitive::symbol_policies::policy_env_serde;
 use crate::primitive::table::Table;
-use crate::sexp::{HeapSexp, Sexp, SexpIntoIter};
+use crate::sexp::Sexp;
 use crate::stream::input::FileReader;
 use crate::token::Tokenizer;
 
@@ -378,7 +377,8 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
     }
 
     pub fn deserialize_curr_env<P: AsRef<Path>>(&mut self, in_path: P) -> Result<(), Error> {
-        let input = match FileReader::new(in_path.as_ref()) {
+        debug!("Deserializing env {}", in_path.as_ref().to_string_lossy());
+        let mut input = match FileReader::new(in_path.as_ref()) {
             Ok(input) => input,
             Err(ref e) if e.kind() == std::io::ErrorKind::NotFound => {
                 warn!("Env file not found: {}", in_path.as_ref().to_string_lossy());
@@ -390,45 +390,23 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
             }
             Err(err) => return err!(self.agent(), IoError(err)),
         };
-        let mut stream = pull_transform!(input
-                                         =>> Tokenizer::new(policy_env_serde)
-                                         =>. Parser::new());
 
-        let _header = match stream.next() {
-            Some(Ok(parsed)) => {
-                EnvHeader::deserialize(&mut BaseDeserializer::from_sexp(self.agent_mut(), parsed))?
-            }
-            None => return err!(self.agent(), MissingHeaderSection),
-            Some(Err(mut err)) => {
-                err.set_cont(self.agent().exec_state().clone());
-                return Err(err);
-            }
+        let header = if let Some(line) = input.next() {
+            let header = Sexp::parse_with(line?.as_str(), policy_env_serde)?;
+            EnvHeader::deserialize(&mut BaseDeserializer::from_sexp(self.agent_mut(), header))?
+        } else {
+            return err!(self.agent(), MissingHeaderSection);
         };
-        match stream.next() {
-            Some(Ok(parsed)) => self.deserialize_nodes(parsed)?,
-            None => return err!(self.agent(), MissingNodeSection),
-            Some(Err(mut err)) => {
-                err.set_cont(self.agent().exec_state().clone());
-                return Err(err);
-            }
-        };
-        match stream.next() {
-            Some(Ok(parsed)) => self.deserialize_triples(parsed)?,
-            None => return err!(self.agent(), MissingTripleSection),
-            Some(Err(mut err)) => {
-                err.set_cont(self.agent().exec_state().clone());
-                return Err(err);
-            }
-        };
-        while let Some(res) = stream.next() {
-            match res {
-                Ok(parsed) => self.deserialize_designation(parsed)?,
-                Err(mut err) => {
-                    err.set_cont(self.agent().exec_state().clone());
-                    return Err(err);
-                }
-            }
-        }
+
+        // Deserialize designations first in case we need it for nodes/triples.
+        let mut context_input = FileReader::new(in_path.as_ref()).unwrap();
+        context_input.seek_line(6 + header.node_count() + header.triple_count())?;
+        self.deserialize_designations(&mut context_input)?;
+
+        input.next();
+        self.deserialize_nodes(&mut input, header.node_count())?;
+        input.next();
+        self.deserialize_triples(&mut input)?;
 
         info!(
             "Loaded env {} from \"{}\".",
@@ -517,45 +495,33 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         }
     }
 
-    fn deserialize_nodes(&mut self, structure: Sexp) -> Result<(), Error> {
+    fn deserialize_nodes(
+        &mut self,
+        reader: &mut FileReader,
+        mut node_count: usize,
+    ) -> Result<(), Error> {
+        debug!("Deserializing nodes");
+        let section_line = if let Some(line) = reader.next() {
+            line?
+        } else {
+            return err!(self.agent(), MissingNodeSection);
+        };
+
+        let header = Sexp::parse_with(section_line.as_str(), policy_env_serde)?;
+        let (command, section) = break_sexp!(header => (Symbol, Symbol), self.agent())?;
+        if command.as_str() != "section" || section.as_str() != "nodes" {
+            return err!(self.agent(), UnexpectedCommand(list!(command, section)));
+        }
+
+        // Skip prelude nodes.
+        reader.nth(9);
+        node_count -= 10;
+
         let builtins = generate_builtin_map();
-        let (command, remainder) = break_sexp!(structure => (Symbol; remainder), self.agent())?;
-        if command.as_str() != "nodes" {
-            return err!(self.agent(), UnexpectedCommand(command.into()));
-        }
-
-        // Ensure prelude nodes are as expected.
-        let iter = SexpIntoIter::from(remainder);
-        let (first, second, third, _r0, _r1, _r2, _r3, _r4, _r5, _r6, remainder) = break_sexp!(
-            iter => (HeapSexp,
-                     Symbol,
-                     Symbol,
-                     HeapSexp,
-                     HeapSexp,
-                     HeapSexp,
-                     HeapSexp,
-                     HeapSexp,
-                     HeapSexp,
-                     HeapSexp; remainder), self.agent())?;
-        let (self_node_id, self_val_node) = break_sexp!(first => (Symbol, Symbol), self.agent())?;
-        let self_id = EnvPrelude::SelfEnv.local();
-        if self.parse_node(&self_node_id)?.local() != self_id
-            || self.parse_node(&self_val_node)? != Node::new(self_id, self.agent().pos().env())
-        {
-            return err!(self.agent(), InvalidNodeEntry(self_val_node.into()));
-        }
-        if self.parse_node(&second)?.local() != EnvPrelude::Designation.local() {
-            return err!(self.agent(), InvalidNodeEntry(second.into()));
-        }
-        if self.parse_node(&third)?.local() != EnvPrelude::TellHandler.local() {
-            return err!(self.agent(), InvalidNodeEntry(third.into()));
-        }
-
-        for (entry, proper) in SexpIntoIter::from(remainder) {
-            if !proper {
-                return err!(self.agent(), LangError::InvalidSexp(*entry))?;
-            }
-            match *entry {
+        for _i in 0..node_count {
+            let line = reader.next().unwrap()?;
+            let entry = Sexp::parse_with(line.as_str(), policy_env_serde)?;
+            match entry {
                 Sexp::Primitive(primitive) => {
                     if let Primitive::Symbol(_sym) = primitive {
                         self.agent_mut().define(None)?;
@@ -564,7 +530,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
                     }
                 }
                 Sexp::Cons(_) => {
-                    let (_name, command) = break_sexp!(entry => (Symbol, HeapSexp), self.agent())?;
+                    let (_name, command) = break_sexp!(entry => (Symbol, Sexp), self.agent())?;
                     let structure = self.eval_structure(command, &builtins)?;
                     self.agent_mut().define(Some(structure))?;
                 }
@@ -596,38 +562,38 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
 
     fn eval_structure(
         &mut self,
-        hsexp: HeapSexp,
+        sexp: Sexp,
         builtins: &HashMap<&'static str, BuiltIn>,
     ) -> Result<Sexp, Error> {
-        match *hsexp {
+        match sexp {
             Sexp::Primitive(Primitive::Symbol(sym)) => return Ok(self.parse_node(&sym)?.into()),
             Sexp::Primitive(Primitive::LangString(s)) => return Ok(s.into()),
             _ => {}
         }
 
-        let (command, _) = break_sexp!(hsexp.iter() => (&Symbol; remainder), self.agent())?;
+        let (command, _) = break_sexp!(sexp.iter() => (&Symbol; remainder), self.agent())?;
         if let Some(t) = Primitive::type_from_discriminator(command.as_str()) {
             return Ok(match t {
                 "Procedure" => Procedure::deserialize(&mut BaseDeserializer::from_sexp(
                     self.agent_mut(),
-                    *hsexp,
+                    sexp,
                 ))?
                 .into(),
                 "LocalNodeTable" => LocalNodeTable::deserialize(&mut BaseDeserializer::from_sexp(
                     self.agent_mut(),
-                    *hsexp,
+                    sexp,
                 ))?
                 .into(),
                 "SymNodeTable" => SymNodeTable::deserialize(&mut BaseDeserializer::from_sexp(
                     self.agent_mut(),
-                    *hsexp,
+                    sexp,
                 ))?
                 .into(),
                 _ => panic!(),
             });
         }
 
-        let (command, cdr) = break_sexp!(hsexp => (Symbol; remainder), self.agent())?;
+        let (command, cdr) = break_sexp!(sexp => (Symbol; remainder), self.agent())?;
         match command.as_str() {
             "quote" => Ok(*quote_wrapper(cdr, self.agent())?),
             "__builtin" => {
@@ -649,45 +615,68 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         }
     }
 
-    fn deserialize_triples(&mut self, structure: Sexp) -> Result<(), Error> {
-        let (command, remainder) = break_sexp!(structure => (Symbol; remainder), self.agent())?;
-        if command.as_str() != "triples" {
-            return err!(self.agent(), UnexpectedCommand(command.into()));
+    fn deserialize_triples(&mut self, reader: &mut FileReader) -> Result<(), Error> {
+        debug!("Deserializing triples");
+        let section_line = if let Some(line) = reader.next() {
+            line?
+        } else {
+            return err!(self.agent(), MissingTripleSection);
+        };
+
+        let header = Sexp::parse_with(section_line.as_str(), policy_env_serde)?;
+        let (command, section) = break_sexp!(header => (Symbol, Symbol), self.agent())?;
+        if command.as_str() != "section" || section.as_str() != "triples" {
+            return err!(self.agent(), UnexpectedCommand(list!(command, section)));
         }
 
-        for (entry, proper) in SexpIntoIter::from(remainder) {
-            if !proper {
-                return err!(self.agent(), LangError::InvalidSexp(*entry))?;
-            }
-            let (s, p, o) = break_sexp!(entry => (Symbol, Symbol, Symbol), self.agent())?;
+        let mut line = reader.next().unwrap()?;
+        while !line.is_empty() {
+            let triple = Sexp::parse_with(line.as_str(), policy_env_serde)?;
+            let (s, p, o) = break_sexp!(triple => (Symbol, Symbol, Symbol), self.agent())?;
 
             let subject = self.parse_node(&s)?;
             let predicate = self.parse_node(&p)?;
             let object = self.parse_node(&o)?;
 
             self.agent_mut().tell(subject, predicate, object)?;
+
+            line = reader.next().unwrap()?;
         }
         Ok(())
     }
 
-    fn deserialize_designation(&mut self, structure: Sexp) -> Result<(), Error> {
-        let (command, designator, remainder) =
-            break_sexp!(structure => (Symbol, Symbol; remainder), self.agent())?;
-        // TODO(func) Support generic designators.
-        if command.as_str() != "designation" || designator.as_str() != "amlang" {
-            return err!(self.agent(), UnexpectedCommand(command.into()));
-        }
-
-        for (entry, proper) in SexpIntoIter::from(remainder) {
-            if !proper {
-                return err!(self.agent(), LangError::InvalidSexp(*entry))?;
+    fn deserialize_designations(&mut self, reader: &mut FileReader) -> Result<(), Error> {
+        debug!("Deserializing designations");
+        while let Some(section_line) = reader.next() {
+            debug!("{:?}", section_line);
+            let header = Sexp::parse_with(section_line?.as_str(), policy_env_serde)?;
+            let (command, section, designator) =
+                break_sexp!(header => (Symbol, Symbol, Symbol), self.agent())?;
+            // TODO(func) Support generic designators.
+            if command.as_str() != "section"
+                || section.as_str() != "designation"
+                || designator.as_str() != "amlang"
+            {
+                return err!(
+                    self.agent(),
+                    UnexpectedCommand(list!(command, section, designator))
+                );
             }
-            let (node_id, name) = break_sexp!(entry => (Symbol, Symbol), self.agent())?;
 
-            let node = self.parse_node(&node_id)?;
-            self.agent_mut()
-                .env_mut()
-                .insert_designation(node.local(), name, LocalNode::default());
+            let mut line = reader.next().unwrap()?;
+            while !line.is_empty() {
+                let pair = Sexp::parse_with(line.as_str(), policy_env_serde)?;
+                let (node_id, name) = break_sexp!(pair => (Symbol, Symbol), self.agent())?;
+
+                let node = self.parse_node(&node_id)?;
+                self.agent_mut().env_mut().insert_designation(
+                    node.local(),
+                    name,
+                    LocalNode::default(),
+                );
+
+                line = reader.next().unwrap()?;
+            }
         }
         Ok(())
     }

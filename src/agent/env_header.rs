@@ -26,6 +26,14 @@ impl EnvHeader {
             unrecognized: SymSexpTable::default(),
         }
     }
+
+    pub fn node_count(&self) -> usize {
+        self.node_count
+    }
+
+    pub fn triple_count(&self) -> usize {
+        self.triple_count
+    }
 }
 
 impl Serialize for EnvHeader {

@@ -86,9 +86,46 @@ impl Sexp {
         }
     }
 
+    /// Pop off 1st element of list or entire primitive. If Sexp is
+    /// empty, will continuously return an empty Sexp.
+    pub fn pop_front(&mut self) -> Sexp {
+        let mut swapped = Sexp::default();
+        std::mem::swap(self, &mut swapped);
+
+        if let Sexp::Cons(c) = swapped {
+            let (head, tail) = c.consume();
+            *self = if let Some(t) = tail {
+                *t
+            } else {
+                Sexp::default()
+            };
+
+            if let Some(h) = head {
+                *h
+            } else {
+                Sexp::default()
+            }
+        } else {
+            swapped
+        }
+    }
+
     pub fn iter(&self) -> SexpIter {
         SexpIter {
             current: Some(&self),
+        }
+    }
+
+    pub fn parse_with<I>(s: &str, policy: SymbolPolicy<I>) -> Result<Self, Error> {
+        let input = StringReader::new(s);
+        let mut stream = pull_transform!(input
+                       =>> Tokenizer::new(policy)
+                       =>. Parser::new());
+
+        match stream.next() {
+            Some(Ok(sexp)) => Ok(sexp),
+            None => Ok(Default::default()),
+            Some(Err(err)) => Err(err),
         }
     }
 
@@ -366,16 +403,7 @@ impl FromStr for Sexp {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let input = StringReader::new(s);
-        let mut stream = pull_transform!(input
-                       =>> Tokenizer::new(policy_base)
-                       =>. Parser::new());
-
-        match stream.next() {
-            Some(Ok(sexp)) => Ok(sexp),
-            None => Ok(Default::default()),
-            Some(Err(err)) => Err(err),
-        }
+        Self::parse_with(s, policy_base)
     }
 }
 

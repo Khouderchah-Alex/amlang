@@ -28,11 +28,11 @@ use crate::error::Error;
 /// Notes:
 ///  * Data can be stored along the pipeline, but so can Iterators with closures
 pub struct PullStream<Output> {
-    strategy: Box<dyn Iterator<Item = Result<Output, Error>> + Send + Sync>,
+    strategy: Box<dyn Iterator<Item = Result<Output, Error>>>,
 }
 
 impl<Output> PullStream<Output> {
-    pub fn new(strategy: Box<dyn Iterator<Item = Result<Output, Error>> + Send + Sync>) -> Self {
+    pub fn new(strategy: Box<dyn Iterator<Item = Result<Output, Error>>>) -> Self {
         Self { strategy }
     }
 }

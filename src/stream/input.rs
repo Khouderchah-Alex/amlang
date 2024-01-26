@@ -1,38 +1,51 @@
 use std::fs::{File, OpenOptions};
-use std::io::{BufRead, BufReader, ErrorKind};
+use std::io::{BufRead, BufReader, ErrorKind, Lines};
 use std::os::unix::fs::OpenOptionsExt;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use crate::error::Error;
 
 
 pub struct FileReader {
-    reader: Option<BufReader<File>>,
+    path: PathBuf,
+    reader: Lines<BufReader<File>>,
+    line: usize,
 }
 
 impl FileReader {
     pub fn new<P: AsRef<Path>>(path: P) -> Result<Self, std::io::Error> {
-        let file = File::open(path)?;
+        let file = File::open(path.as_ref())?;
         let reader = BufReader::new(file);
 
         Ok(Self {
-            reader: Some(reader),
+            path: path.as_ref().to_path_buf(),
+            reader: reader.lines(),
+            line: 0,
         })
+    }
+
+    pub fn seek_line(&mut self, line: usize) -> Result<(), std::io::Error> {
+        if self.line > line {
+            *self = Self::new(&self.path)?;
+        }
+
+        let diff = line - self.line;
+        if diff > 0 {
+            self.reader.nth(diff - 1);
+        }
+        self.line = line;
+        Ok(())
     }
 }
 
 impl Iterator for FileReader {
     type Item = Result<String, Error>;
     fn next(&mut self) -> Option<Self::Item> {
-        if let Some(reader) = &mut self.reader {
-            let mut out = String::default();
-            if reader.read_line(&mut out).unwrap() == 0 {
-                self.reader = None;
-                return None;
-            }
-            return Some(Ok(out));
+        if let Some(res) = self.reader.next() {
+            Some(res.map_err(|e| e.into()))
+        } else {
+            None
         }
-        None
     }
 }
 
