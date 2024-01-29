@@ -18,7 +18,6 @@ pub enum DeserializeError {
     UnexpectedCommand(Sexp),
     ExpectedSymbol,
     UnrecognizedBuiltIn(Symbol),
-    InvalidNodeEntry(Sexp),
 }
 
 impl ErrorKind for DeserializeError {
@@ -54,9 +53,6 @@ impl ErrorKind for DeserializeError {
             }
             Self::UnrecognizedBuiltIn(symbol) => {
                 list!("UnrecognizedBuiltIn", symbol.clone())
-            }
-            Self::InvalidNodeEntry(sexp) => {
-                list!("InvalidNodeEntry", sexp.clone())
             }
         };
         Cons::new(Sexp::from("DeserializeError"), inner).into()

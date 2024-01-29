@@ -1,6 +1,8 @@
 use colored::*;
 use derivative::Derivative;
 use log::debug;
+use serde::{Deserialize, Serialize};
+
 use std::cell::RefCell;
 use std::collections::VecDeque;
 use std::convert::TryFrom;
@@ -11,7 +13,7 @@ use super::agent_frames::{EnvFrame, ExecFrame};
 use super::amlang_context::AmlangContext;
 use super::env_prelude::EnvPrelude;
 use super::interpreter::{InterpreterState, NullInterpreter};
-use super::BaseSerializer;
+use super::{BaseDeserializer, BaseSerializer};
 use crate::agent::lang_error::LangError;
 use crate::continuation::Continuation;
 use crate::env::entry::EntryMutKind;
@@ -22,7 +24,7 @@ use crate::error::Error;
 use crate::model::Reflective;
 use crate::primitive::prelude::*;
 use crate::primitive::table::Table;
-use crate::sexp::Sexp;
+use crate::sexp::{HeapSexp, Sexp};
 
 
 #[derive(Derivative)]
@@ -161,6 +163,14 @@ impl Agent {
     }
     pub fn context_mut(&mut self) -> &mut AmlangContext {
         &mut self.context
+    }
+
+    pub fn reify<S: Serialize>(&self, from_rust: &S) -> Result<HeapSexp, Error> {
+        BaseSerializer::to_sexp(self, &from_rust)
+    }
+
+    pub fn reflect<'de, D: Deserialize<'de>>(&'de mut self, from_amlang: Sexp) -> Result<D, Error> {
+        D::deserialize(&mut BaseDeserializer::from_sexp(self, from_amlang))
     }
 }
 
@@ -345,9 +355,9 @@ impl Agent {
                 }
             }
             // Reify Reflectives.
-            Primitive::Procedure(proc) => Ok(*BaseSerializer::to_sexp(self, &proc)?),
-            Primitive::SymNodeTable(table) => Ok(*BaseSerializer::to_sexp(self, &table)?),
-            Primitive::LocalNodeTable(table) => Ok(*BaseSerializer::to_sexp(self, &table)?),
+            Primitive::Procedure(proc) => Ok(*self.reify(&proc)?),
+            Primitive::SymNodeTable(table) => Ok(*self.reify(&table)?),
+            Primitive::LocalNodeTable(table) => Ok(*self.reify(&table)?),
             // Base case for self-designating.
             _ => Ok(designator.into()),
         }
@@ -803,21 +813,21 @@ impl Agent {
                 if show_redirects {
                     write!(w, "[Procedure]->")?;
                 }
-                let s = *BaseSerializer::to_sexp(self, &procedure).unwrap();
+                let s = *self.reify(&procedure).unwrap();
                 self.write_sexp(w, &s, depth, true)
             }
             Primitive::SymNodeTable(table) => {
                 if show_redirects {
                     write!(w, "[SymNodeTable]->")?;
                 }
-                let s = *BaseSerializer::to_sexp(self, &table).unwrap();
+                let s = *self.reify(&table).unwrap();
                 self.write_sexp(w, &s, depth, false)
             }
             Primitive::LocalNodeTable(table) => {
                 if show_redirects {
                     write!(w, "[LocalNodeTable]->")?;
                 }
-                let s = *BaseSerializer::to_sexp(self, &table).unwrap();
+                let s = *self.reify(&table).unwrap();
                 self.write_sexp(w, &s, depth, false)
             }
             _ => write!(w, "{}", primitive),

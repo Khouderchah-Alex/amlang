@@ -6,15 +6,12 @@ use std::fs::File;
 use std::io::{BufWriter, Write};
 use std::path::Path;
 
-use serde::{Deserialize, Serialize};
-
 use super::amlang_context::AmlangContext;
 use super::amlang_wrappers::quote_wrapper;
 use super::deserialize_error::DeserializeError::*;
 use super::env_header::EnvHeader;
 use super::env_policy::EnvPolicy;
 use super::Agent;
-use super::{BaseDeserializer, BaseSerializer};
 use crate::agent::lang_error::LangError;
 use crate::builtins::generate_builtin_map;
 use crate::env::local_node::{LocalId, LocalNode};
@@ -314,7 +311,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         let mut w = BufWriter::new(file);
 
         let env = self.agent().env();
-        let header = *BaseSerializer::to_sexp(self.agent(), &EnvHeader::from_env(env)).unwrap();
+        let header = *self.agent().reify(&EnvHeader::from_env(env)).unwrap();
         self.serialize_list_internal(&mut w, &header, 0)?;
         writeln!(&mut w, "")?;
 
@@ -393,7 +390,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
 
         let header = if let Some(line) = input.next() {
             let header = Sexp::parse_with(line?.as_str(), policy_env_serde)?;
-            EnvHeader::deserialize(&mut BaseDeserializer::from_sexp(self.agent_mut(), header))?
+            self.agent_mut().reflect::<EnvHeader>(header)?
         } else {
             return err!(self.agent(), MissingHeaderSection);
         };
@@ -457,15 +454,15 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
             }
             Primitive::BuiltIn(builtin) => write!(w, "(__builtin {})", builtin.name()),
             Primitive::Procedure(proc) => {
-                let sexp = *BaseSerializer::to_sexp(self.agent(), &proc).unwrap();
+                let sexp = *self.agent().reify(&proc).unwrap();
                 self.serialize_list_internal(w, &sexp, depth)
             }
             Primitive::SymNodeTable(table) => {
-                let sexp = *BaseSerializer::to_sexp(self.agent(), &table).unwrap();
+                let sexp = *self.agent().reify(&table).unwrap();
                 self.serialize_list_internal(w, &sexp, depth)
             }
             Primitive::LocalNodeTable(table) => {
-                let sexp = *BaseSerializer::to_sexp(self.agent(), &table).unwrap();
+                let sexp = *self.agent().reify(&table).unwrap();
                 self.serialize_list_internal(w, &sexp, depth)
             }
             Primitive::Node(node) => {
@@ -574,21 +571,9 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         let (command, _) = break_sexp!(sexp.iter() => (&Symbol; remainder), self.agent())?;
         if let Some(t) = Primitive::type_from_discriminator(command.as_str()) {
             return Ok(match t {
-                "Procedure" => Procedure::deserialize(&mut BaseDeserializer::from_sexp(
-                    self.agent_mut(),
-                    sexp,
-                ))?
-                .into(),
-                "LocalNodeTable" => LocalNodeTable::deserialize(&mut BaseDeserializer::from_sexp(
-                    self.agent_mut(),
-                    sexp,
-                ))?
-                .into(),
-                "SymNodeTable" => SymNodeTable::deserialize(&mut BaseDeserializer::from_sexp(
-                    self.agent_mut(),
-                    sexp,
-                ))?
-                .into(),
+                "Procedure" => self.agent_mut().reflect::<Procedure>(sexp)?.into(),
+                "LocalNodeTable" => self.agent_mut().reflect::<LocalNodeTable>(sexp)?.into(),
+                "SymNodeTable" => self.agent_mut().reflect::<SymNodeTable>(sexp)?.into(),
                 _ => panic!(),
             });
         }
