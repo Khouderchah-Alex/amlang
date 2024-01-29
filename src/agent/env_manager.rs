@@ -273,7 +273,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         if !des.is_empty() {
             writeln!(&mut w, "(section designation {})", name)?;
             for (sym, node) in des {
-                writeln!(&mut w, "(^{} {})", node.id(), sym)?;
+                writeln!(&mut w, "({} ^{})", sym, node.id())?;
             }
             writeln!(&mut w, "")?;
         }
@@ -558,7 +558,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
             let mut line = reader.next().unwrap()?;
             while !line.is_empty() {
                 let pair = Sexp::parse_with(line.as_str(), policy_env_serde)?;
-                let (node_id, name) = break_sexp!(pair => (Symbol, Symbol), self.agent())?;
+                let (name, node_id) = break_sexp!(pair => (Symbol, Symbol), self.agent())?;
 
                 let node = self.parse_node(&node_id)?;
                 self.agent_mut().env_mut().insert_designation(

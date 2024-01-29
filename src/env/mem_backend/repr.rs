@@ -1,4 +1,4 @@
-use bimap::BiMap;
+use bimap::BiBTreeMap;
 use std::collections::BTreeSet;
 
 use crate::env::local_node::{LocalNode, LocalTriple};
@@ -27,7 +27,7 @@ pub struct Triple {
     pub subject: LocalNode,
 }
 
-pub type Designator = BiMap<Symbol, LocalNode>;
+pub type Designator = BiBTreeMap<Symbol, LocalNode>;
 
 
 // Not putting this functionality in local_node because this behavior is
