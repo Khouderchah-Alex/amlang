@@ -6,8 +6,8 @@ use std::fs::File;
 use std::io::{BufWriter, Write};
 use std::path::Path;
 
-use super::amlang_context::AmlangContext;
 use super::amlang_wrappers::quote_wrapper;
+use super::context::{Context, MetaEnvContext};
 use super::deserialize_error::DeserializeError::*;
 use super::env_header::EnvHeader;
 use super::env_policy::EnvPolicy;
@@ -19,40 +19,16 @@ use crate::env::meta_env::MetaEnv;
 use crate::env::Environment;
 use crate::error::Error;
 use crate::model::Reflective;
-use crate::parser::Parser;
 use crate::primitive::prelude::*;
 use crate::primitive::symbol_policies::policy_env_serde;
 use crate::primitive::table::Table;
 use crate::sexp::Sexp;
 use crate::stream::input::FileReader;
-use crate::token::Tokenizer;
 
 
 pub struct EnvManager<Policy: EnvPolicy> {
     agent: Agent,
     policy: Policy,
-}
-
-/// Sanity check bootstrapped context nodes match env.
-macro_rules! verify_context {
-    (
-        $manager:expr,
-        $($node:ident : $query:expr),+
-        $(,)?
-    ) => {
-        let env = $manager.agent().pos().env();
-        $manager.agent_mut().designation_chain_mut().push_front(Node::new(env, LocalNode::default()));
-        let ($($node,)+) = {
-            (
-                $($manager.agent().resolve(&$query.to_symbol_or_panic(policy_admin))?.local(),)+
-            )
-        };
-        $manager.agent_mut().designation_chain_mut().pop_front();
-
-        // Verify context nodes.
-        let context = $manager.agent_mut().context_mut();
-        $(assert_eq!(context.$node(), $node);)+
-    };
 }
 
 impl<Policy: EnvPolicy> EnvManager<Policy> {
@@ -63,19 +39,13 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         let amlang_base = Path::new(env!("CARGO_MANIFEST_DIR"))
             .canonicalize()
             .unwrap();
-        let context_path = amlang_base.join("envs/context.bootstrap");
-        let context = EnvManager::<Policy>::bootstrap_context(meta.clone(), context_path)?;
-        info!("Context bootstrapping complete.");
 
         // Bootstrap meta env.
-        let mut meta_agent = Agent::new(
-            Node::new(LocalNode::default(), context.self_node()),
+        let meta_agent = Agent::new(
+            Node::new(LocalNode::default(), LocalNode::default()),
             meta.clone(),
-            context.clone(),
+            MetaEnvContext::placeholder(),
         );
-        meta_agent
-            .designation_chain_mut()
-            .push_front(Node::new(context.lang_env(), LocalNode::default()));
         let mut manager = Self {
             agent: meta_agent,
             policy: policy,
@@ -84,58 +54,27 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         let mut meta_path = in_path.as_ref().canonicalize().unwrap().to_path_buf();
         meta_path.push("meta.env");
         manager.deserialize_curr_env(meta_path)?;
-        verify_context!(manager,
-                        imports: "__imports",
-                        import_table: "__import_table",
-                        serialize_path: "__serialize_path",
-        );
+        manager.agent.context_metaenv =
+            MetaEnvContext::load(manager.agent().pos(), manager.agent_mut())?;
         info!("Meta env bootstrapping complete.");
 
         // Bootstrap lang env.
-        let lang_env = context.lang_env();
+        let lang_env = manager.agent().find_env("lang.env").unwrap();
         manager.initialize_env_node(lang_env);
         manager.agent_mut().jump_env(lang_env);
         let lang_path = amlang_base.join("envs/lang.env");
         manager.deserialize_curr_env(lang_path)?;
-        verify_context!(manager,
-                        quote: "quote",
-                        lambda: "lambda",
-                        fexpr: "fexpr",
-                        def: "def",
-                        tell: "tell",
-                        curr: "curr",
-                        jump: "jump",
-                        ask: "ask",
-                        placeholder: "_",
-                        apply: "apply",
-                        eval: "eval",
-                        exec: "exec",
-                        import: "import",
-                        branch: "if",
-                        progn: "progn",
-                        let_basic: "let",
-                        let_rec: "letrec",
-                        env_find: "env-find",
-                        env_jump: "env-jump",
-                        t: "true",
-                        f: "false",
-                        eq: "eq",
-                        sym_node_table: "table-sym-node",
-                        sym_sexp_table: "table-sym-sexp",
-                        local_node_table: "table-lnode",
-                        vector: "vector",
-                        set: "set!",
-                        node: "node",
-                        anon: "$"
-        );
         info!("Lang env bootstrapping complete.");
 
         // Load all other envs.
         // TODO(func) Allow for delayed loading of environments.
-        let env_triples = meta.base().match_predicate(serialize_path).triples();
+        let env_triples = meta
+            .base()
+            .match_predicate(*manager.agent.context_metaenv.serialize_path())
+            .triples();
         for triple in env_triples {
             let subject_node = meta.base().triple_subject(triple);
-            if subject_node == context.lang_env() {
+            if subject_node == lang_env {
                 continue;
             }
 
@@ -163,7 +102,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
     }
 
     pub fn insert_new_env<P: AsRef<Path>>(&mut self, path: P) -> LocalNode {
-        let serialize_path = self.agent().context().serialize_path();
+        let serialize_path = *self.agent.context_metaenv.serialize_path();
         let env_node = self.agent_mut().meta_mut().base_mut().insert_node(None);
         self.initialize_env_node(env_node);
 
@@ -175,38 +114,6 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
             .insert_triple(env_node, serialize_path, path_node);
 
         env_node
-    }
-
-    fn bootstrap_context<P: AsRef<Path>>(
-        meta: MetaEnv,
-        in_path: P,
-    ) -> Result<AmlangContext, Error> {
-        let placeholder_context = AmlangContext::new();
-        let mut placeholder_agent = Agent::new(
-            Node::new(LocalNode::default(), placeholder_context.self_node()),
-            meta,
-            placeholder_context,
-        );
-
-        let input = match FileReader::new(in_path) {
-            Ok(input) => input,
-            Err(err) => return err!(placeholder_agent, IoError(err)),
-        };
-        let mut stream = pull_transform!(input
-                                         =>> Tokenizer::new(policy_env_serde)
-                                         =>. Parser::new());
-
-        let s = match stream.next() {
-            Some(Ok(parsed)) => parsed,
-            None => return err!(placeholder_agent, MissingNodeSection),
-            Some(Err(err)) => return Err(err),
-        };
-        AmlangContext::reflect(s, &mut placeholder_agent, |agent, p| {
-            EnvManager::<Policy>::parse_node_inner(
-                agent,
-                &Symbol::try_from(Sexp::from(p.clone())).unwrap(),
-            )
-        })
     }
 
     fn create_env(policy: &mut Policy, env_node: LocalNode) -> Box<Policy::StoredEnv> {
@@ -279,7 +186,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         self.serialize_curr_env(meta_path)?;
 
         // Serialize envs in meta env.
-        let serialize_path = self.agent().context().serialize_path();
+        let serialize_path = *self.agent.context_metaenv.serialize_path();
         let env_triples = self
             .agent()
             .meta()
@@ -358,8 +265,13 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
 
         // TODO(func) Generalize to arbitrary designations.
         let des = env.designation_pairs(LocalNode::default());
+        let name = if self.agent().pos().env().id() != 0 {
+            "amlang"
+        } else {
+            "meta"
+        };
         if !des.is_empty() {
-            writeln!(&mut w, "(section designation amlang)")?;
+            writeln!(&mut w, "(section designation {})", name)?;
             for (sym, node) in des {
                 writeln!(&mut w, "(^{} {})", node.id(), sym)?;
             }
@@ -633,15 +545,10 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
     fn deserialize_designations(&mut self, reader: &mut FileReader) -> Result<(), Error> {
         debug!("Deserializing designations");
         while let Some(section_line) = reader.next() {
-            debug!("{:?}", section_line);
             let header = Sexp::parse_with(section_line?.as_str(), policy_env_serde)?;
             let (command, section, designator) =
                 break_sexp!(header => (Symbol, Symbol, Symbol), self.agent())?;
-            // TODO(func) Support generic designators.
-            if command.as_str() != "section"
-                || section.as_str() != "designation"
-                || designator.as_str() != "amlang"
-            {
+            if command.as_str() != "section" || section.as_str() != "designation" {
                 return err!(
                     self.agent(),
                     UnexpectedCommand(list!(command, section, designator))
@@ -662,7 +569,16 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
 
                 line = reader.next().unwrap()?;
             }
+
+            // TODO(func) Generic handling of desired d-chain/context-state.
+            if designator.as_str() == "amlang" {
+                let env_node = self.agent().pos().env();
+                self.agent
+                    .designation_chain_mut()
+                    .push_front(Node::new(env_node, LocalNode::default()));
+            }
         }
+
         Ok(())
     }
 }

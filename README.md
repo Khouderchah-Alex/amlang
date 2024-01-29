@@ -98,8 +98,8 @@ Rust, but will be coming soon.
 
 Basic commands:
   - Unnamed Nodes:
-    - `(node)` - Create atomic Node in current Env
-    - `(node (+ 1 2))` - Create structured Node in current Env, containing the interpretation of the associated structure (with the amlang interpreter in this REPL)
+    - `(anon)` - Create atomic Node in current Env
+    - `(anon (+ 1 2))` - Create structured Node in current Env, containing the interpretation of the associated structure (with the amlang interpreter in this REPL)
     - `(set! $node $structure)` - Set the structure of a Node
     - `$node` - Return the structure of a Node (which may itself contain Nodes), or the Node again if atomic
   - Named Nodes

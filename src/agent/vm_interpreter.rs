@@ -2,6 +2,7 @@ use log::debug;
 use std::convert::TryFrom;
 
 use super::agent_frames::ExecFrame;
+use super::amlang_context::AmlangContext;
 use super::amlang_wrappers::*;
 use super::interpreter::{Interpreter, InterpreterState};
 use super::Agent;
@@ -17,13 +18,17 @@ use crate::sexp::{ConsList, HeapSexp, Sexp};
 pub struct VmInterpreter {
     history_env: LocalNode,
     impl_env: LocalNode,
+
+    context: AmlangContext,
 }
 
 impl VmInterpreter {
-    pub fn new(history_env: LocalNode, impl_env: LocalNode) -> Self {
+    pub fn new(history_env: LocalNode, impl_env: LocalNode, context: AmlangContext) -> Self {
         Self {
             history_env,
             impl_env,
+
+            context,
         }
     }
 }
@@ -43,18 +48,9 @@ struct ExecutingInterpreter<'a> {
 impl<'a> ExecutingInterpreter<'a> {
     fn from_state(state: &'a mut VmInterpreter, agent: &'a mut Agent) -> Self {
         // Ensure agent designates amlang nodes first.
-        let lang_env = agent.context().lang_env();
-        if agent
-            .designation_chain()
-            .front()
-            .cloned()
-            .unwrap_or_default()
-            .env()
-            != lang_env
-        {
-            agent
-                .designation_chain_mut()
-                .push_front(Node::new(lang_env, LocalNode::default()));
+        let lang_context = *state.context.node();
+        if agent.designation_chain().front().cloned() != Some(lang_context) {
+            agent.designation_chain_mut().push_front(lang_context);
         }
 
         Self { state, agent }
@@ -89,10 +85,10 @@ impl<'a> ExecutingInterpreter<'a> {
                         let cond = self.exec(pred)?;
 
                         // TODO(func) Integrate actual boolean type.
-                        let context = self.agent().context();
-                        if cond == amlang_node!(t, context).into() {
+                        let context = &self.state.context;
+                        if cond == context_node!(t, context).into() {
                             Ok(self.exec(a)?)
-                        } else if cond == amlang_node!(f, context).into() {
+                        } else if cond == context_node!(f, context).into() {
                             Ok(self.exec(b)?)
                         } else {
                             err!(
@@ -122,7 +118,7 @@ impl<'a> ExecutingInterpreter<'a> {
     fn apply(&mut self, proc_node: Node, arg_nodes: Vec<Node>) -> Result<Sexp, Error> {
         match self.agent_mut().concretize(proc_node)? {
             Sexp::Primitive(Primitive::Node(node)) => {
-                if node.env() == self.agent().context().lang_env() {
+                if node.env() == self.state.context.node().env() {
                     self.apply_special(node.local(), arg_nodes)
                 } else {
                     err!(
@@ -193,10 +189,10 @@ impl<'a> ExecutingInterpreter<'a> {
         special_node: LocalNode,
         arg_nodes: Vec<Node>,
     ) -> Result<Sexp, Error> {
-        let context = self.agent().context();
+        let context = &self.state.context;
         match special_node {
-            _ if context.tell() == special_node || context.ask() == special_node => {
-                let is_tell = context.tell() == special_node;
+            _ if *context.tell() == special_node || *context.ask() == special_node => {
+                let is_tell = *context.tell() == special_node;
                 let (ss, pp, oo) = tell_wrapper(&arg_nodes, &self.agent())?;
                 let (s, p, o) = (
                     self.exec_to_node(ss)?,
@@ -214,7 +210,7 @@ impl<'a> ExecutingInterpreter<'a> {
                     Ok(self.agent_mut().tell(s, p, o)?.into())
                 } else {
                     let resolve_placeholder = |node: Node| {
-                        if node == amlang_node!(placeholder, self.agent().context()) {
+                        if node == context_node!(placeholder, self.state.context) {
                             None
                         } else {
                             Some(node)
@@ -234,9 +230,9 @@ impl<'a> ExecutingInterpreter<'a> {
                         .into())
                 }
             }
-            _ if context.def() == special_node || context.node() == special_node => {
-                let interpreter_context = amlang_node!(def, context);
-                let is_named = special_node == context.def();
+            _ if *context.def() == special_node || *context.anon() == special_node => {
+                let interpreter_context = context_node!(def, context);
+                let is_named = special_node == *context.def();
                 let (name, val) = if is_named {
                     let (name, val) = def_wrapper(&arg_nodes, &self.agent())?;
                     if name.env() != self.agent().pos().env() {
@@ -245,7 +241,7 @@ impl<'a> ExecutingInterpreter<'a> {
                     (name, val)
                 } else {
                     let val = defa_wrapper(&arg_nodes, &self.agent())?;
-                    (Node::new(context.lang_env(), context.anon()), val)
+                    (context_node!(self_ref, context), val)
                 };
 
                 let mut val_node = if let Some(s) = val {
@@ -281,11 +277,11 @@ impl<'a> ExecutingInterpreter<'a> {
                 }
                 Ok(val_node.into())
             }
-            _ if context.set() == special_node => {
+            _ if *context.set() == special_node => {
                 // Note that unlike def, set! follows normal internalization during evlis.
                 let (node, val) = def_wrapper(&arg_nodes, &self.agent())?;
                 let node = Node::try_from(node).unwrap();
-                let interpreter_context = amlang_node!(set, context);
+                let interpreter_context = context_node!(set, context);
                 if let Some(s) = val {
                     let final_sexp = self.eval(s.into(), None, interpreter_context)?;
                     self.agent_mut().set(node, Some(final_sexp))?;
@@ -294,7 +290,7 @@ impl<'a> ExecutingInterpreter<'a> {
                 }
                 Ok(node.into())
             }
-            _ if context.import() == special_node => {
+            _ if *context.import() == special_node => {
                 if arg_nodes.len() != 1 {
                     return err!(
                         self.agent(),
@@ -310,7 +306,7 @@ impl<'a> ExecutingInterpreter<'a> {
                 let imported = self.agent_mut().import(original)?;
                 Ok(imported.into())
             }
-            _ if context.apply() == special_node => {
+            _ if *context.apply() == special_node => {
                 let (proc_node, args_node) = apply_wrapper(&arg_nodes, &self.agent())?;
                 let proc_sexp = self.agent_mut().designate(proc_node.into())?;
                 let args_sexp = self.agent_mut().designate(args_node.into())?;
@@ -327,7 +323,7 @@ impl<'a> ExecutingInterpreter<'a> {
 
                 return self.apply(proc, args);
             }
-            _ if context.eval() == special_node || context.exec() == special_node => {
+            _ if *context.eval() == special_node || *context.exec() == special_node => {
                 if arg_nodes.len() != 1 {
                     return err!(
                         self.agent(),
@@ -337,8 +333,8 @@ impl<'a> ExecutingInterpreter<'a> {
                         }
                     );
                 }
-                let is_eval = context.eval() == special_node;
-                let interpreter_context = amlang_node!(eval, context);
+                let is_eval = *context.eval() == special_node;
+                let interpreter_context = context_node!(eval, context);
                 let arg = self.agent_mut().designate(arg_nodes[0].into())?;
                 if is_eval {
                     let to_inner = self.interpret(arg)?;
@@ -352,7 +348,7 @@ impl<'a> ExecutingInterpreter<'a> {
             _ => err!(
                 self.agent(),
                 LangError::InvalidArgument {
-                    given: Node::new(self.agent().context().lang_env(), special_node).into(),
+                    given: Node::new(self.state.context.node().env(), special_node).into(),
                     expected: "special Amlang Node".into(),
                 }
             ),

@@ -10,7 +10,7 @@ use std::io::{self, stdout, BufWriter};
 use std::rc::Rc;
 
 use super::agent_frames::{EnvFrame, ExecFrame};
-use super::amlang_context::AmlangContext;
+use super::context::MetaEnvContext;
 use super::env_prelude::EnvPrelude;
 use super::interpreter::{InterpreterState, NullInterpreter};
 use super::{BaseDeserializer, BaseSerializer};
@@ -36,7 +36,7 @@ pub struct Agent {
     designation_chain: VecDeque<Node>,
 
     meta: MetaEnv,
-    context: AmlangContext,
+    pub(super) context_metaenv: MetaEnvContext,
 
     #[derivative(Debug = "ignore")]
     gen_eval_interpreter:
@@ -44,7 +44,7 @@ pub struct Agent {
 }
 
 impl Agent {
-    pub(super) fn new(pos: Node, meta: MetaEnv, context: AmlangContext) -> Self {
+    pub(super) fn new(pos: Node, meta: MetaEnv, context: MetaEnvContext) -> Self {
         let env_state = Continuation::new(EnvFrame { pos });
         // TODO(func) Provide better root node.
         let exec_state = Continuation::new(ExecFrame::new(pos));
@@ -57,14 +57,14 @@ impl Agent {
             designation_chain: VecDeque::new(),
 
             meta,
-            context,
+            context_metaenv: context,
 
             gen_eval_interpreter: None,
         }
     }
 
     pub fn fork<I: InterpreterState + 'static>(&self, base_interpreter: I) -> Self {
-        let mut res = Self::new(self.pos(), self.meta.clone(), self.context.clone());
+        let mut res = Self::new(self.pos(), self.meta.clone(), self.context_metaenv.clone());
         res.interpreter_state =
             Continuation::new(Rc::new(RefCell::new(Box::new(base_interpreter))));
         res.designation_chain = self.designation_chain.clone();
@@ -158,13 +158,6 @@ impl Agent {
         res
     }
 
-    pub fn context(&self) -> &AmlangContext {
-        &self.context
-    }
-    pub fn context_mut(&mut self) -> &mut AmlangContext {
-        &mut self.context
-    }
-
     pub fn reify<S: Serialize>(&self, from_rust: &S) -> Result<HeapSexp, Error> {
         BaseSerializer::to_sexp(self, &from_rust)
     }
@@ -199,7 +192,7 @@ impl Agent {
     /// Jump to self node of indicated env.
     pub fn jump_env(&mut self, env_node: LocalNode) -> Node {
         // TODO(sec) Verify.
-        let node = Node::new(env_node, self.context.self_node());
+        let node = Node::new(env_node, LocalNode::default());
         *self.pos_mut() = node;
         node
     }
@@ -612,7 +605,7 @@ impl Agent {
                 None,
                 Some(Node::new(
                     LocalNode::default(),
-                    self.context().serialize_path(),
+                    *self.context_metaenv.serialize_path(),
                 )),
                 None,
             )
@@ -632,8 +625,8 @@ impl Agent {
     }
 
     fn get_or_create_import_table(&mut self, from_env: LocalNode) -> LocalNode {
-        let imports_node = self.context.imports();
-        let import_table_node = self.context.import_table();
+        let imports_node = *self.context_metaenv.imports();
+        let import_table_node = *self.context_metaenv.import_table();
         let env = self.pos().env();
         let import_triple = {
             let meta = self.meta.base_mut();
@@ -669,8 +662,8 @@ impl Agent {
     }
 
     fn get_import_table(&self, from_env: LocalNode, target_env: LocalNode) -> Option<LocalNode> {
-        let imports_node = self.context.imports();
-        let import_table_node = self.context.import_table();
+        let imports_node = *self.context_metaenv.imports();
+        let import_table_node = *self.context_metaenv.import_table();
         let import_triple = {
             let meta = self.meta();
             if let Some(triple) = meta

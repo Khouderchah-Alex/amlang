@@ -34,7 +34,7 @@ pub mod prelude {
     pub use crate::std_error::StdError;
     pub use crate::InitOptions;
     // Macros.
-    pub use crate::{amlang_node, break_sexp, err, list, pull_transform, push_transform};
+    pub use crate::{break_sexp, context_node, err, list, pull_transform, push_transform};
 }
 
 

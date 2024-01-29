@@ -2,6 +2,7 @@ use std::convert::TryFrom;
 
 use log::debug;
 
+use super::amlang_context::AmlangContext;
 use super::amlang_wrappers::*;
 use super::interpreter::{Interpreter, InterpreterState};
 use super::Agent;
@@ -18,13 +19,17 @@ use crate::sexp::{Cons, HeapSexp, Sexp};
 pub struct AmlangInterpreter {
     pub eval_state: Continuation<SymNodeTable>,
     impl_env: LocalNode,
+
+    context: AmlangContext,
 }
 
 impl AmlangInterpreter {
-    pub fn new(impl_env: LocalNode) -> Self {
+    pub fn new(impl_env: LocalNode, context: AmlangContext) -> Self {
         Self {
             eval_state: Continuation::new(SymNodeTable::default()),
             impl_env,
+
+            context,
         }
     }
 }
@@ -44,18 +49,9 @@ struct ExecutingInterpreter<'a> {
 impl<'a> ExecutingInterpreter<'a> {
     fn from_state(state: &'a mut AmlangInterpreter, agent: &'a mut Agent) -> Self {
         // Ensure agent designates amlang nodes first.
-        let lang_env = agent.context().lang_env();
-        if agent
-            .designation_chain()
-            .front()
-            .cloned()
-            .unwrap_or_default()
-            .env()
-            != lang_env
-        {
-            agent
-                .designation_chain_mut()
-                .push_front(Node::new(lang_env, LocalNode::default()));
+        let lang_context = *state.context.node();
+        if agent.designation_chain().front().cloned() != Some(lang_context) {
+            agent.designation_chain_mut().push_front(lang_context);
         }
 
         Self { state, agent }
@@ -93,7 +89,7 @@ impl<'a> ExecutingInterpreter<'a> {
             let _name = self.agent_mut().define_to(impl_env, Some(symbol.into()))?;
             // TODO(feat) Bring back when we have multi-env triples.
             // // Unlike amlang designation, label predicate must be imported.
-            // let raw_predicate = amlang_node!(label, self.agent().context());
+            // let raw_predicate = context_node!(label, self.agent().context());
             // let label_predicate = self.agent_mut().import(raw_predicate)?;
             // self.agent_mut().tell(node, label_predicate, name)?;
         }
@@ -238,24 +234,24 @@ impl<'a> Interpreter for ExecutingInterpreter<'a> {
                         );
                     }
                 };
-                let context = self.agent().context();
+                let context = &self.state.context;
                 match node {
-                    _ if amlang_node!(quote, context) == node => {
+                    _ if context_node!(quote, context) == node => {
                         return Ok(*quote_wrapper(cdr, self.agent())?);
                     }
-                    _ if amlang_node!(lambda, context) == node
-                        || amlang_node!(fexpr, context) == node =>
+                    _ if context_node!(lambda, context) == node
+                        || context_node!(fexpr, context) == node =>
                     {
                         let (params, body) = make_lambda_wrapper(cdr, &self.agent())?;
-                        let reflect = node.local() == context.fexpr();
+                        let reflect = node.local() == *context.fexpr();
                         let (proc, _) = self.make_lambda(params, body, reflect)?;
                         return Ok(proc.into());
                     }
-                    _ if amlang_node!(let_basic, context) == node
-                        || amlang_node!(let_rec, context) == node =>
+                    _ if context_node!(let_basic, context) == node
+                        || context_node!(let_rec, context) == node =>
                     {
                         let (params, exprs, body) = let_wrapper(cdr, &self.agent())?;
-                        let recursive = node.local() == context.let_rec();
+                        let recursive = node.local() == *context.let_rec();
                         let (proc, frame) = self.make_lambda(params, body, false)?;
                         let proc_node = self.node_or_insert(proc.into())?;
 
@@ -269,7 +265,7 @@ impl<'a> Interpreter for ExecutingInterpreter<'a> {
                         };
                         return Ok(Procedure::Application(proc_node, args).into());
                     }
-                    _ if amlang_node!(branch, context) == node => {
+                    _ if context_node!(branch, context) == node => {
                         let args = self.evlis(cdr, true)?;
                         if args.len() != 3 {
                             return err!(
@@ -283,14 +279,14 @@ impl<'a> Interpreter for ExecutingInterpreter<'a> {
                         let proc = Procedure::Branch((args[0], args[1], args[2]).into());
                         return Ok(proc.into());
                     }
-                    _ if amlang_node!(progn, context) == node => {
+                    _ if context_node!(progn, context) == node => {
                         let args = self.evlis(cdr, true)?;
                         return Ok(Procedure::Sequence(args).into());
                     }
-                    _ if amlang_node!(def, context) == node
-                        || amlang_node!(node, context) == node =>
+                    _ if context_node!(def, context) == node
+                        || context_node!(anon, context) == node =>
                     {
-                        let args = self.evlis_def(cdr, node == amlang_node!(def, context))?;
+                        let args = self.evlis_def(cdr, node == context_node!(def, context))?;
                         return Ok(Procedure::Application(node, args).into());
                     }
                     _ => {

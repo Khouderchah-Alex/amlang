@@ -19,7 +19,8 @@ use std::path::Path;
 
 use amlang::agent::env_policy::SimplePolicy;
 use amlang::agent::{
-    Agent, AmlangInterpreter, EnvManager, NullInterpreter, TransformExecutor, VmInterpreter,
+    Agent, AmlangContext, AmlangInterpreter, Context, EnvManager, NullInterpreter,
+    TransformExecutor, VmInterpreter,
 };
 use amlang::env::LocalNode;
 use amlang::error::Error;
@@ -68,13 +69,20 @@ fn main() -> Result<(), String> {
     };
 
     // Prep agent.
-    let pre_agent = manager.agent();
+    let mut pre_agent = manager.agent_mut();
+    let lang_env = pre_agent.find_env("lang.env").unwrap();
+    let amlang_context =
+        AmlangContext::load(Node::new(lang_env, LocalNode::default()), &mut pre_agent).unwrap();
     let history_env = pre_agent.find_env("history.env").unwrap();
     let impl_env = pre_agent.find_env("impl.env").unwrap();
-    let mut agent = pre_agent.fork(VmInterpreter::new(history_env, impl_env));
+    let mut agent = pre_agent.fork(VmInterpreter::new(
+        history_env,
+        impl_env,
+        amlang_context.clone(),
+    ));
     agent
         .set_eval(move |frame| {
-            let mut interpreter = AmlangInterpreter::new(impl_env);
+            let mut interpreter = AmlangInterpreter::new(impl_env, amlang_context.clone());
             if let Some(frame) = frame {
                 interpreter.eval_state.push(frame);
             }
@@ -88,7 +96,6 @@ fn main() -> Result<(), String> {
 
     // TODO(func) Rm once we sort out the deal with CliHelper holding a
     // potentially-stale Agent copy.
-    let lang_env = agent.context().lang_env();
     agent
         .designation_chain_mut()
         .push_front(Node::new(lang_env, LocalNode::default()));

@@ -20,6 +20,12 @@ fn test_struct() {
         b: true,
     };
 
+    let t = Sexp::from(
+        agent
+            .resolve(&"true".to_symbol_or_panic(policy_base))
+            .unwrap(),
+    );
+
     // TODO(func) Have list! support (a . b)
     let expected = list!(
         "Test".to_symbol_or_panic(policy_base),
@@ -28,10 +34,7 @@ fn test_struct() {
             "seq".to_symbol_or_panic(policy_base),
             list!("a".to_string(), "b".to_string())
         ),
-        Cons::new(
-            "b".to_symbol_or_panic(policy_base),
-            amlang_node!(t, agent.context()),
-        )
+        Cons::new("b".to_symbol_or_panic(policy_base), t.clone())
     );
 
     let serialized = agent.reify(&original).unwrap();
@@ -45,10 +48,7 @@ fn test_struct() {
             "seq".to_symbol_or_panic(policy_base),
             list!("a".to_string(), "b".to_string())
         ),
-        Cons::new(
-            "b".to_symbol_or_panic(policy_base),
-            amlang_node!(t, agent.context()),
-        )
+        Cons::new("b".to_symbol_or_panic(policy_base), t)
     );
     assert_ne!(wrong_int_type, *serialized);
 

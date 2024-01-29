@@ -1,6 +1,6 @@
 [package]
 name = "amlang"
-version = "0.0.3"
+version = "0.0.4"
 authors = ["Alex Khouderchah <alex.khouderchah@gmail.com>"]
 edition = "2018"
 
@@ -9,6 +9,7 @@ edition = "2018"
 bimap = "~0.6.3"
 colored = "~2"
 derivative = "~2"
+derive-getters = "~0.3.0"
 dyn-clone = "~1"
 lazy_static = "~1"
 libc = "~0.2.108"

@@ -1,140 +1,59 @@
-use std::convert::TryFrom;
+use derive_getters::Getters;
+use serde::{Deserialize, Serialize};
 
-use super::env_prelude::EnvPrelude;
-use crate::agent::Agent;
+use super::context::Context;
 use crate::env::LocalNode;
-use crate::error::Error;
-use crate::model::Reflective;
-use crate::primitive::{Node, Primitive};
-use crate::sexp::{HeapSexp, Sexp, SexpIntoIter};
+use crate::primitive::Node;
 
+#[derive(Clone, Debug, Deserialize, Getters, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct AmlangContext {
+    node: Node,
 
-/// Creates a primitive::Node referencing something in the lang_env.
-#[macro_export]
-macro_rules! amlang_node {
-    ($local:ident, $context:expr) => {{
-        let ctx = $context;
-        $crate::primitive::Node::new(ctx.lang_env(), ctx.$local())
-    }};
+    quote: LocalNode,
+    lambda: LocalNode,
+    fexpr: LocalNode,
+    def: LocalNode,
+    tell: LocalNode,
+    curr: LocalNode,
+    jump: LocalNode,
+    ask: LocalNode,
+    #[serde(rename = "_")]
+    placeholder: LocalNode,
+    apply: LocalNode,
+    eval: LocalNode,
+    exec: LocalNode,
+    import: LocalNode,
+    progn: LocalNode,
+    #[serde(rename = "if")]
+    branch: LocalNode,
+    #[serde(rename = "let")]
+    let_basic: LocalNode,
+    #[serde(rename = "letrec")]
+    let_rec: LocalNode,
+    env_find: LocalNode,
+    env_jump: LocalNode,
+    #[serde(rename = "true")]
+    t: LocalNode,
+    #[serde(rename = "false")]
+    f: LocalNode,
+    eq: LocalNode,
+    #[serde(rename = "table-sym-node")]
+    sym_node_table: LocalNode,
+    #[serde(rename = "table-sym-sexp")]
+    sym_sexp_table: LocalNode,
+    #[serde(rename = "table-lnode")]
+    local_node_table: LocalNode,
+    vector: LocalNode,
+    #[serde(rename = "set!")]
+    set: LocalNode,
+    anon: LocalNode,
+    #[serde(rename = "$")]
+    self_ref: LocalNode,
 }
 
-// Instantiate meta-class with context Nodes.
-generate_context!(
-    (lang_env, imports, import_table, serialize_path),
-    (
-        quote,
-        lambda,
-        fexpr,
-        def,
-        tell,
-        curr,
-        jump,
-        ask,
-        placeholder,
-        apply,
-        eval,
-        exec,
-        import,
-        progn,
-        branch,
-        let_basic,
-        let_rec,
-        env_find,
-        env_jump,
-        t,
-        f,
-        eq,
-        sym_node_table,
-        sym_sexp_table,
-        local_node_table,
-        vector,
-        set,
-        node,
-        anon
-    )
-);
-
-macro_rules! generate_context {
-    (
-        ($($meta_node:ident),+),
-        ($($lang_node:ident),+)
-        $(,)?
-    ) => {
-        #[derive(Clone, Debug)]
-        pub struct AmlangContext {
-            // Relative to meta env.
-            $($meta_node: LocalNode,)+
-            // Relative to lang_env.
-            $($lang_node: LocalNode,)+
-        }
-
-
-        impl AmlangContext {
-            pub(super) fn new() -> Self {
-                let placeholder = LocalNode::new(1);
-                Self {
-                    // This is delicate; putting placeholders here, which must be set
-                    // properly during bootstrapping.
-                    $($meta_node: placeholder.clone(),)+
-
-                    $($lang_node: placeholder.clone(),)+
-                }
-            }
-
-            $(pub fn $meta_node(&self) -> LocalNode { self.$meta_node })+
-            $(pub fn $lang_node(&self) -> LocalNode { self.$lang_node })+
-        }
-
-        impl Reflective for AmlangContext {
-            fn reify(&self, _agent: &Agent) -> Sexp {
-                let meta: Sexp = vec![
-                    $(Node::new(LocalNode::default(), self.$meta_node),)+
-                ].into();
-                let lang: Sexp = vec![
-                    $(Node::new(self.lang_env, self.$lang_node),)+
-                ].into();
-                list!(meta, lang)
-            }
-
-            fn reflect<F>(structure: Sexp, agent: &Agent, resolve: F) -> Result<Self, Error>
-            where
-                Self: Sized,
-                F: Fn(&Agent, &Primitive) -> Result<Node, Error> {
-                // Clone passed-in agent's context to hack around the
-                // fact that we can't create a meta env here.
-                let mut context = agent.context().clone();
-                let (meta, lang) = break_sexp!(structure => (HeapSexp, HeapSexp), agent)?;
-
-                let resolve_node = |iter: &mut SexpIntoIter| -> Node {
-                    let primitive = Primitive::try_from(iter.next().unwrap().0).unwrap();
-                    resolve(agent, &primitive).unwrap()
-                };
-
-                let mut miter = meta.into_iter();
-                $(context.$meta_node = resolve_node(&mut miter).local();)+
-                let mut liter = lang.into_iter();
-                $(context.$lang_node = resolve_node(&mut liter).local();)+
-
-                Ok(context)
-            }
-
-            fn valid_discriminator(_node: Node, _agent: &Agent) -> bool {
-                unimplemented!();
-            }
-        }
-    };
-}
-
-impl AmlangContext {
-    pub const fn self_node(&self) -> LocalNode {
-        EnvPrelude::SelfEnv.local()
-    }
-    pub const fn designation(&self) -> LocalNode {
-        EnvPrelude::Designation.local()
-    }
-    pub const fn tell_handler(&self) -> LocalNode {
-        EnvPrelude::TellHandler.local()
+impl<'de> Context<'de> for AmlangContext {
+    fn name() -> &'static str {
+        "AmlangContext"
     }
 }
-
-use generate_context;

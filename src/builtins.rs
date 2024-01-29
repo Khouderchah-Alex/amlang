@@ -1,3 +1,5 @@
+use lazy_static::lazy_static;
+
 use std::collections::HashMap;
 use std::mem;
 
@@ -88,12 +90,20 @@ fn println_(arg: Sexp, agent: &mut Agent) -> Result<Sexp, Error> {
 }
 
 fn eq_(a: Sexp, b: Sexp, agent: &mut Agent) -> Result<Node, Error> {
-    let local = if a == b {
-        agent.context().t()
+    // TODO(perf) Would be better to cache the Node, not Sym, but
+    // having trouble passing agent into lazy_static. Alternatively,
+    // if we could access the Context from an Agent or copy context to
+    // a builtin, that would work too.
+    lazy_static! {
+        static ref T: Symbol = "true".to_symbol_or_panic(policy_base);
+        static ref F: Symbol = "false".to_symbol_or_panic(policy_base);
+    }
+
+    if a == b {
+        agent.resolve(&T)
     } else {
-        agent.context().f()
-    };
-    Ok(Node::new(agent.context().lang_env(), local))
+        agent.resolve(&F)
+    }
 }
 
 fn curr_(agent: &mut Agent) -> Result<Node, Error> {

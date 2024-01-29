@@ -77,7 +77,12 @@ fn lambda_seq_body() {
     let results = eval(&mut lang_agent, "((lambda (a) (jump a) (curr)) lambda)");
     assert_eq!(
         results,
-        vec![amlang_node!(lambda, lang_agent.context()).into()]
+        vec![
+            lang_agent
+                .resolve(&"lambda".to_symbol_or_panic(policy_base))
+                .unwrap()
+                .into()
+        ]
     );
 }
 
@@ -169,11 +174,17 @@ fn let_rec_lambdas() {
     let cons = Cons::try_from(results[0].clone()).unwrap();
     assert_eq!(
         *cons.car().unwrap(),
-        amlang_node!(f, lang_agent.context()).into()
+        lang_agent
+            .resolve(&"false".to_symbol_or_panic(policy_base))
+            .unwrap()
+            .into()
     );
     assert_eq!(
         *cons.cdr().unwrap(),
-        amlang_node!(t, lang_agent.context()).into()
+        lang_agent
+            .resolve(&"true".to_symbol_or_panic(policy_base))
+            .unwrap()
+            .into()
     );
 }
 
@@ -248,7 +259,7 @@ fn def_recursive_lambda() {
 fn node_atom() {
     let (mut lang_agent, _manager) = common::setup().unwrap();
 
-    let results = eval(&mut lang_agent, "(node)");
+    let results = eval(&mut lang_agent, "(anon)");
     // Atom should designate to itself.
     assert_eq!(
         lang_agent
@@ -262,7 +273,7 @@ fn node_atom() {
 fn node_apply() {
     let (mut lang_agent, _manager) = common::setup().unwrap();
 
-    let results = eval(&mut lang_agent, "(node (+ 1 2))");
+    let results = eval(&mut lang_agent, "(anon (+ 1 2))");
     assert_eq!(
         lang_agent
             .designate(Primitive::try_from(results[0].clone()).unwrap())
@@ -275,7 +286,7 @@ fn node_apply() {
 fn node_recursive() {
     let (mut lang_agent, _manager) = common::setup().unwrap();
 
-    let results = eval(&mut lang_agent, "(node (cons 'a $))");
+    let results = eval(&mut lang_agent, "(anon (cons 'a $))");
     let infinite = lang_agent
         .designate(Primitive::try_from(results[0].clone()).unwrap())
         .unwrap();
@@ -343,7 +354,10 @@ fn eval_() {
 
     assert_eq!(
         results[0],
-        amlang_node!(lambda, lang_agent.context()).into()
+        lang_agent
+            .resolve(&"lambda".to_symbol_or_panic(policy_base))
+            .unwrap()
+            .into()
     );
     assert_eq!(results[1], 3.into());
 }
@@ -353,7 +367,13 @@ fn improper_list() {
     let (mut lang_agent, _manager) = common::setup().unwrap();
 
     let results = eval(&mut lang_agent, "(eq '(1 2 . 3) (cons 1 (cons 2 3)))");
-    assert_eq!(results[0], amlang_node!(t, lang_agent.context()).into());
+    assert_eq!(
+        results[0],
+        lang_agent
+            .resolve(&"true".to_symbol_or_panic(policy_base))
+            .unwrap()
+            .into()
+    );
 }
 
 #[test]
@@ -397,11 +417,18 @@ fn import() {
          (eq lambda (import lambda))",
     );
 
-    let context = lang_agent.context();
-    assert_eq!(results[1], amlang_node!(t, context).into());
-    assert_eq!(results[2], amlang_node!(t, context).into());
-    assert_eq!(results[3], amlang_node!(f, context).into());
-    assert_eq!(results[5], amlang_node!(t, context).into());
+    let t = lang_agent
+        .resolve(&"true".to_symbol_or_panic(policy_base))
+        .unwrap()
+        .into();
+    let f = lang_agent
+        .resolve(&"false".to_symbol_or_panic(policy_base))
+        .unwrap()
+        .into();
+    assert_eq!(results[1], t);
+    assert_eq!(results[2], t);
+    assert_eq!(results[3], f);
+    assert_eq!(results[5], t);
 }
 
 #[test]
@@ -486,9 +513,6 @@ fn env_find() {
 
     let results = eval(&mut lang_agent, r##"(env-find "lang.env")"##);
 
-    let context = lang_agent.context();
-    assert_eq!(
-        results[0],
-        Node::new(LocalNode::default(), context.lang_env()).into()
-    );
+    let lang_env = lang_agent.find_env("lang.env").unwrap();
+    assert_eq!(results[0], Node::new(LocalNode::default(), lang_env).into());
 }

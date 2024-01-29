@@ -13,12 +13,13 @@ dependencies = [
 
 [[package]]
 name = "amlang"
-version = "0.0.3"
+version = "0.0.4"
 dependencies = [
  "bimap",
  "clap",
  "colored",
  "derivative",
+ "derive-getters",
  "dyn-clone",
  "env_logger",
  "lazy_static",
@@ -121,6 +122,17 @@ name = "derivative"
 version = "2.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fcc3dd5e9e9c0b295d6e1e4d811fb6f157d5ffd784b8d202fc62eac8035a770b"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "derive-getters"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7a2c35ab6e03642397cdda1dd58abbc05d418aef8e36297f336d5aba060fe8df"
 dependencies = [
  "proc-macro2",
  "quote",

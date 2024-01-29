@@ -1,8 +1,10 @@
 // Public exports.
 pub use agent::Agent;
+pub use amlang_context::AmlangContext;
 pub use amlang_interpreter::AmlangInterpreter;
 pub use base_deserializer::BaseDeserializer;
 pub use base_serializer::BaseSerializer;
+pub use context::Context;
 pub use env_manager::EnvManager;
 pub use env_prelude::EnvPrelude;
 pub use executor::TransformExecutor;
@@ -12,9 +14,10 @@ pub use vm_interpreter::VmInterpreter;
 
 // Public mods.
 #[macro_use]
-pub mod amlang_context;
+pub mod context;
 pub mod agent;
 pub mod agent_frames;
+pub mod amlang_context;
 pub mod amlang_interpreter;
 pub mod base_deserializer;
 pub mod base_serializer;

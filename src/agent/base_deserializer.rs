@@ -116,7 +116,12 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut BaseDeserializer<'de> {
         V: Visitor<'de>,
     {
         let node = as_type!(Node, self.input());
-        let b = if node == amlang_node!(t, self.agent.context()) {
+        // TODO(perf, func) Might be better to directly access context somehow.
+        let b = if node
+            == self
+                .agent
+                .resolve(&"true".to_symbol_or_panic(policy_base))?
+        {
             true
         } else {
             false
@@ -177,7 +182,20 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut BaseDeserializer<'de> {
     where
         V: Visitor<'de>,
     {
-        visitor.visit_u64(as_type!(u64, self.input()))
+        let input = self.input();
+        let num = match Node::try_from(input) {
+            Ok(node) => node.local().id(),
+            Err(input) => match u64::try_from(input) {
+                Ok(v) => v,
+                Err(raw) => {
+                    return err_nost!(DeserializeError::UnexpectedType {
+                        given: raw,
+                        expected: stringify!($type).into()
+                    });
+                }
+            },
+        };
+        visitor.visit_u64(num)
     }
 
     fn deserialize_f32<V>(self, visitor: V) -> Result<V::Value, Error>
