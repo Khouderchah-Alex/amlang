@@ -5,7 +5,9 @@ use env_logger::{Builder, Env};
 use log::LevelFilter;
 
 use amlang::agent::env_policy::SimplePolicy;
-use amlang::agent::EnvManager;
+use amlang::agent::{AmlangContext, Context, EnvManager};
+use amlang::env::LocalNode;
+use amlang::primitive::Node;
 
 
 const SERIALIZATION_PATH: &str = ".";
@@ -27,6 +29,12 @@ fn main() -> Result<(), String> {
         Ok(val) => val,
         Err(err) => return Err(format!("{}", err)),
     };
+
+    // Load in AmlangContext so we can update if need be.
+    let mut pre_agent = manager.agent_mut();
+    let lang_env = pre_agent.find_env("lang.env").unwrap();
+    let _amlang_context =
+        AmlangContext::load(Node::new(lang_env, LocalNode::default()), &mut pre_agent).unwrap();
 
     if let Err(err) = manager.serialize_full(
         SERIALIZATION_PATH,

@@ -52,8 +52,4 @@ pub struct AmlangContext {
     self_ref: LocalNode,
 }
 
-impl<'de> Context<'de> for AmlangContext {
-    fn name() -> &'static str {
-        "AmlangContext"
-    }
-}
+impl<'de> Context<'de> for AmlangContext {}
