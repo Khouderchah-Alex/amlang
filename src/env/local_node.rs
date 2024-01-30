@@ -8,8 +8,6 @@ use serde::{Deserialize, Serialize};
 
 use crate::agent::env_prelude::EnvPrelude;
 use crate::agent::Agent;
-use crate::error::Error;
-use crate::model::Reflective;
 use crate::primitive::Node;
 use crate::sexp::Sexp;
 
@@ -64,25 +62,14 @@ impl LocalTriple {
     pub fn node(&self) -> LocalNode {
         self.0
     }
-}
 
-
-impl Reflective for LocalTriple {
-    fn reify(&self, agent: &Agent) -> Sexp {
+    pub fn reify(&self, agent: &Agent) -> Sexp {
         let e = agent.pos().env();
         let env = agent.access_env(e).unwrap();
         let s = Node::new(e, env.triple_subject(*self));
         let p = Node::new(e, env.triple_predicate(*self));
         let o = Node::new(e, env.triple_object(*self));
         list!(s, p, o)
-    }
-
-    fn reflect<F>(_structure: Sexp, _agent: &Agent, _resolve: F) -> Result<Self, Error> {
-        unimplemented!();
-    }
-
-    fn valid_discriminator(_node: Node, _agent: &Agent) -> bool {
-        return false;
     }
 }
 

@@ -18,7 +18,6 @@ pub mod agent;
 pub mod builtins;
 pub mod continuation;
 pub mod env;
-pub mod model;
 pub mod parser;
 pub mod primitive;
 pub mod std_error;

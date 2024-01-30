@@ -105,7 +105,8 @@ impl Error {
 
 
 pub trait ErrorKind: fmt::Debug /* fmt::Display auto-impled below */ {
-    // Cannot use Reflective since we use ErrorKind as a trait object.
+    // Cannot use serde since we use ErrorKind as a trait object,
+    // although could use erased-serde.
     fn reify(&self) -> Sexp;
 }
 

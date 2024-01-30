@@ -18,7 +18,6 @@ use crate::env::local_node::{LocalId, LocalNode};
 use crate::env::meta_env::MetaEnv;
 use crate::env::Environment;
 use crate::error::Error;
-use crate::model::Reflective;
 use crate::primitive::prelude::*;
 use crate::primitive::symbol_policies::policy_env_serde;
 use crate::primitive::table::Table;

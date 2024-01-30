@@ -21,7 +21,6 @@ use crate::env::meta_env::MetaEnv;
 use crate::env::LocalNode;
 use crate::env::{EnvObject, TripleSet};
 use crate::error::Error;
-use crate::model::Reflective;
 use crate::primitive::prelude::*;
 use crate::primitive::table::Table;
 use crate::sexp::{HeapSexp, Sexp};
@@ -347,7 +346,7 @@ impl Agent {
                     Ok(node.into())
                 }
             }
-            // Reify Reflectives.
+            // Reify reflectives.
             Primitive::Procedure(proc) => Ok(*self.reify(&proc)?),
             Primitive::SymNodeTable(table) => Ok(*self.reify(&table)?),
             Primitive::LocalNodeTable(table) => Ok(*self.reify(&table)?),
