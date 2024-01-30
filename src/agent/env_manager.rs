@@ -14,13 +14,11 @@ use super::env_policy::EnvPolicy;
 use super::Agent;
 use crate::agent::lang_error::LangError;
 use crate::builtins::generate_builtin_map;
-use crate::env::local_node::{LocalId, LocalNode};
 use crate::env::meta_env::MetaEnv;
-use crate::env::Environment;
+use crate::env::{Environment, LocalNode};
 use crate::error::Error;
 use crate::primitive::prelude::*;
 use crate::primitive::symbol_policies::policy_env_serde;
-use crate::primitive::table::Table;
 use crate::sexp::Sexp;
 use crate::stream::input::FileReader;
 
@@ -117,46 +115,8 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
 
     fn create_env(policy: &mut Policy, env_node: LocalNode) -> Box<Policy::StoredEnv> {
         let mut env = Policy::BaseEnv::default();
-
-        // Create nodes.
-        let self_env = env.insert_node(Some(Node::new(LocalNode::default(), env_node).into()));
-        let designation = env.insert_node(Some(SymNodeTable::default().into()));
-        let tell_handler = env.insert_node(None);
-        let mut reserved_id = env.all_nodes().len() as LocalId;
-        while let Some(_) = LocalNode::new(reserved_id).as_prelude() {
-            env.insert_node(Some("RESERVED".to_symbol_or_panic(policy_admin).into()));
-            reserved_id += 1;
-        }
-
-        // Name nodes.
-        if let Ok(table) = <&mut SymNodeTable>::try_from(env.entry_mut(designation).as_option()) {
-            table.insert(
-                self_env
-                    .as_prelude()
-                    .unwrap()
-                    .name()
-                    .to_symbol_or_panic(policy_admin),
-                Node::new(env_node, self_env),
-            );
-            table.insert(
-                designation
-                    .as_prelude()
-                    .unwrap()
-                    .name()
-                    .to_symbol_or_panic(policy_admin),
-                Node::new(env_node, designation),
-            );
-            table.insert(
-                tell_handler
-                    .as_prelude()
-                    .unwrap()
-                    .name()
-                    .to_symbol_or_panic(policy_admin),
-                Node::new(env_node, tell_handler),
-            );
-        } else {
-            panic!("Env designation isn't a symbol table");
-        }
+        // Create self node.
+        env.insert_node(Some(Node::new(LocalNode::default(), env_node).into()));
 
         policy.new_stored_env(env)
     }
@@ -222,11 +182,10 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         writeln!(&mut w, "")?;
 
         writeln!(&mut w, "(section nodes)")?;
-        for (i, node) in env.all_nodes().into_iter().enumerate() {
+        // Serialize nodes except self node.
+        for node in env.all_nodes().into_iter().skip(1) {
             let s = env.entry(node).owned();
             let (write_structure, add_quote) = match &s {
-                // Serialize self_des as ^1 since it can be reconstructed.
-                _ if i == 1 => (false, false),
                 // Don't quote structures with special deserialize ops.
                 Some(sexp) => match sexp {
                     Sexp::Primitive(Primitive::SymNodeTable(_)) => (true, false),
@@ -308,7 +267,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
 
         // Deserialize designations first in case we need it for nodes/triples.
         let mut context_input = FileReader::new(in_path.as_ref()).unwrap();
-        context_input.seek_line(6 + header.node_count() + header.triple_count())?;
+        context_input.seek_line(5 + header.node_count() + header.triple_count())?;
         self.deserialize_designations(&mut context_input)?;
 
         input.next();
@@ -406,7 +365,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
     fn deserialize_nodes(
         &mut self,
         reader: &mut FileReader,
-        mut node_count: usize,
+        node_count: usize,
     ) -> Result<(), Error> {
         debug!("Deserializing nodes");
         let section_line = if let Some(line) = reader.next() {
@@ -421,12 +380,8 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
             return err!(self.agent(), UnexpectedCommand(list!(command, section)));
         }
 
-        // Skip prelude nodes.
-        reader.nth(9);
-        node_count -= 10;
-
         let builtins = generate_builtin_map();
-        for _i in 0..node_count {
+        for _i in 1..node_count {
             let line = reader.next().unwrap()?;
             let entry = Sexp::parse_with(line.as_str(), policy_env_serde)?;
             match entry {

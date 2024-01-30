@@ -11,7 +11,6 @@ use std::rc::Rc;
 
 use super::agent_frames::{EnvFrame, ExecFrame};
 use super::context::MetaEnvContext;
-use super::env_prelude::EnvPrelude;
 use super::interpreter::{InterpreterState, NullInterpreter};
 use super::{BaseDeserializer, BaseSerializer};
 use crate::agent::lang_error::LangError;
@@ -305,11 +304,6 @@ impl Agent {
     }
 
     pub fn resolve(&self, name: &Symbol) -> Result<Node, Error> {
-        // Always get prelude nodes from current env.
-        if let Some(prelude) = EnvPrelude::from_name(name.as_str()) {
-            return Ok(Node::new(self.pos().env(), prelude.local()));
-        }
-
         for node in &self.designation_chain {
             if let Some(found) = self
                 .access_env(node.env())

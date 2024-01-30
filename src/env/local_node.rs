@@ -6,7 +6,6 @@ use std::fmt;
 
 use serde::{Deserialize, Serialize};
 
-use crate::agent::env_prelude::EnvPrelude;
 use crate::agent::Agent;
 use crate::primitive::Node;
 use crate::sexp::Sexp;
@@ -35,22 +34,6 @@ impl LocalNode {
     /// Globalize relative to current env of agent.
     pub fn globalize(self, agent: &Agent) -> Node {
         agent.globalize(self)
-    }
-
-    pub const fn as_prelude(&self) -> Option<EnvPrelude> {
-        match self.id() {
-            0 => Some(EnvPrelude::SelfEnv),
-            1 => Some(EnvPrelude::Designation),
-            2 => Some(EnvPrelude::TellHandler),
-            3 => Some(EnvPrelude::Reserved3),
-            4 => Some(EnvPrelude::Reserved4),
-            5 => Some(EnvPrelude::Reserved5),
-            6 => Some(EnvPrelude::Reserved6),
-            7 => Some(EnvPrelude::Reserved7),
-            8 => Some(EnvPrelude::Reserved8),
-            9 => Some(EnvPrelude::Reserved9),
-            _ => None,
-        }
     }
 }
 

@@ -20,7 +20,7 @@ impl EnvHeader {
         let node_count = env.all_nodes().len();
         let triple_count = env.match_all().len();
         Self {
-            file_version: Version::new(0, 0, 4).into(),
+            file_version: Version::new(0, 0, 5).into(),
             node_count,
             triple_count,
             unrecognized: SymSexpTable::default(),
