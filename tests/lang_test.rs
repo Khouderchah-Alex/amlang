@@ -79,7 +79,7 @@ fn lambda_seq_body() {
         results,
         vec![
             lang_agent
-                .resolve(&"lambda".to_symbol_or_panic(policy_base))
+                .resolve_name(&"lambda".to_symbol_or_panic(policy_base))
                 .unwrap()
                 .into()
         ]
@@ -175,14 +175,14 @@ fn let_rec_lambdas() {
     assert_eq!(
         *cons.car().unwrap(),
         lang_agent
-            .resolve(&"false".to_symbol_or_panic(policy_base))
+            .resolve_name(&"false".to_symbol_or_panic(policy_base))
             .unwrap()
             .into()
     );
     assert_eq!(
         *cons.cdr().unwrap(),
         lang_agent
-            .resolve(&"true".to_symbol_or_panic(policy_base))
+            .resolve_name(&"true".to_symbol_or_panic(policy_base))
             .unwrap()
             .into()
     );
@@ -355,7 +355,7 @@ fn eval_() {
     assert_eq!(
         results[0],
         lang_agent
-            .resolve(&"lambda".to_symbol_or_panic(policy_base))
+            .resolve_name(&"lambda".to_symbol_or_panic(policy_base))
             .unwrap()
             .into()
     );
@@ -370,7 +370,7 @@ fn improper_list() {
     assert_eq!(
         results[0],
         lang_agent
-            .resolve(&"true".to_symbol_or_panic(policy_base))
+            .resolve_name(&"true".to_symbol_or_panic(policy_base))
             .unwrap()
             .into()
     );
@@ -418,11 +418,11 @@ fn import() {
     );
 
     let t = lang_agent
-        .resolve(&"true".to_symbol_or_panic(policy_base))
+        .resolve_name(&"true".to_symbol_or_panic(policy_base))
         .unwrap()
         .into();
     let f = lang_agent
-        .resolve(&"false".to_symbol_or_panic(policy_base))
+        .resolve_name(&"false".to_symbol_or_panic(policy_base))
         .unwrap()
         .into();
     assert_eq!(results[1], t);

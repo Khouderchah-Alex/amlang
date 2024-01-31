@@ -7,6 +7,7 @@ use super::entry::{Entry, EntryKind, EntryMut, EntryMutKind};
 use super::local_node::{LocalId, LocalNode, LocalTriple};
 use super::mem_backend::{index_id_conv::*, Edges, MemBackend, Node, Triple};
 use super::{Environment, NodeSet, TripleSet};
+use crate::primitive::Node as PrimitiveNode;
 use crate::primitive::Symbol;
 use crate::sexp::Sexp;
 
@@ -64,27 +65,27 @@ impl<Backend: MemBackend> Environment for MemEnv<Backend> {
     }
 
 
-    fn insert_designation(&mut self, node: LocalNode, designation: Symbol, context: LocalNode) {
+    fn insert_designation(&mut self, node: PrimitiveNode, designation: Symbol, context: LocalNode) {
         self.backend
             .designator_mut(context)
             .insert(designation, node);
     }
 
-    fn match_designation(&self, designation: &Symbol, context: LocalNode) -> Option<LocalNode> {
+    fn match_designation(&self, designation: &Symbol, context: LocalNode) -> Option<PrimitiveNode> {
         if let Some(designator) = self.backend.designator(context) {
             return designator.get_by_left(designation).copied();
         }
         None
     }
 
-    fn find_designation(&self, node: LocalNode, context: LocalNode) -> Option<&Symbol> {
+    fn find_designation(&self, node: PrimitiveNode, context: LocalNode) -> Option<&Symbol> {
         if let Some(designator) = self.backend.designator(context) {
             return designator.get_by_right(&node);
         }
         None
     }
 
-    fn designation_pairs(&self, context: LocalNode) -> Vec<(&Symbol, &LocalNode)> {
+    fn designation_pairs(&self, context: LocalNode) -> Vec<(&Symbol, &PrimitiveNode)> {
         match self.backend.designator(context) {
             Some(designator) => designator.iter().collect(),
             None => vec![],

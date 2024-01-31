@@ -100,9 +100,9 @@ fn eq_(a: Sexp, b: Sexp, agent: &mut Agent) -> Result<Node, Error> {
     }
 
     if a == b {
-        agent.resolve(&T)
+        agent.resolve_name(&T)
     } else {
-        agent.resolve(&F)
+        agent.resolve_name(&F)
     }
 }
 

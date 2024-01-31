@@ -45,7 +45,7 @@ impl<'a> BaseSerializer<'a> {
             Err(err) => panic!("{:?}", err),
         };
         // Preferentially use context to serialize Node.
-        if let Ok(resolved) = self.agent.resolve(&sym) {
+        if let Ok(resolved) = self.agent.resolve_name(&sym) {
             Ok(resolved.into())
         } else {
             Ok(sym.into())

@@ -4,7 +4,7 @@ use std::sync::Arc;
 use super::entry::{Entry, EntryMut};
 use super::local_node::{LocalNode, LocalTriple};
 use super::{Environment, NodeSet, TripleSet};
-use crate::primitive::Symbol;
+use crate::primitive::{Node, Symbol};
 use crate::sexp::Sexp;
 
 
@@ -54,19 +54,19 @@ impl<T: Environment + Clone> Environment for RawOverlay<T> {
     }
 
 
-    fn insert_designation(&mut self, node: LocalNode, designation: Symbol, context: LocalNode) {
+    fn insert_designation(&mut self, node: Node, designation: Symbol, context: LocalNode) {
         self.base().insert_designation(node, designation, context)
     }
 
-    fn match_designation(&self, designation: &Symbol, context: LocalNode) -> Option<LocalNode> {
+    fn match_designation(&self, designation: &Symbol, context: LocalNode) -> Option<Node> {
         self.base().match_designation(designation, context)
     }
 
-    fn find_designation(&self, node: LocalNode, context: LocalNode) -> Option<&Symbol> {
+    fn find_designation(&self, node: Node, context: LocalNode) -> Option<&Symbol> {
         self.base().find_designation(node, context)
     }
 
-    fn designation_pairs(&self, context: LocalNode) -> Vec<(&Symbol, &LocalNode)> {
+    fn designation_pairs(&self, context: LocalNode) -> Vec<(&Symbol, &Node)> {
         self.base().designation_pairs(context)
     }
 

@@ -273,7 +273,8 @@ impl<'a> ExecutingInterpreter<'a> {
                 };
 
                 if is_named {
-                    val_node = self.agent_mut().name_node(name, val_node)?;
+                    let symbol = <Symbol>::try_from(self.agent().concretize(name)).unwrap();
+                    val_node = self.agent_mut().declare_name(symbol, val_node)?;
                 }
                 Ok(val_node.into())
             }

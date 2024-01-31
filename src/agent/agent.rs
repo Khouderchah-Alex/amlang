@@ -287,30 +287,70 @@ impl Agent {
     }
 
 
-    /// Get the amlang designator of a Node, which is (contextually) an
-    /// injective property.
-    pub fn lookup_designation(&self, node: Node) -> Option<Symbol> {
-        let env = self.access_env(node.env()).unwrap();
-        for context in &self.designation_chain {
-            if context.env() != node.env() {
-                continue;
-            }
+    pub fn declare_name(&mut self, name: Symbol, node: Node) -> Result<Node, Error> {
+        // TODO(perf) Use Cell or smth to avoid cloning designation_chain.
+        let mut contexts = self.designation_chain.clone();
+        contexts.push_front(Node::new(node.env(), LocalNode::default()));
+        self.declare_name_with(name, node, &contexts)
+    }
 
-            if let Some(sym) = env.find_designation(node.local(), context.local()) {
+    pub fn declare_name_with<'a, I: IntoIterator<Item = &'a Node> + Copy>(
+        &mut self,
+        name: Symbol,
+        node: Node,
+        contexts: I,
+    ) -> Result<Node, Error> {
+        // This prevents us from using an existing designation anywhere in the
+        // chain (the only use of passing more that one element in contexts).
+        if let Ok(_) = self.resolve_name_with(&name, contexts) {
+            return err!(self, LangError::AlreadyBoundSymbol(name));
+        }
+
+        let main_context = match contexts.into_iter().next() {
+            Some(context) => context,
+            None => panic!(),
+        };
+
+        self.access_env_mut(main_context.env())
+            .unwrap()
+            .insert_designation(node, name, main_context.local());
+        Ok(node)
+    }
+
+    pub fn lookup_name(&self, node: Node) -> Option<Symbol> {
+        self.lookup_name_with(node, &self.designation_chain)
+    }
+
+    pub fn lookup_name_with<'a, I: IntoIterator<Item = &'a Node>>(
+        &self,
+        node: Node,
+        contexts: I,
+    ) -> Option<Symbol> {
+        let env = self.access_env(node.env()).unwrap();
+        for context in contexts {
+            if let Some(sym) = env.find_designation(node, context.local()) {
                 return Some(sym.clone());
             }
         }
         return None;
     }
 
-    pub fn resolve(&self, name: &Symbol) -> Result<Node, Error> {
-        for node in &self.designation_chain {
+    pub fn resolve_name(&self, name: &Symbol) -> Result<Node, Error> {
+        self.resolve_name_with(name, &self.designation_chain)
+    }
+
+    pub fn resolve_name_with<'a, I: IntoIterator<Item = &'a Node>>(
+        &self,
+        name: &Symbol,
+        contexts: I,
+    ) -> Result<Node, Error> {
+        for context in contexts {
             if let Some(found) = self
-                .access_env(node.env())
+                .access_env(context.env())
                 .unwrap()
-                .match_designation(name, node.local())
+                .match_designation(name, context.local())
             {
-                return Ok(Node::new(node.env(), found));
+                return Ok(found);
             }
         }
         err!(self, LangError::UnboundSymbol(name.clone()))
@@ -319,7 +359,7 @@ impl Agent {
     pub fn designate(&self, designator: Primitive) -> Result<Sexp, Error> {
         match designator {
             // Symbol -> Node
-            Primitive::Symbol(symbol) => Ok(self.resolve(&symbol)?.into()),
+            Primitive::Symbol(symbol) => Ok(self.resolve_name(&symbol)?.into()),
             // Node -> Structure
             Primitive::Node(node) => {
                 if let Some(structure) = self
@@ -347,37 +387,6 @@ impl Agent {
             // Base case for self-designating.
             _ => Ok(designator.into()),
         }
-    }
-
-    pub fn name_node(&mut self, name: Node, node: Node) -> Result<Node, Error> {
-        let name_sexp = self.concretize(name)?;
-        let symbol = match <Symbol>::try_from(name_sexp) {
-            Ok(symbol) => symbol,
-            Err(sexp) => {
-                return err!(
-                    self,
-                    LangError::InvalidArgument {
-                        given: sexp,
-                        expected: "Node abstracting Symbol".into(),
-                    }
-                );
-            }
-        };
-
-        // TODO(func) This prevents us from using an existing designation
-        // anywhere in the chain. Perhaps we should allow "overriding"
-        // designations; that is, only fail if the designation exists earlier in
-        // the chain than the current environment.
-        if let Ok(_) = self.resolve(&symbol) {
-            return err!(self, LangError::AlreadyBoundSymbol(symbol));
-        }
-
-        self.access_env_mut(node.env()).unwrap().insert_designation(
-            node.local(),
-            symbol,
-            LocalNode::default(),
-        );
-        Ok(node)
     }
 
     pub fn define(&mut self, structure: Option<Sexp>) -> Result<Node, Error> {
@@ -764,7 +773,7 @@ impl Agent {
         match primitive {
             Primitive::Node(node) => {
                 // Write Nodes as their designation if possible.
-                if let Some(sym) = self.lookup_designation(*node) {
+                if let Some(sym) = self.lookup_name(*node) {
                     write!(w, "{}", sym.as_str())
                 } else if let Some(triple) = self
                     .access_env(node.env())

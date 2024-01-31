@@ -47,7 +47,7 @@ impl<'de> BaseDeserializer<'de> {
             Sexp::Primitive(Primitive::Symbol(sym)) => {
                 match policy_env_serde(sym.as_str()).unwrap() {
                     AdminSymbolInfo::Identifier => {
-                        if let Ok(resolved) = self.agent.resolve(&sym) {
+                        if let Ok(resolved) = self.agent.resolve_name(&sym) {
                             Ok(resolved.into())
                         } else {
                             err!(self.agent, LangError::UnboundSymbol(sym.clone()))
@@ -120,7 +120,7 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut BaseDeserializer<'de> {
         let b = if node
             == self
                 .agent
-                .resolve(&"true".to_symbol_or_panic(policy_base))?
+                .resolve_name(&"true".to_symbol_or_panic(policy_base))?
         {
             true
         } else {

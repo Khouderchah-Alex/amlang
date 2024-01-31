@@ -22,7 +22,7 @@ fn test_struct() {
 
     let t = Sexp::from(
         agent
-            .resolve(&"true".to_symbol_or_panic(policy_base))
+            .resolve_name(&"true".to_symbol_or_panic(policy_base))
             .unwrap(),
     );
 

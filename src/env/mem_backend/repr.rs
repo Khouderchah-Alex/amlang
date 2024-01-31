@@ -27,7 +27,7 @@ pub struct Triple {
     pub subject: LocalNode,
 }
 
-pub type Designator = BiBTreeMap<Symbol, LocalNode>;
+pub type Designator = BiBTreeMap<Symbol, crate::primitive::Node>;
 
 
 // Not putting this functionality in local_node because this behavior is

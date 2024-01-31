@@ -13,26 +13,27 @@ use crate::sexp::{Cons, Sexp};
 
 
 pub trait Context<'de>: Deserialize<'de> + Sized {
-    fn load(node: Node, agent: &'de mut Agent) -> Result<Self, Error> {
-        Self::_load(node, false, agent)
+    fn load(context_node: Node, agent: &'de mut Agent) -> Result<Self, Error> {
+        Self::_load(context_node, false, agent)
     }
-    fn load_strict(node: Node, agent: &'de mut Agent) -> Result<Self, Error> {
-        Self::_load(node, true, agent)
+    fn load_strict(context_node: Node, agent: &'de mut Agent) -> Result<Self, Error> {
+        Self::_load(context_node, true, agent)
     }
 
-    fn _load(node: Node, strict: bool, agent: &'de mut Agent) -> Result<Self, Error> {
+    fn _load(context_node: Node, strict: bool, agent: &'de mut Agent) -> Result<Self, Error> {
         let introspection = Introspection::of::<Self>();
         let mut reified = Sexp::default();
         // Need to own str so we can release agent ownership.
+        // TODO(perf) Use Cell or smth.
         let mut provided = BTreeSet::<String>::new();
         provided.insert("node".to_string());
-        for (name, lnode) in agent
-            .access_env(node.env())
+        for (name, node) in agent
+            .access_env(context_node.env())
             .unwrap()
-            .designation_pairs(node.local())
+            .designation_pairs(context_node.local())
         {
             provided.insert(name.as_str().to_string());
-            reified.push_front(Cons::new(name.clone(), Node::new(node.env(), *lnode)));
+            reified.push_front(Cons::new(name.clone(), *node));
         }
 
         // During development/self-modification, create missing context nodes as needed.
@@ -46,17 +47,20 @@ pub trait Context<'de>: Deserialize<'de> + Sized {
             for name in remaining {
                 info!("{}: Bootstrapping field {}", introspection.name(), name);
                 let sym = name.to_symbol_or_panic(policy_base);
-                let val = agent.define_to(node.env(), None)?;
+                let val = agent.define_to(context_node.env(), None)?;
                 agent
-                    .access_env_mut(node.env())
+                    .access_env_mut(context_node.env())
                     .unwrap()
-                    .insert_designation(val.local(), sym.clone(), node.local());
+                    .insert_designation(val, sym.clone(), context_node.local());
 
-                reified.push_front(Cons::new(sym, node));
+                reified.push_front(Cons::new(sym, context_node));
             }
         }
 
-        reified.push_front(Cons::new("node".to_symbol_or_panic(policy_base), node));
+        reified.push_front(Cons::new(
+            "node".to_symbol_or_panic(policy_base),
+            context_node,
+        ));
         reified.push_front(introspection.name().to_symbol_or_panic(policy_base));
 
         agent.reflect::<Self>(reified)

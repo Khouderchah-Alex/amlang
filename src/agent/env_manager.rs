@@ -231,7 +231,9 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         if !des.is_empty() {
             writeln!(&mut w, "(section designation {})", name)?;
             for (sym, node) in des {
-                writeln!(&mut w, "({} ^{})", sym, node.id())?;
+                write!(&mut w, "({} ", sym)?;
+                self.serialize_node(&mut w, node)?;
+                writeln!(&mut w, ")")?;
             }
             writeln!(&mut w, "")?;
         }
@@ -337,29 +339,32 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
             }
             Primitive::Node(node) => {
                 // Write Nodes as their designation if possible.
-                if let Some(sym) = self.agent().lookup_designation(*node) {
+                if let Some(sym) = self.agent().lookup_name(*node) {
                     return write!(w, "{}", sym.as_str());
                 }
-
-                if let Some(triple) = self
-                    .agent()
-                    .access_env(node.env())
-                    .unwrap()
-                    .node_as_triple(node.local())
-                {
-                    if node.env() != self.agent().pos().env() {
-                        write!(w, "^{}", node.env().id())?;
-                    }
-                    return write!(w, "^t{}", self.agent().env().triple_index(triple));
-                }
-
-                if node.env() != self.agent().pos().env() {
-                    write!(w, "^{}", node.env().id())?;
-                }
-                write!(w, "^{}", node.local().id())
+                self.serialize_node(w, node)
             }
             _ => write!(w, "{}", primitive),
         }
+    }
+
+    fn serialize_node<W: std::io::Write>(&self, w: &mut W, node: &Node) -> std::io::Result<()> {
+        if let Some(triple) = self
+            .agent()
+            .access_env(node.env())
+            .unwrap()
+            .node_as_triple(node.local())
+        {
+            if node.env() != self.agent().pos().env() {
+                write!(w, "^{}", node.env().id())?;
+            }
+            return write!(w, "^t{}", self.agent().env().triple_index(triple));
+        }
+
+        if node.env() != self.agent().pos().env() {
+            write!(w, "^{}", node.env().id())?;
+        }
+        write!(w, "^{}", node.local().id())
     }
 
     fn deserialize_nodes(
@@ -514,12 +519,11 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
                 let pair = Sexp::parse_with(line.as_str(), policy_env_serde)?;
                 let (name, node_id) = break_sexp!(pair => (Symbol, Symbol), self.agent())?;
 
+                // TODO(func) Generic handling of designator "type".
                 let node = self.parse_node(&node_id)?;
-                self.agent_mut().env_mut().insert_designation(
-                    node.local(),
-                    name,
-                    LocalNode::default(),
-                );
+                self.agent_mut()
+                    .env_mut()
+                    .insert_designation(node, name, LocalNode::default());
 
                 line = reader.next().unwrap()?;
             }
