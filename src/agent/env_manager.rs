@@ -12,7 +12,6 @@ use super::deserialize_error::DeserializeError::*;
 use super::env_header::EnvHeader;
 use super::env_policy::EnvPolicy;
 use super::Agent;
-use crate::agent::lang_error::LangError;
 use crate::builtins::generate_builtin_map;
 use crate::env::meta_env::MetaEnv;
 use crate::env::{Environment, LocalNode};
@@ -136,6 +135,8 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         blacklist: BTreeSet<&str>,
     ) -> std::io::Result<()> {
         let original_pos = self.agent().pos();
+        let original_dchain = self.agent.designation_chain().clone();
+        self.agent.designation_chain_mut().clear();
 
         // Serialize meta env.
         self.agent_mut()
@@ -169,10 +170,16 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
         }
 
         self.agent_mut().jump(original_pos);
+        *self.agent.designation_chain_mut() = original_dchain;
         Ok(())
     }
 
-    pub fn serialize_curr_env<P: AsRef<Path>>(&self, out_path: P) -> std::io::Result<()> {
+    pub fn serialize_curr_env<P: AsRef<Path>>(&mut self, out_path: P) -> std::io::Result<()> {
+        let env_node = self.agent().pos().env();
+        let dchain = self.agent.designation_chain_mut();
+        dchain.clear();
+        dchain.push_front(Node::new(env_node, LocalNode::default()));
+
         let file = File::create(out_path.as_ref())?;
         let mut w = BufWriter::new(file);
 
@@ -223,11 +230,7 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
 
         // TODO(func) Generalize to arbitrary designations.
         let des = env.designation_pairs(LocalNode::default());
-        let name = if self.agent().pos().env().id() != 0 {
-            "amlang"
-        } else {
-            "meta"
-        };
+        let name = "default";
         if !des.is_empty() {
             writeln!(&mut w, "(section designation {})", name)?;
             for (sym, node) in des {
@@ -408,14 +411,9 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
     }
 
     fn parse_node(&self, sym: &Symbol) -> Result<Node, Error> {
-        EnvManager::<Policy>::parse_node_inner(self.agent(), sym)
-    }
-
-    fn parse_node_inner(agent: &Agent, sym: &Symbol) -> Result<Node, Error> {
+        let agent = self.agent();
         match policy_env_serde(sym.as_str()).unwrap() {
-            AdminSymbolInfo::Identifier => {
-                err!(agent, LangError::UnboundSymbol(sym.clone()))
-            }
+            AdminSymbolInfo::Identifier => agent.resolve_name_with(sym, &[agent.pos()]),
             AdminSymbolInfo::LocalNode(node) => Ok(node.globalize(agent)),
             AdminSymbolInfo::LocalTriple(idx) => {
                 let triple = agent.env().triple_from_index(idx);
@@ -529,12 +527,10 @@ impl<Policy: EnvPolicy> EnvManager<Policy> {
             }
 
             // TODO(func) Generic handling of desired d-chain/context-state.
-            if designator.as_str() == "amlang" {
-                let env_node = self.agent().pos().env();
-                self.agent
-                    .designation_chain_mut()
-                    .push_front(Node::new(env_node, LocalNode::default()));
-            }
+            let env_node = self.agent().pos().env();
+            self.agent
+                .designation_chain_mut()
+                .push_front(Node::new(env_node, LocalNode::default()));
         }
 
         Ok(())

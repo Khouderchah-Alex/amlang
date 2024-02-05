@@ -326,9 +326,12 @@ impl Agent {
         node: Node,
         contexts: I,
     ) -> Option<Symbol> {
-        let env = self.access_env(node.env()).unwrap();
         for context in contexts {
-            if let Some(sym) = env.find_designation(node, context.local()) {
+            if let Some(sym) = self
+                .access_env(context.env())
+                .unwrap()
+                .find_designation(node, context.local())
+            {
                 return Some(sym.clone());
             }
         }
