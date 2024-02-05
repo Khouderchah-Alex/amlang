@@ -45,6 +45,12 @@ impl fmt::Display for LangString {
     }
 }
 
+impl AsRef<str> for LangString {
+    fn as_ref(&self) -> &str {
+        self.as_str()
+    }
+}
+
 impl From<LangString> for String {
     fn from(s: LangString) -> Self {
         s.0
