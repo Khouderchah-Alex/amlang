@@ -53,7 +53,7 @@ pub trait Context<'de>: Deserialize<'de> + Sized {
                     .unwrap()
                     .insert_designation(val, sym.clone(), context_node.local());
 
-                reified.push_front(Cons::new(sym, context_node));
+                reified.push_front(Cons::new(sym, val));
             }
         }
 
