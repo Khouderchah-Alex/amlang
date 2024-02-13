@@ -249,6 +249,27 @@ impl Sexp {
         }
         Ok(())
     }
+
+    pub fn to_string_truncated(&self) -> String {
+        // Any list longer than this will simply be suffixed with "..." after these
+        // many elements.
+        const MAX_LENGTH: usize = 64;
+        const MAX_DEPTH: usize = 16;
+
+        let mut buf: Vec<u8> = vec![];
+        match self.write(
+            &mut buf,
+            0,
+            &mut |writer, primitive, _depth| write!(writer, "{}", primitive),
+            &mut |writer, paren, _depth| write!(writer, "{}", paren),
+            &mut |writer, _depth| write!(writer, " "),
+            Some(MAX_LENGTH),
+            Some(MAX_DEPTH),
+        ) {
+            Ok(()) => String::from_utf8(buf).unwrap(),
+            Err(err) => format!("Serialize error: {}", err),
+        }
+    }
 }
 
 
@@ -380,21 +401,18 @@ impl Default for Sexp {
     }
 }
 
+/// NOTE: This will write the entire Sexp, even if very large.
+/// Consider to_string_truncated for some uses.
 impl fmt::Display for Sexp {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // Any list longer than this will simply be suffixed with "..." after these
-        // many elements.
-        const MAX_LENGTH: usize = 64;
-        const MAX_DEPTH: usize = 16;
-
         match self.write(
             &mut FmtIoAdapter::new(f),
             0,
             &mut |writer, primitive, _depth| write!(writer, "{}", primitive),
             &mut |writer, paren, _depth| write!(writer, "{}", paren),
             &mut |writer, _depth| write!(writer, " "),
-            Some(MAX_LENGTH),
-            Some(MAX_DEPTH),
+            None,
+            None,
         ) {
             Ok(()) => Ok(()),
             Err(_) => Err(fmt::Error),
