@@ -110,6 +110,22 @@ impl Sexp {
         }
     }
 
+    pub fn car(&self) -> Option<&Sexp> {
+        if let Sexp::Cons(c) = self {
+            c.car()
+        } else {
+            Some(&self)
+        }
+    }
+
+    pub fn cdr(&self) -> Option<&Sexp> {
+        if let Sexp::Cons(c) = self {
+            c.cdr()
+        } else {
+            None
+        }
+    }
+
     pub fn iter(&self) -> SexpIter {
         SexpIter {
             current: Some(&self),
