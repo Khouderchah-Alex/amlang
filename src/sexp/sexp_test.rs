@@ -43,3 +43,11 @@ fn non_cons() {
     assert_eq!(iter.next().unwrap(), (Number::generic(3).into(), true));
     assert_eq!(iter.next().unwrap(), (Number::generic(4).into(), false));
 }
+
+#[test]
+fn reverse() {
+    let s: Sexp = "(1 2 (3 4) 5)".parse().unwrap();
+    let reversed = "(5 (4 3) 2 1)".parse().unwrap();
+    println!("{}", s.clone().reverse());
+    assert_eq!(s.reverse(), reversed);
+}

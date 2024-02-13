@@ -126,6 +126,33 @@ impl Sexp {
         }
     }
 
+    // TODO(func) Support improper lists.
+    pub fn reverse(self) -> Sexp {
+        self._reverse(Sexp::default())
+    }
+
+    fn _reverse(self, mut curr: Sexp) -> Sexp {
+        if self.is_none() {
+            return curr;
+        }
+
+        match self {
+            Sexp::Cons(c) => {
+                let (head, tail) = c.consume();
+                curr.push_front(head.unwrap_or_default().reverse());
+                tail.unwrap_or_default()._reverse(curr)
+            }
+            sexp @ Sexp::Primitive(_) => {
+                if curr.is_none() {
+                    sexp
+                } else {
+                    curr.push_front(sexp);
+                    curr
+                }
+            }
+        }
+    }
+
     pub fn iter(&self) -> SexpIter {
         SexpIter {
             current: Some(&self),
