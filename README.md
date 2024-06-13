@@ -20,14 +20,15 @@ reproduce the context of data.
 
 # Key Abstractions
 ## Core
-  - Environment: A [triple store](https://en.wikipedia.org/wiki/Triplestore)
-    capable of representing triples as nodes. Environments can store S-exps, but
-    can also be represented to varying degrees as S-exps. Environments are owned
-    by the MetaEnvironment, which treats them as nodes that can be connected and
-    related as any other node.
-  - S-exp: Basically an [N-tree](https://en.wikipedia.org/wiki/M-ary_tree)
-    composed of primitive types (importantly, including nodes of Environments)
-    and a generic glue called Cons.
+  - Environment: A graph of nodes connected by labelled edges
+    ([triples](https://en.wikipedia.org/wiki/Triplestore)) where both S-exps and
+    triples are stored in nodes. Environments themselves can also be represented
+    to varying degrees as S-exps. Environments are owned by the MetaEnvironment,
+    which treats them as nodes that can be connected and related like any other
+    node.
+  - S-exp: Basically an [N-tree](https://en.wikipedia.org/wiki/M-ary_tree)--also
+    known as a generic tree-- composed of primitive types (importantly,
+    including references to Environment nodes) and a generic glue called Cons.
 
 Concepts could be initially represented as nodes in a graph and queried through
 the (relatively) slow mechanims of a graph-db/triple-store. As usage hardens
@@ -40,7 +41,7 @@ triple-store.
 
 In the other direction, we could begin with a monolithic S-exp (or an external
 interface/system) and incrementally abstract out relevant concepts into the
-Environment. We can do this more than once, creating different models of one
+Environment. We can do this more than once, creating different models of a
 structure and pitting them against each other or using them in different
 contexts. We might think of this as an Environment modeling a set of S-exps.
 
@@ -48,7 +49,7 @@ The duality between Environment and S-exp forms what we call a **structured
 metagraph**, a single structure capable of collapsing and reproducing parts of
 itself.
 
-Finally, it's worth noting that an S-exp is a stone's throw from a array. This
+Finally, it's worth noting that an S-exp is a stone's throw from an array. This
 flattening could be accomplished from anywhere between trivial serialization to
 full-on compilation, but allows for structured metagraphs to be "compiled" down
 to native formats independent of this project. When we support the text/binary
